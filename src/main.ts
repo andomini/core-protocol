@@ -11,7 +11,9 @@ import { initRenderScale } from './render/resolution';
 import { BattleScene } from './render/scenes/BattleScene';
 import { BootScene } from './render/scenes/BootScene';
 import { HomeScene } from './render/scenes/HomeScene';
+import { AudioBus } from './render/audio';
 import { services } from './services';
+import { setButtonPressHook } from './ui/kit';
 import { DEFAULT_DATA } from './sim/data';
 import { installSessionEvents, Telemetry } from './telemetry/Telemetry';
 import { chooseOrientation, makeLayout } from './ui/layout';
@@ -89,9 +91,18 @@ async function start(): Promise<void> {
   // Effective mute = portal mute OR an ad is playing (audio mutes at the ad's real start, not at request).
   let portalMuted = false;
   let adAudio = false;
+  const audio = new AudioBus();
+  services.audio = audio;
   const applyMute = () => {
     game.sound.mute = portalMuted || adAudio;
+    audio.portalMuted = portalMuted;
+    audio.adPlaying = adAudio;
+    audio.apply();
   };
+  // Browsers start audio only from a user gesture.
+  window.addEventListener('pointerdown', () => audio.unlock(), { capture: true, passive: true });
+  setButtonPressHook(() => audio.play('click'));
+  window.addEventListener('keydown', () => audio.unlock(), { capture: true, passive: true });
   services.isMuted = () => portalMuted || adAudio;
   portal.onMuteChange((m) => {
     portalMuted = m;

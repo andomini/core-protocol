@@ -46,6 +46,12 @@ export function panel(scene: Phaser.Scene, r: Rect, depth: number, st: PanelStyl
   return scene.add.image(r.x - pad, r.y - pad, key).setOrigin(0).setScale(ps(1)).setDepth(depth);
 }
 
+let onButtonPress: (() => void) | null = null;
+/** A UI click sound (set once by the app; kit stays independent of the audio module). */
+export function setButtonPressHook(f: () => void): void {
+  onButtonPress = f;
+}
+
 export interface ButtonStyle extends PanelStyle {
   textColor?: string;
   glow?: string;
@@ -83,6 +89,7 @@ export class Button {
   }
 
   private press(): void {
+    onButtonPress?.();
     const s = this.bg.scene;
     s.tweens.add({ targets: [this.bg, this.label], alpha: { from: 0.55, to: 1 }, duration: 160 });
   }

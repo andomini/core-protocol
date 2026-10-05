@@ -14,6 +14,9 @@ import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleRun } from '../../meta/runEnd';
 import { Button } from '../../ui/kit';
 import { PickOverlay } from '../../ui/PickOverlay';
+import { DamageNumbers } from '../../ui/DamageNumbers';
+import { Hints } from '../../ui/Hints';
+import { quoteFor } from '../../sim/commands';
 import { ProtocolsPanel } from '../../ui/ProtocolsPanel';
 import { SetChips } from '../../ui/SetChips';
 import { tagCounts } from '../../sim/perks';
@@ -54,6 +57,8 @@ export class BattleScene extends Phaser.Scene {
   upgrades!: UpgradePanel;
   death!: DeathOverlay;
   pick!: PickOverlay;
+  numbers!: DamageNumbers;
+  hints!: Hints;
   chips!: SetChips;
   protocols!: ProtocolsPanel;
   private pausedBeforePanel = false;
@@ -108,6 +113,10 @@ export class BattleScene extends Phaser.Scene {
     this.gd = battleData(DEFAULT_DATA, this.flags);
     this.life = new RunLifecycle({ guard: services.guard, ads: services.ads, telemetry: services.telemetry, tickHz: this.gd.config.tickHz });
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
+    const set = services.meta.meta.settings;
+    services.audio.sfxOn = set.sound;
+    services.audio.musicOn = set.music;
+    services.audio.apply();
     this.speeds = labEffects(services.meta.meta, DEFAULT_META_DATA).speeds;
     this.fastBoot = 0;
     const saved = this.mode === 'continue' ? services.meta.loadRun() : null;
@@ -122,6 +131,8 @@ export class BattleScene extends Phaser.Scene {
     this.loop = new FixedLoop(this.gd.config.tickHz, MAX_TICKS_PER_FRAME);
     this.view = new WorldView(this, this.L, () => this.session);
     this.fx = new Effects(this);
+    this.numbers = new DamageNumbers(this, this.L);
+    this.hints = new Hints(this, this.L, !services.meta.meta.firstRunDone && !this.flags.stress);
     this.hud = new Hud(this, this.L, this.gd, { onSpeed: () => this.cycleSpeed(), onPause: () => this.setPaused(!this.paused) });
     this.upgrades = new UpgradePanel(this, this.L, this.gd, {
       world: () => this.session.world,
@@ -198,6 +209,31 @@ export class BattleScene extends Phaser.Scene {
   private saveAndExit(): void {
     this.saveRun();
     this.goHome();
+  }
+
+  private updateHints(now: number): void {
+    const w = this.session.world;
+    const info = this.upgrades.info();
+    const affordable = info.rows.find((r) => !r.locked && quoteFor(w, this.gd, r.stat, 1).affordable);
+    const bought = this.session.log.some((l) => l.cmd.type === 'buy');
+    const low = w.core.hp < this.session.stats.health * 0.4;
+    const def = info.tabs.find((t) => t.tab === 'def');
+    const anySet = Object.values(w.setTiers).some((t) => t > 0);
+    this.hints.update(
+      now,
+      {
+        buy: { active: !bought && affordable !== undefined && w.wave >= 1, target: affordable?.rect ?? null },
+        speed: { active: w.wave >= 3 && this.speed === 1, target: this.hud.speedBtn.r },
+        def: { active: low && w.wave >= 2, target: def?.rect ?? null },
+        chips: { active: anySet && this.chips.rect.w > 0, target: this.chips.rect },
+      },
+      w.dead || w.phase === 'pick' || this.paused || this.protocols.visible,
+    );
+  }
+
+  /** Camera shake unless the player turned on "Reduce motion". */
+  shake(ms: number, intensity: number): void {
+    if (!services.meta.meta.settings.reduceMotion) this.cameras.main.shake(ms, intensity);
   }
 
   goHome(): void {
@@ -321,6 +357,7 @@ export class BattleScene extends Phaser.Scene {
     this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.view.reset();
     this.fx.reset();
+    this.numbers.reset();
     this.hud.reset();
     this.upgrades.reset();
     this.loop.reset();
@@ -371,7 +408,9 @@ export class BattleScene extends Phaser.Scene {
   private readonly onEvent = (e: SimEvent): void => {
     this.life.onEvent(e, this.session.world);
     const now = this.time.now;
+    const sfx = services.audio;
     if (e.type === 'buy' || e.type === 'buyRejected') {
+      if (e.type === 'buy') sfx.play('upgrade', 1 + Math.min(1, e.level / 60));
       this.upgrades.onEvent(e);
       return;
     }
@@ -379,11 +418,15 @@ export class BattleScene extends Phaser.Scene {
     const coreR = this.gd.core.radius * L.scale * 1.15;
     switch (e.type) {
       case 'shot':
+        sfx.play(e.crit ? 'crit' : 'shot');
         if (this.screenOf(e.targetId)) this.fx.muzzle(L.cx, L.cy, this.tmp.x, this.tmp.y, coreR);
         break;
       case 'hit':
         this.view.flash(e.enemyId, now);
-        if (this.screenOf(e.enemyId)) this.fx.hit(this.tmp.x, this.tmp.y);
+        if (this.screenOf(e.enemyId)) {
+          this.fx.hit(this.tmp.x, this.tmp.y);
+          if (e.crit) this.numbers.show(this.tmp.x, this.tmp.y, e.damage, true);
+        }
         break;
       case 'kill': {
         const en = this.session.lastKnown(e.enemyId);
@@ -391,11 +434,13 @@ export class BattleScene extends Phaser.Scene {
         this.view.enemyScreen(en, 1, this.tmp);
         const rot = e.kind === 'fast' || e.kind === 'ranged' || e.kind === 'boss' ? Math.atan2(-en.y, -en.x) : now * 0.0012;
         this.fx.death(e.kind, ENEMY_TEX[e.kind], this.tmp.x, this.tmp.y, rot, L.scale * ENEMY_VIS, e.kind === 'boss');
-        if (e.kind === 'boss') this.cameras.main.shake(260, 0.006);
+        sfx.play(e.kind === 'boss' ? 'bossDie' : 'kill');
+        if (e.kind === 'boss') this.shake(260, 0.006);
         break;
       }
       case 'coreHit': {
         const heavy = e.damage >= this.session.stats.health * 0.1;
+        sfx.play('wallHit');
         this.view.coreHit(now, heavy);
         this.hud.coreHit(now);
         this.fx.coreHit(this.view.coreX, this.view.coreY, coreR, heavy);
@@ -405,6 +450,7 @@ export class BattleScene extends Phaser.Scene {
       case 'waveStart':
         this.saveRun();
         if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? 4 : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
+        sfx.play(e.boss ? 'boss' : 'wave');
         if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now);
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);
         this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, e.boss ? CRIMSON : undefined);
@@ -412,15 +458,18 @@ export class BattleScene extends Phaser.Scene {
       case 'setTier': {
         const name = this.gd.sets.tags[e.tag].name.toUpperCase();
         this.showBanner(`${name} SET ×${e.tier} ONLINE`, TAG_CSS[e.tag], now);
+        sfx.play('set');
         this.fx.pulse(L.cx, L.cy, this.session.stats.range * L.scale, TAG_COLOR[e.tag]);
         break;
       }
       case 'lightning': {
-        const from = this.session.lastKnown(e.fromId);
-        if (!from) break;
-        this.view.enemyScreen(from, 1, this.tmp);
-        const fx0 = this.tmp.x;
-        const fy0 = this.tmp.y;
+        sfx.play('zap');
+        // fromId 0: a Tesla Coil bolt from the core.
+        const from = e.fromId === 0 ? null : this.session.lastKnown(e.fromId);
+        if (e.fromId !== 0 && !from) break;
+        if (from) this.view.enemyScreen(from, 1, this.tmp);
+        const fx0 = from ? this.tmp.x : L.cx;
+        const fy0 = from ? this.tmp.y : L.cy;
         for (const id of e.targets) if (this.screenOf(id)) this.fx.arc(fx0, fy0, this.tmp.x, this.tmp.y, TAG_COLOR.chain);
         break;
       }
@@ -434,6 +483,7 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
       case 'freezeAll':
+        sfx.play('freeze');
         this.fx.pulse(L.cx, L.cy, Math.max(L.arena.w, L.arena.h) * 0.6, TAG_COLOR.cryo);
         break;
       case 'overdrive':
@@ -442,6 +492,18 @@ export class BattleScene extends Phaser.Scene {
         break;
       case 'immunity':
         this.fx.pulse(L.cx, L.cy, coreR * 3, TAG_COLOR.firewall);
+        break;
+      case 'damageBoost':
+        this.fx.pulse(L.cx, L.cy, coreR * 4, TAG_COLOR.overload);
+        this.showBanner('OVERCLOCK', TAG_CSS.overload, now);
+        sfx.play('set');
+        break;
+      case 'waveSkip':
+        this.showBanner(`WAVE ${e.wave} SKIPPED`, '#ffd23f', now);
+        sfx.play('coin');
+        break;
+      case 'perkPicked':
+        sfx.play('perk');
         break;
       case 'boost':
         this.showBanner(`ENERGY ×${this.gd.perks.boost.energyMul}`, '#ffd23f', now);
@@ -457,8 +519,9 @@ export class BattleScene extends Phaser.Scene {
           break;
         }
         this.settle();
+        sfx.play('death');
         this.fx.coreBreach(L.cx, L.cy, coreR);
-        this.cameras.main.shake(380, 0.01);
+        this.shake(380, 0.01);
         this.deathAt = now;
         break;
       }
@@ -511,6 +574,13 @@ export class BattleScene extends Phaser.Scene {
       );
     }
     this.chips.update(tagCounts(w, this.gd), w.setTiers);
+    this.numbers.update(time);
+    this.updateHints(time);
+    const tense = !w.dead && w.core.hp < this.session.stats.health * 0.3;
+    if (tense !== services.audio.tense) {
+      services.audio.tense = tense;
+      services.audio.apply();
+    }
     if (w.phase === 'pick' && !w.dead) {
       if (!this.pick.visible) this.life.hold('perkPick', true);
       this.pick.show(w, time);

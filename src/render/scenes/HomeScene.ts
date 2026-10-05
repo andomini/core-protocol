@@ -80,6 +80,10 @@ export class HomeScene extends Phaser.Scene {
       const b = new Button(this, this.G.tabs[i]!, this.L.o === 'portrait' && TABS.length > 4 ? SHORT[t.id]! : t.label, this.G.font, 5, () => this.setTab(t.id), { font: 'ui', cut: 12, blur: 10 });
       this.tabButtons.push(b);
     });
+    const set = services.meta.meta.settings;
+    services.audio.sfxOn = set.sound;
+    services.audio.musicOn = set.music;
+    services.audio.apply();
     this.refresh();
     services.guard.gameplayStop?.();
     const starter = this.registry.get('starterReveal') as PackCard[] | undefined;
@@ -501,6 +505,7 @@ export class HomeScene extends Phaser.Scene {
 
   /** Pack reveal: the cards side by side with NEW / ★ UP badges. */
   showPack(cards: PackCard[]): void {
+    services.audio.play('pack');
     const L = this.L;
     const portrait = L.o === 'portrait';
     const D = 20;
@@ -570,6 +575,9 @@ export class HomeScene extends Phaser.Scene {
       const on = m.settings[key];
       this.btn({ x: r.x + r.w - 200, y: r.y + 12, w: 180, h: h - 24 }, on ? 'ON' : 'OFF', () => {
         m.settings[key] = !m.settings[key];
+        services.audio.sfxOn = m.settings.sound;
+        services.audio.musicOn = m.settings.music;
+        services.audio.apply();
         this.save();
         this.refresh();
       }, { color: on ? '#2bffb0' : TEXT_DIM, edge: on ? 0x2bffb0 : LOCKED });

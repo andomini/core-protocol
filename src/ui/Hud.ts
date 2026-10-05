@@ -77,7 +77,7 @@ export class Hud {
   private readonly secsText: Phaser.GameObjects.Text;
   private readonly energyText: Phaser.GameObjects.Text;
   private readonly hpText: Phaser.GameObjects.Text;
-  private readonly speedBtn: Button;
+  readonly speedBtn: Button;
   private readonly pauseBtn: Button;
   private readonly pausedBanner: Phaser.GameObjects.Text;
   private last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null as boolean | null };
