@@ -42,6 +42,8 @@ describe('spawn ring vs visible arena', () => {
       const halfShort = Math.min(L.arena.w, L.arena.h) / 2;
       const halfLong = Math.max(L.arena.w, L.arena.h) / 2;
       expect(ringPx).toBeGreaterThan(halfShort + data.enemies.basic.radius * L.scale);
+      // Axis-aligned spawns start fully off-screen on the long axis too (only corners can show them).
+      expect(ringPx).toBeGreaterThan(halfLong + data.enemies.basic.radius * L.scale);
       // "Just beyond": no more than ~1 s of walking past the long edge either.
       expect(ringPx - halfLong).toBeLessThan(data.enemies.basic.speed * L.scale);
       expect(data.config.spawnRadius).toBeGreaterThan(data.core.range);

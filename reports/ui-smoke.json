@@ -1,9 +1,9 @@
 {
-  "date": "2026-10-05T18:06:27.231Z",
+  "date": "2026-10-05T18:11:51.268Z",
   "metrics": {
-    "portrait.firstVisibleSimS": 0.03,
+    "portrait.firstVisibleSimS": 0,
     "landscape 1280×720.firstVisibleSimS": 0.03,
-    "landscape 907×510.firstVisibleSimS": 0.03,
+    "landscape 907×510.firstVisibleSimS": 0,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
   },
@@ -14,11 +14,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pause",
-        "enemies": 0,
-        "visible": 0,
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -33,13 +33,22 @@
       }
     },
     {
+      "name": "portrait: all 23 texts ≥ 28 px",
+      "ok": true,
+      "detail": {
+        "min": 28,
+        "count": 23,
+        "bad": []
+      }
+    },
+    {
       "name": "portrait: an enemy is visible within ~2 s",
       "ok": true,
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -63,7 +72,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -133,7 +142,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 3,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -157,7 +166,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 925,
+        "tick": 927,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -215,7 +224,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 49,
+        "tick": 47,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -229,7 +238,7 @@
         "speed": 5,
         "paused": false,
         "fps": 59,
-        "seed": 688676011
+        "seed": 72668684
       }
     },
     {
@@ -257,8 +266,17 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 67,
         "seed": 5
+      }
+    },
+    {
+      "name": "landscape 1280×720: all 23 texts ≥ 16 px",
+      "ok": true,
+      "detail": {
+        "min": 16,
+        "count": 23,
+        "bad": []
       }
     },
     {
@@ -281,7 +299,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 67,
         "seed": 5
       }
     },
@@ -292,7 +310,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 3,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -305,7 +323,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 62,
+        "fps": 67,
         "seed": 5
       }
     },
@@ -358,8 +376,17 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 66,
         "seed": 5
+      }
+    },
+    {
+      "name": "landscape 907×510: all 23 texts ≥ 16 px",
+      "ok": true,
+      "detail": {
+        "min": 16,
+        "count": 23,
+        "bad": []
       }
     },
     {
@@ -369,7 +396,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -382,7 +409,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 66,
         "seed": 5
       }
     },
@@ -393,7 +420,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 3,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -406,7 +433,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 62,
+        "fps": 66,
         "seed": 5
       }
     },
@@ -417,7 +444,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 925,
+        "tick": 924,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -478,19 +505,19 @@
         "dead": false,
         "overlay": false,
         "kills": 114,
-        "energy": 228.06,
-        "bits": 114.02,
-        "coreHp": 999999985261.18,
+        "energy": 228,
+        "bits": 114,
+        "coreHp": 999999985260.39,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 422443107
+        "seed": 708241128
       }
     },
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00199342170836
+      "detail": 60.00318953831433
     },
     {
       "name": "stress desktop: no console errors",
@@ -512,13 +539,13 @@
         "dead": false,
         "overlay": false,
         "kills": 114,
-        "energy": 228,
-        "bits": 114,
-        "coreHp": 999999985266.4235,
+        "energy": 228.06,
+        "bits": 114.02,
+        "coreHp": 999999985255.2135,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 329830160
+        "seed": 1434514947
       }
     },
     {

@@ -52,12 +52,14 @@ export class RunSession {
     return this.before.get(id) ?? this.world.enemies.find((e) => e.id === id);
   }
 
-  /** Dev/stress: spawns `n` enemies on the spawn ring, spread over the direction table. */
-  spawn(kind: EnemyKind, n: number, onEvent: EventSink): void {
+  /** Dev/stress: spawns `n` enemies on the spawn ring, spread over the direction table
+   *  (or starting at direction index `dir`, 0 = +x, 16 = +y). */
+  spawn(kind: EnemyKind, n: number, onEvent: EventSink, dir?: number): void {
     const dirs = this.data.directions;
     const r = this.data.config.spawnRadius;
     for (let i = 0; i < n; i++) {
-      const [dx, dy] = dirs[(this.world.nextId * 23 + i * 7) % dirs.length]!;
+      const at = dir === undefined ? this.world.nextId * 23 + i * 7 : dir + i * 3;
+      const [dx, dy] = dirs[((at % dirs.length) + dirs.length) % dirs.length]!;
       spawnEnemy(this.world, this.data, kind, dx * r, dy * r, this.events);
     }
     this.flush(onEvent);

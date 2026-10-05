@@ -13,14 +13,25 @@ const browser = await launch();
 
 /** One of every virus kind (boss and ranged included) so a screenshot shows every look. */
 async function showcase(h) {
+  // The worm is slow: give it a head start so its whole chain is inside the arena for the shot.
+  await h.p.evaluate(() => window.__cp.spawn('boss', 1, 3)); // right side, a little below the core
+  await h.p.waitForTimeout(5000);
   await h.p.evaluate(() => {
     const cp = window.__cp;
-    cp.spawn('boss', 1);
-    cp.spawn('ranged', 3);
-    cp.spawn('tank', 2);
-    cp.spawn('fast', 3);
-    cp.spawn('basic', 5);
+    cp.spawn('ranged', 3, 40);
+    cp.spawn('tank', 2, 22);
+    cp.spawn('fast', 3, 52);
+    cp.spawn('basic', 5, 9);
   });
+}
+
+/** Waits `minMs`, then shoots ~80 ms after the next kill so the burst and glitch are on screen. */
+async function actionShot(h, name, minMs) {
+  await h.p.waitForTimeout(minMs);
+  const k0 = (await h.state()).kills;
+  await h.waitFor((s) => s.kills > k0, 4000, 25);
+  await h.p.waitForTimeout(70);
+  await h.shot(name);
 }
 
 /** Average requestAnimationFrame rate over `ms`. */
@@ -42,9 +53,21 @@ function measureFps(h, ms) {
   );
 }
 
+/** Every Text object in the Battle scene (HUD, banners, hidden death overlay) is at least the layout minimum. */
+async function minTextCheck(h, label) {
+  const r = await h.p.evaluate(() => {
+    const scene = window.__cp.game.scene.getScene('Battle');
+    const min = window.__cp.game.registry.get('layout').minFont;
+    const sizes = scene.children.list.filter((o) => o.type === 'Text').map((t) => ({ s: parseFloat(t.style.fontSize), text: t.text }));
+    return { min, count: sizes.length, bad: sizes.filter((x) => !(x.s >= min)) };
+  });
+  check(results, `${label}: all ${r.count} texts ≥ ${r.min} px`, r.count > 10 && r.bad.length === 0, r);
+}
+
 async function bootChecks(h, label, orientation) {
   const s0 = await h.state();
   check(results, `${label}: boots into Battle (${orientation})`, s0.scene === 'Battle' && s0.orientation === orientation, s0);
+  await minTextCheck(h, label);
   const vis = await h.waitFor((s) => s.visible > 0, 2500, 50);
   // Sim seconds since the wave-1 start (tick 1) when the first enemy was on screen.
   metrics[`${label}.firstVisibleSimS`] = Math.round(((vis.s.tick - 1) / 30) * 100) / 100;
@@ -77,10 +100,8 @@ const scenarios = {
     await h.close();
 
     const m = await open(browser, srv.base, 'phone', '?seed=11');
-    await m.p.waitForTimeout(1500);
     await showcase(m);
-    await m.p.waitForTimeout(4200);
-    await m.shot('portrait-midwave');
+    await actionShot(m, 'portrait-midwave', 3600);
     check(results, 'portrait showcase: no console errors', m.errors.length === 0, m.errors);
     await m.close();
 
@@ -113,10 +134,8 @@ const scenarios = {
       await h.close();
     }
     const m = await open(browser, srv.base, 'desktop', '?seed=11');
-    await m.p.waitForTimeout(1500);
     await showcase(m);
-    await m.p.waitForTimeout(4200);
-    await m.shot('landscape-midwave');
+    await actionShot(m, 'landscape-midwave', 3600);
     await m.close();
     const d = await open(browser, srv.base, 'crazy', '?weak=1&seed=3');
     await d.call('setSpeed', 5);

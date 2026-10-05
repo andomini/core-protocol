@@ -71,7 +71,7 @@ export class DeathOverlay {
       const line = scene.add.graphics().setDepth(D + 0.2);
       line.fillStyle(0x22e5ff, 0.07).fillRect(lx - 12, y - rowH / 2 + 4, rx - lx + 24, rowH - 8);
       const ic = scene.add.image(lx + 14, y, icon).setScale(ps(portrait ? 1.1 : 0.85)).setDepth(D + 0.3).setBlendMode(Phaser.BlendModes.ADD);
-      const lt = text(scene, lx + 44, y, label, fs * 0.85, { color: TEXT_DIM }).setOrigin(0, 0.5).setDepth(D + 0.3);
+      const lt = text(scene, lx + 44, y, label, Math.max(L.minFont, fs * 0.85), { color: TEXT_DIM }).setOrigin(0, 0.5).setDepth(D + 0.3);
       const vt = text(scene, rx, y, '0', fs, { color, glow: color, blur: 8 }).setOrigin(1, 0.5).setDepth(D + 0.3);
       this.values.push(vt);
       this.objs.push(line, ic, lt, vt);

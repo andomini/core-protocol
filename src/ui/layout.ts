@@ -33,7 +33,8 @@ export interface Layout {
   minFont: number;
 }
 
-/** The spawn ring sits this many screen px beyond the arena's nearest (short-axis) edge. */
+/** The spawn ring sits this many screen px beyond the arena's far (long-axis) edge, so axis-aligned
+ *  spawns start off-screen on every side; only the corners can show a fresh spawn (it fades in). */
 export const SPAWN_MARGIN = 24;
 
 const PORTRAIT_HUD_H = 136;
@@ -63,8 +64,8 @@ export function makeLayout(o: Orientation, data: GameData): Layout {
     hud = { x: LANDSCAPE_ARENA_W, y: 0, w: w - LANDSCAPE_ARENA_W, h: LANDSCAPE_HUD_H };
     panel = { x: LANDSCAPE_ARENA_W, y: LANDSCAPE_HUD_H, w: w - LANDSCAPE_ARENA_W, h: h - LANDSCAPE_HUD_H };
   }
-  const halfShort = Math.min(arena.w, arena.h) / 2;
-  const scale = (halfShort + SPAWN_MARGIN) / data.config.spawnRadius;
+  const halfLong = Math.max(arena.w, arena.h) / 2;
+  const scale = (halfLong + SPAWN_MARGIN) / data.config.spawnRadius;
   return { o, w, h, hud, arena, panel, cx: arena.x + arena.w / 2, cy: arena.y + arena.h / 2, scale, minFont };
 }
 

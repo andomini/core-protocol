@@ -105,8 +105,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /** Dev: spawns `n` enemies of a kind on the spawn ring. */
-  spawn(kind: EnemyKind, n: number): void {
-    this.session.spawn(kind, n, this.onEvent);
+  spawn(kind: EnemyKind, n: number, dir?: number): void {
+    this.session.spawn(kind, n, this.onEvent, dir);
   }
 
   /** Enemies whose circle touches the visible arena this frame (used by the UI smoke). */

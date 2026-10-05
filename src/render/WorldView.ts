@@ -128,7 +128,7 @@ export class WorldView {
     this.spine = scene.add.graphics().setDepth(DEPTH.boss - 0.5).setBlendMode(Phaser.BlendModes.ADD);
     this.drawBrackets(scene);
     this.bossLabel = scene.add
-      .text(0, 0, 'WORM.EXE', { fontFamily: '"Orbitron", monospace', fontSize: `${Math.max(L.minFont - 8, 14)}px`, fontStyle: '700', color: '#ff6b8b', resolution: RS })
+      .text(0, 0, 'WORM.EXE', { fontFamily: '"Orbitron", monospace', fontSize: `${L.minFont}px`, fontStyle: '700', color: '#ff6b8b', resolution: RS })
       .setOrigin(0.5, 1)
       .setDepth(DEPTH.bars)
       .setVisible(false);
@@ -258,7 +258,9 @@ export class WorldView {
         bars.fillStyle(0x1a0610, 0.9).fillRect(sx - bw / 2 - 2, by - 2, bw + 4, 10);
         bars.fillStyle(CRIMSON, 1).fillRect(sx - bw / 2, by, bw * Math.max(0, e.hp / e.maxHp), 6);
         bars.fillStyle(0xffffff, 0.5).fillRect(sx - bw / 2, by, bw * Math.max(0, e.hp / e.maxHp), 1.5);
-        this.bossLabel.setPosition(sx, by - 6).setVisible(true).setAlpha(fade);
+        const half = this.bossLabel.width / 2 + 8;
+        const lx = Math.max(L.arena.x + half, Math.min(L.arena.x + L.arena.w - half, sx));
+        this.bossLabel.setPosition(lx, by - 6).setVisible(true).setAlpha(fade);
       } else if (e.hp < e.maxHp) {
         const bw = r * 2 + 4;
         const by = sy - r - 9;
@@ -337,7 +339,7 @@ export class WorldView {
   }
 
   private segSpacing(e: Enemy): number {
-    return e.radius * 1.45;
+    return e.radius * 1.75;
   }
 
   private pushTrail(b: BossBody, x: number, y: number): void {

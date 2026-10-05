@@ -40,7 +40,7 @@ export function installDevHooks(game: Phaser.Game): void {
     },
     setSpeed: (n: number) => battle()?.setSpeed(n),
     pause: (on = true) => battle()?.setPaused(on),
-    spawn: (kind: EnemyKind, n = 1) => battle()?.spawn(kind, n),
+    spawn: (kind: EnemyKind, n = 1, dir?: number) => battle()?.spawn(kind, n, dir),
     restart: () => battle()?.restart(),
   };
 }
