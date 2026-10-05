@@ -1,0 +1,48 @@
+// Neon cyberspace palette (spec §4): every colour token lives here.
+
+export const BG = 0x070b1a;
+export const BG_CSS = '#070b1a';
+export const LETTERBOX = '#03050d';
+
+export const GRID = 0x1f6bff;
+export const GRID_MAJOR = 0x22e5ff;
+
+export const CYAN = 0x22e5ff;
+export const CYAN_CSS = '#22e5ff';
+export const MAGENTA = 0xff2bd6;
+export const YELLOW = 0xffe14a;
+export const ORANGE_RED = 0xff5a2a;
+export const VIOLET = 0xa45bff;
+export const CRIMSON = 0xff2d55;
+export const WHITE = 0xffffff;
+
+export const ENEMY_COLOR = {
+  basic: MAGENTA,
+  fast: YELLOW,
+  tank: ORANGE_RED,
+  ranged: VIOLET,
+  boss: CRIMSON,
+} as const;
+
+export const CORE = CYAN;
+export const CORE_HIT = 0xff3b5c;
+export const TRACER = 0x9ff8ff;
+
+export const HP_OK = 0x2bffb0;
+export const HP_LOW = 0xff3b5c;
+export const ENERGY = 0xffd23f;
+export const ENERGY_CSS = '#ffd23f';
+export const BITS = 0x5cf2ff;
+export const BITS_CSS = '#5cf2ff';
+export const BREAK = 0xffb03b;
+
+export const PANEL_FILL = 0x0a1230;
+export const PANEL_EDGE = 0x22e5ff;
+export const TEXT = '#e8fbff';
+export const TEXT_DIM = '#7f97c8';
+export const TEXT_RED = '#ff3b5c';
+
+export const FONT_TITLE = '"Orbitron", "Chakra Petch", monospace';
+export const FONT_UI = '"Chakra Petch", "Orbitron", monospace';
+
+export const css = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;

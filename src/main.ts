@@ -1,31 +1,30 @@
 import Phaser from 'phaser';
+import { installDevHooks } from './render/devHooks';
+import { LETTERBOX } from './render/palette';
+import { initRenderScale } from './render/resolution';
+import { BattleScene } from './render/scenes/BattleScene';
+import { BootScene } from './render/scenes/BootScene';
+import { DEFAULT_DATA } from './sim/data';
+import { chooseOrientation, makeLayout } from './ui/layout';
 
-// M0 placeholder: proves the Phaser build works. Replaced by the real scenes in M2.
-class TitleScene extends Phaser.Scene {
-  constructor() {
-    super('Title');
-  }
+// The layout is chosen once at load from the window aspect (spec §4); a later resize only re-fits.
+const layout = makeLayout(chooseOrientation(window.innerWidth, window.innerHeight), DEFAULT_DATA);
+const rs = initRenderScale(layout.w, layout.h, window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
 
-  create(): void {
-    const cx = this.scale.width / 2;
-    const cy = this.scale.height / 2;
-    const r = 48;
-    const points: Phaser.Math.Vector2[] = [];
-    for (let i = 0; i < 6; i++) {
-      const a = (Math.PI / 3) * i + Math.PI / 6;
-      points.push(new Phaser.Math.Vector2(cx + r * Math.cos(a), cy + r * Math.sin(a)));
-    }
-    this.add.graphics().lineStyle(4, 0x22e5ff, 1).strokePoints(points, true);
-    this.add
-      .text(cx, cy + 90, 'CORE PROTOCOL', { fontFamily: 'monospace', fontSize: '32px', color: '#22e5ff' })
-      .setOrigin(0.5);
-  }
-}
-
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
-  backgroundColor: '#070b1a',
-  scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
-  scene: [TitleScene],
+  backgroundColor: LETTERBOX,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    // Canvas in real device pixels; scenes zoom their camera by RS (see render/resolution.ts).
+    width: Math.round(layout.w * rs),
+    height: Math.round(layout.h * rs),
+  },
+  render: { antialias: true, powerPreference: 'high-performance' },
+  input: { activePointers: 2 },
+  scene: [BootScene, BattleScene],
 });
+game.registry.set('layout', layout);
+if (import.meta.env.DEV) installDevHooks(game);
