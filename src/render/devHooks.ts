@@ -13,7 +13,8 @@ export function installDevHooks(game: Phaser.Game): void {
     portal: services.portal.name,
     adRunning: services.ads.running,
     adAudioMuted: services.guard.isAdAudioMuted,
-    soundMuted: game.sound.mute,
+    // Effective mute as applied to game.sound.mute (Phaser's own getter lags while the AudioContext is locked).
+    soundMuted: services.isMuted(),
     gameplay: services.guard.isPlaying,
     adsAvailable: services.ads.available,
   });
