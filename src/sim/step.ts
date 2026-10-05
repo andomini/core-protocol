@@ -1,11 +1,11 @@
 import { applyCommands, type Command } from './commands';
-import { updateCore } from './core';
+import { nearestInRange, updateCore } from './core';
 import type { GameData } from './data';
 import { updateEnemies } from './enemies';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
 import { type PerkProfile, periodicTicks, perkProfile } from './perks';
-import { updateProjectiles } from './projectiles';
+import { hitEnemy, updateProjectiles } from './projectiles';
 import { gridFor } from './spatial';
 import { type World, worldStats } from './state';
 import type { CoreStats } from './stats';
@@ -25,6 +25,16 @@ export function runPeriodic(w: World, data: GameData, prof: PerkProfile, events:
     t.next = w.tick + every;
     if (e.action === 'overdrive') {
       events.push({ type: 'overdrive', untilTick: t.until });
+    } else if (e.action === 'damageBoost') {
+      events.push({ type: 'damageBoost', untilTick: t.until });
+    } else if (e.action === 'tesla') {
+      // A bolt from the core (fromId 0) at the nearest enemy in range: value × damage.
+      const st = worldStats(w, data);
+      const target = nearestInRange(w.enemies, st.range);
+      if (target) {
+        events.push({ type: 'lightning', fromId: 0, targets: [target.id] });
+        hitEnemy(w, data, st, prof, target, clampValue(st.damage * e.value), false, 'lightning', events);
+      }
     } else {
       for (const en of w.enemies) en.frozenUntil = Math.max(en.frozenUntil, t.until);
       events.push({ type: 'freezeAll', count: w.enemies.length, untilTick: t.until });
@@ -36,8 +46,11 @@ export function runPeriodic(w: World, data: GameData, prof: PerkProfile, events:
 export function combatStats(w: World, data: GameData, prof: PerkProfile): CoreStats {
   const st = worldStats(w, data);
   for (const { key, e } of prof.periodic) {
-    if (e.action === 'overdrive' && w.tick <= (w.timers[key]?.until ?? -1)) st.attackSpeed = clampValue(st.attackSpeed * e.value);
+    const on = w.tick <= (w.timers[key]?.until ?? -1);
+    if (e.action === 'overdrive' && on) st.attackSpeed = clampValue(st.attackSpeed * e.value);
+    if (e.action === 'damageBoost' && on) st.damage = clampValue(st.damage * e.value);
   }
+  if (prof.coreHpBelowFrac > 0 && w.core.hp < st.health * prof.coreHpBelowFrac) st.damage = clampValue(st.damage * prof.coreHpBelowMul);
   return st;
 }
 

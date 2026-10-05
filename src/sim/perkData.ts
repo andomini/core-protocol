@@ -15,12 +15,12 @@ export const RULE_IDS = [
   'bounces', 'bounceDamage', 'bounceRange',
   'lightningTargets', 'lightningDamage', 'lightningRange',
   'freezeSeconds', 'slowBonus', 'slowCap',
-  'enemyHp', 'thornsRanged', 'runEndBits', 'bossLightning',
+  'enemyHp', 'thornsRanged', 'runEndBits', 'bossLightning', 'enemySpeed',
 ] as const;
 export type RuleId = (typeof RULE_IDS)[number];
 export type Rules = Record<RuleId, number>;
 
-export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange'] as const;
+export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip'] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
 export type Effect =
@@ -40,13 +40,22 @@ export type Effect =
   | { type: 'periodic'; action: 'overdrive'; everySec: number; seconds: number; value: number }
   | { type: 'periodic'; action: 'freezeAll'; everySec: number; seconds: number }
   | { type: 'periodic'; action: 'immunity'; everyWaves: number; seconds: number; hpBelow: number }
+  /** Cards: × damage for `seconds` every `everySec` (Overclock); a bolt from the core at the nearest enemy (Tesla Coil, `value` × damage). */
+  | { type: 'periodic'; action: 'damageBoost'; everySec: number; seconds: number; value: number }
+  | { type: 'periodic'; action: 'tesla'; everySec: number; seconds: number; value: number }
   /** Situational damage / slow: damage × (1 + (m − 1)·stacks) when the condition holds. */
   | { type: 'conditional'; when: 'targetSlowed' | 'targetFrozen'; damageMul: number }
   | { type: 'conditional'; when: 'targetHpBelow'; frac: number; damageMul: number }
   | { type: 'conditional'; when: 'nthShot'; every: number; damageMul: number }
   | { type: 'conditional'; when: 'innerRange'; frac: number; slow: number }
+  /** Core damage × (1 + (m − 1)·stacks) while the core is below `frac` of its max HP (Kernel Panic). */
+  | { type: 'conditional'; when: 'coreHpBelow'; frac: number; damageMul: number }
   /** A mechanic parameter: add (× stacks) or mul (^stacks). */
-  | { type: 'ruleChange'; rule: RuleId; op: 'add' | 'mul'; value: number };
+  | { type: 'ruleChange'; rule: RuleId; op: 'add' | 'mul'; value: number }
+  /** A shield worth `frac` of max HP at every wave start; it absorbs core damage first (Barrier). */
+  | { type: 'shield'; frac: number }
+  /** Chance that a regular wave is skipped: nothing spawns, its kill rewards are paid at once (Wave Skip). */
+  | { type: 'waveSkip'; chance: number };
 
 export interface PerkDef {
   name: string;
@@ -136,7 +145,10 @@ export function validateEffect(e: Effect, at: string): void {
       } else if (e.action === 'immunity') {
         wholePos(e.everyWaves, `${at}.everyWaves`);
         frac(e.hpBelow, `${at}.hpBelow`);
-      } else check(false, `${at}.action must be overdrive|freezeAll|immunity`);
+      } else if (e.action === 'damageBoost' || e.action === 'tesla') {
+        pos(e.everySec, `${at}.everySec`);
+        pos(e.value, `${at}.value`);
+      } else check(false, `${at}.action must be overdrive|freezeAll|immunity|damageBoost|tesla`);
       return;
     case 'conditional':
       if (e.when === 'innerRange') {
@@ -144,9 +156,9 @@ export function validateEffect(e: Effect, at: string): void {
         frac(e.slow, `${at}.slow`);
         return;
       }
-      check(['targetSlowed', 'targetFrozen', 'targetHpBelow', 'nthShot'].includes(e.when), `${at}.when is unknown`);
+      check(['targetSlowed', 'targetFrozen', 'targetHpBelow', 'nthShot', 'coreHpBelow'].includes(e.when), `${at}.when is unknown`);
       pos(e.damageMul, `${at}.damageMul`);
-      if (e.when === 'targetHpBelow') frac(e.frac, `${at}.frac`);
+      if (e.when === 'targetHpBelow' || e.when === 'coreHpBelow') frac(e.frac, `${at}.frac`);
       if (e.when === 'nthShot') check(Number.isInteger(e.every) && e.every >= 2, `${at}.every must be a whole number ≥ 2`);
       return;
     case 'ruleChange':
@@ -154,6 +166,12 @@ export function validateEffect(e: Effect, at: string): void {
       check(e.op === 'add' || e.op === 'mul', `${at}.op must be add|mul`);
       check(finite(e.value), `${at}.value must be finite`);
       if (e.op === 'mul') pos(e.value, `${at}.value`);
+      return;
+    case 'shield':
+      frac(e.frac, `${at}.frac`);
+      return;
+    case 'waveSkip':
+      frac(e.chance, `${at}.chance`);
       return;
   }
 }

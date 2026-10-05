@@ -2,7 +2,7 @@ import { assertFiniteDeep } from './num';
 import { type World, WORLD_VERSION } from './state';
 
 /** Bumped with the World shape: v1 (M1–M2a) derived core stats; v2 (M2b) had no protocols (M3). */
-export const SNAPSHOT_VERSION = 4;
+export const SNAPSHOT_VERSION = 5;
 
 /** Serializes the whole world. Throws if any value is non-finite (JSON would turn it into null). */
 export function snapshot(w: World): string {
@@ -35,6 +35,8 @@ export function restore(s: string): World {
     typeof w.lab !== 'object' ||
     w.lab === null ||
     typeof w.revived !== 'boolean' ||
+    !Array.isArray(w.cards) ||
+    typeof w.shield !== 'number' ||
     typeof w.levels !== 'object' ||
     typeof w.workshop !== 'object' ||
     !Array.isArray(w.unlocked) ||

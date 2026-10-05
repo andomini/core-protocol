@@ -39,7 +39,8 @@
    "enemyHp": 1,
    "thornsRanged": 0,
    "runEndBits": 1,
-   "bossLightning": 0
+   "bossLightning": 0,
+   "enemySpeed": 1
   },
   "perks": {
    "overclockRounds": {

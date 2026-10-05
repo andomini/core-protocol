@@ -1,6 +1,6 @@
 import { type EnemyKind, type GameData, STAT_IDS, type StatId } from './data';
-import { TAGS, type Tag } from './perkData';
-import { initProtocols, type Timer } from './perks';
+import { type Effect, TAGS, type Tag, validateEffect } from './perkData';
+import { appendStatMods, initProtocols, type Timer } from './perks';
 import { createStream, type RngState } from './rng';
 import { clampValue } from './num';
 import { canonicalLevels, type CoreStats, effectiveStats, type Levels, type Modifier } from './stats';
@@ -56,12 +56,12 @@ export interface CoreState {
 }
 
 /** v3 (M3): protocols — perks, set tiers, pick phase, Keys, boost, periodic timers, slow/freeze, bounces. */
-export const WORLD_VERSION = 4;
+export const WORLD_VERSION = 5;
 
 export type Phase = 'wave' | 'pause' | 'pick';
 
 export interface World {
-  v: 4;
+  v: 5;
   seed: number;
   /** 1-based index into GameData.tiers. */
   tier: number;
@@ -121,6 +121,10 @@ export interface World {
   bitsBonus: number;
   /** Lab parameters for this run (M4). */
   lab: LabParams;
+  /** Equipped cards with their resolved effects (M5). */
+  cards: CardInRun[];
+  /** Barrier: absorbs core damage before HP; refilled at each wave start. */
+  shield: number;
   /** Separate streams so purchases (upgrades) never perturb combat or spawns. */
   rng: { spawn: RngState; combat: RngState; upgrades: RngState };
 }
@@ -147,11 +151,18 @@ export interface RunOptions {
   maxLevelBonus?: Partial<Record<StatId, number>>;
   /** Lab node: Energy at run start. */
   startEnergy?: number;
+  /** Equipped cards (M5), effects already resolved for their star level by the meta layer. */
+  cards?: readonly CardInRun[];
 }
 
 /** The effective stats of this world right now (derived; never stored in the World). */
 export function worldStats(w: World, data: GameData): CoreStats {
   return effectiveStats(data, { workshop: w.workshop, run: w.levels, mods: w.mods });
+}
+
+export interface CardInRun {
+  id: string;
+  effects: Effect[];
 }
 
 export interface LabParams {
@@ -186,7 +197,7 @@ export function createWorld(data: GameData, opts: RunOptions): World {
   for (const t of TAGS) setTiers[t] = 0;
   const cardTags = (opts.cardTags ?? []).filter((t): t is Tag => (TAGS as readonly string[]).includes(t));
   const w: World = {
-    v: 4,
+    v: 5,
     seed: opts.seed,
     tier: opts.tier,
     tick: 0,
@@ -229,8 +240,20 @@ export function createWorld(data: GameData, opts: RunOptions): World {
       rareMul: opts.rareMul !== undefined && Number.isFinite(opts.rareMul) && opts.rareMul > 0 ? opts.rareMul : 1,
       maxBonus: canonicalBonus(opts.maxLevelBonus),
     },
+    cards: (opts.cards ?? []).map((c, i) => {
+      c.effects.forEach((e, j) => validateEffect(e, `cards[${i}].effects[${j}]`));
+      return { id: String(c.id), effects: c.effects.map((e) => ({ ...e })) };
+    }),
+    shield: 0,
     rng: { spawn: createStream(opts.seed, 'spawn'), combat: createStream(opts.seed, 'combat'), upgrades: createStream(opts.seed, 'upgrades') },
   };
+  // Card stat effects become modifiers once; their periodic effects get timers (first fire one period in).
+  for (const c of w.cards) {
+    appendStatMods(w, c.effects, 1, `card:${c.id}`);
+    c.effects.forEach((e, i) => {
+      if (e.type === 'periodic' && e.action !== 'immunity') w.timers[`card:${c.id}:${i}`] = { next: Math.round(e.everySec * data.config.tickHz), until: -1 };
+    });
+  }
   // Card tags may already complete a set; then the wave-1 pick opens the run (spec §2.4, B1).
   initProtocols(w, data);
   w.core.hp = worldStats(w, data).health;

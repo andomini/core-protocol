@@ -35,7 +35,8 @@ describe('protocol data (spec §2.4)', () => {
     const used = new Set<string>();
     for (const id of ids) for (const e of perks[id]!.effects) used.add(e.type);
     for (const tag of TAGS) for (const t of ['2', '4', '6']) for (const e of DEFAULT_DATA.sets.sets[tag][t]!) used.add(e.type);
-    expect([...used].sort()).toEqual([...EFFECT_TYPES].sort());
+    // shield and waveSkip are card-only effects (M5, data in cards.json).
+    expect([...used].sort()).toEqual([...EFFECT_TYPES].filter((t) => t !== 'shield' && t !== 'waveSkip').sort());
   });
 
   it('rarity split and pity are data', () => {

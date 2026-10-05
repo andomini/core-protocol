@@ -59,7 +59,7 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
     const pace = 1 - slowFactor(w, e, st, prof);
     if (dist > stopAt + ARRIVE_EPS) {
       // dist > stopAt > 0 here, so the division is safe.
-      const move = Math.min(e.speed * pace * perTick, dist - stopAt);
+      const move = Math.min(e.speed * pace * prof.rules.enemySpeed * perTick, dist - stopAt);
       e.x -= (e.x / dist) * move;
       e.y -= (e.y / dist) * move;
       continue;
@@ -71,6 +71,12 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
       let damage = clampValue(e.damage * taken);
       const blocked = immune(w, prof) || tryImmunity(w, data, st, prof, damage, events);
       if (blocked) damage = 0;
+      // Barrier (card) absorbs first.
+      if (w.shield > 0 && damage > 0) {
+        const a = Math.min(w.shield, damage);
+        w.shield -= a;
+        damage -= a;
+      }
       w.core.hp = clampValue(w.core.hp - damage);
       events.push({ type: 'coreHit', enemyId: e.id, damage, ranged, blocked });
       const reflects = !ranged || prof.rules.thornsRanged > 0;

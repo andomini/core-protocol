@@ -28,6 +28,9 @@ export type SimEvent =
   | { type: 'lightning'; fromId: number; targets: number[] }
   | { type: 'bounce'; projectileId: number; fromId: number; toId: number }
   | { type: 'overdrive'; untilTick: number }
+  | { type: 'damageBoost'; untilTick: number }
+  /** Wave Skip (card): the wave's regular viruses were skipped and their rewards paid. */
+  | { type: 'waveSkip'; wave: number; energy: number; bits: number }
   | { type: 'revive'; hp: number }
   | { type: 'immunity'; untilTick: number }
   | { type: 'buy'; stat: StatId; levels: number; level: number; cost: number; free: boolean }

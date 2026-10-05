@@ -2,7 +2,7 @@ import { ENEMY_KINDS, type EnemyKind, type GameData } from './data';
 import type { SimEvent } from './events';
 import { clampValue, powInt } from './num';
 import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile } from './perks';
-import { nextInt, pickWeighted } from './rng';
+import { chance, createStream, nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
 import type { CoreStats } from './stats';
 
@@ -33,7 +33,7 @@ export function scaleForWave(base: number, mul: number, growth: number, wave: nu
   return clampValue(base * mul * powInt(growth, wave - 1));
 }
 
-function startWave(w: World, data: GameData, events: SimEvent[]): void {
+function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
   w.wave += 1;
   w.phase = 'wave';
   w.phaseTick = 0;
@@ -44,6 +44,29 @@ function startWave(w: World, data: GameData, events: SimEvent[]): void {
   // A boss wave brings fewer regular viruses (the boss is the wave's threat, not an extra on top).
   const n = Math.floor(enemiesPerWave(data, w.wave) * (boss ? data.config.bossWaveEnemyMul : 1));
   for (let i = 0; i < n; i++) queue.push(pickWeighted(w.rng.spawn, kinds, weights));
+  // Barrier (card): the shield refills at every wave start.
+  if (prof.shieldFrac > 0) w.shield = clampValue(st.health * prof.shieldFrac);
+  // Wave Skip (card): a regular wave may be skipped on its own stream; its kill rewards are paid at once.
+  if (!boss && prof.waveSkip > 0 && queue.length > 0 && chance(createStream(w.seed, `skip:${w.wave}`), prof.waveSkip)) {
+    const tier = data.tiers[w.tier - 1]!;
+    let energy = 0;
+    let bits = 0;
+    for (const k of queue) {
+      energy += scaleForWave(data.enemies[k].energy, 1, data.config.energyGrowth, w.wave);
+      bits += scaleForWave(data.enemies[k].bits, tier.bitsMul, data.config.bitsGrowth, w.wave);
+    }
+    energy = clampValue(energy * (1 + st.energyBonus) * (boostActive(w) ? data.perks.boost.energyMul : 1));
+    bits = clampValue(bits * (1 + st.bitsPerKill));
+    w.energy = clampValue(w.energy + energy);
+    w.bits = clampValue(w.bits + bits);
+    queue.length = 0;
+    events.push({ type: 'waveStart', wave: w.wave, boss });
+    events.push({ type: 'waveSkip', wave: w.wave, energy, bits });
+    w.spawnQueue = queue;
+    w.spawnInterval = 1;
+    w.nextSpawnTick = 1;
+    return;
+  }
   w.spawnQueue = queue;
   w.spawnInterval = queue.length > 0 ? Math.max(1, Math.floor((waveTicks(data) * SPAWN_WINDOW) / queue.length)) : 1;
   w.nextSpawnTick = 1;
@@ -111,7 +134,7 @@ export function advanceWave(w: World, data: GameData, st: CoreStats, prof: PerkP
       w.phaseTick += 1;
       return;
     }
-    startWave(w, data, events);
+    startWave(w, data, st, prof, events);
   }
   w.phaseTick += 1;
   const r = data.config.spawnRadius;

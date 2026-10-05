@@ -42,13 +42,13 @@ describe('snapshot', () => {
   it('rejects garbage with a clear snapshot error', () => {
     expect(() => restore('not json')).toThrow(/snapshot/);
     expect(() => restore('{"v":99,"world":{}}')).toThrow(/snapshot.*version/);
-    expect(() => restore('{"v":4,"world":{"tick":"x"}}')).toThrow(/snapshot/);
+    expect(() => restore('{"v":5,"world":{"tick":"x"}}')).toThrow(/snapshot/);
     const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
-    const withNull = JSON.stringify({ v: 4, world: { ...w, energy: null } });
+    const withNull = JSON.stringify({ v: 5, world: { ...w, energy: null } });
     expect(() => restore(withNull)).toThrow(/energy/);
-    const noUpgradeStream = JSON.stringify({ v: 4, world: { ...w, rng: { spawn: w.rng.spawn, combat: w.rng.combat } } });
+    const noUpgradeStream = JSON.stringify({ v: 5, world: { ...w, rng: { spawn: w.rng.spawn, combat: w.rng.combat } } });
     expect(() => restore(noUpgradeStream)).toThrow(/snapshot: malformed/);
-    const pickWithoutOffer = JSON.stringify({ v: 4, world: { ...w, phase: 'pick', offer: [] } });
+    const pickWithoutOffer = JSON.stringify({ v: 5, world: { ...w, phase: 'pick', offer: [] } });
     expect(() => restore(pickWithoutOffer)).toThrow(/snapshot: malformed/);
   });
 
@@ -63,7 +63,7 @@ describe('snapshot', () => {
     };
     expect(() => restore(JSON.stringify({ v: 1, world: v1World }))).toThrow(/snapshot: unsupported version 1/);
     // A v1 world smuggled inside a v3 envelope is still refused.
-    expect(() => restore(JSON.stringify({ v: 4, world: v1World }))).toThrow(/snapshot: malformed/);
+    expect(() => restore(JSON.stringify({ v: 5, world: v1World }))).toThrow(/snapshot: malformed/);
   });
 
   it('rejects a v2 (M2b) snapshot: no protocols', () => {
@@ -71,7 +71,13 @@ describe('snapshot', () => {
     const { perks: _p, cardTags: _c, setTiers: _s, offer: _o, timers: _t, boost: _b, ...rest } = w;
     const v2World = { ...rest, v: 2 };
     expect(() => restore(JSON.stringify({ v: 2, world: v2World }))).toThrow(/snapshot: unsupported version 2/);
-    expect(() => restore(JSON.stringify({ v: 4, world: v2World }))).toThrow(/snapshot: malformed/);
+    expect(() => restore(JSON.stringify({ v: 5, world: v2World }))).toThrow(/snapshot: malformed/);
+  });
+
+  it('rejects a v4 (M4) snapshot: no cards or shield', () => {
+    const w = createWorld(data, { seed: 1, tier: 1 });
+    const { cards: _c, shield: _s, ...rest } = w;
+    expect(() => restore(JSON.stringify({ v: 4, world: { ...rest, v: 4 } }))).toThrow(/snapshot: unsupported version 4/);
   });
 
   it('rejects a v3 (M3) snapshot: no lab parameters or revive state', () => {

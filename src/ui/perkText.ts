@@ -42,6 +42,7 @@ const RULE_TEXT: Partial<Record<string, (op: 'add' | 'mul', v: number) => string
   freezeSeconds: (op, v) => (op === 'mul' ? `Freezes last ×${round(v)}` : `Freezes +${round(v)}s`),
   slowBonus: (_op, v) => `Slows +${pct(v)}`,
   slowCap: (_op, v) => `Slow cap +${pct(v)}`,
+  enemySpeed: (op, v) => (op === 'mul' ? `Viruses ${signedPct(v)} speed` : `Viruses +${pct(v)} speed`),
   enemyHp: (op, v) => (op === 'mul' ? `Enemies ${signedPct(v)} HP` : `Enemies +${pct(v)} HP`),
   thornsRanged: () => 'Thorns also reflect ranged hits',
   runEndBits: (op, v) => (op === 'mul' ? `${signedPct(v)} Bits at run end` : `+${pct(v)} Bits at run end`),
@@ -73,6 +74,8 @@ export function effectLine(data: GameData, e: Effect): string {
     case 'periodic':
       if (e.action === 'overdrive') return `Every ${round(e.everySec)}s: ×${round(e.value)} attack speed for ${round(e.seconds)}s`;
       if (e.action === 'freezeAll') return `Every ${round(e.everySec)}s: freeze all for ${round(e.seconds)}s`;
+      if (e.action === 'damageBoost') return `Every ${round(e.everySec)}s: ×${round(e.value)} damage for ${round(e.seconds)}s`;
+      if (e.action === 'tesla') return `Every ${round(e.everySec)}s: bolt for ×${round(e.value)} damage`;
       return `Below ${pct(e.hpBelow)} HP: ${round(e.seconds)}s immunity (every ${round(e.everyWaves)} waves)`;
     case 'conditional':
       switch (e.when) {
@@ -86,8 +89,14 @@ export function effectLine(data: GameData, e: Effect): string {
           return `×${round(e.damageMul)} damage below ${pct(e.frac)} HP`;
         case 'innerRange':
           return `Slow ${pct(e.slow)} in inner ${pct(e.frac)} of range`;
+        case 'coreHpBelow':
+          return `×${round(e.damageMul)} damage below ${pct(e.frac)} HP`;
       }
       return '';
+    case 'shield':
+      return `Shield ${pct(e.frac)} HP each wave`;
+    case 'waveSkip':
+      return `${pct(e.chance)} chance to skip a wave (rewards kept)`;
     case 'ruleChange': {
       const f = RULE_TEXT[e.rule];
       return f ? f(e.op, e.value) : `${e.rule} ${e.op === 'mul' ? '×' : '+'}${round(e.value)}`;

@@ -147,7 +147,7 @@ function maxHealth(w: World, data: GameData): number {
 }
 
 /** Appends an effect list's stat changes to World.mods, `stacks` times each. */
-function appendStatMods(w: World, effects: readonly Effect[], stacks: number, source: string): void {
+export function appendStatMods(w: World, effects: readonly Effect[], stacks: number, source: string): void {
   for (const e of effects) {
     if (e.type !== 'statAdd' && e.type !== 'statMul') continue;
     for (let i = 0; i < stacks; i++) {
@@ -291,6 +291,13 @@ export interface PerkProfile {
   bossKeys: number;
   /** Active periodic effects with their timer keys. */
   periodic: { key: string; e: PeriodicEffect }[];
+  /** Kernel Panic: × damage while the core is below a share of max HP. */
+  coreHpBelowFrac: number;
+  coreHpBelowMul: number;
+  /** Barrier: shield = this share of max HP at each wave start. */
+  shieldFrac: number;
+  /** Wave Skip chance per regular wave. */
+  waveSkip: number;
 }
 
 function blankProfile(data: GameData): PerkProfile {
@@ -315,6 +322,10 @@ function blankProfile(data: GameData): PerkProfile {
     bossBitsMul: 1,
     bossKeys: 0,
     periodic: [],
+    coreHpBelowFrac: 0,
+    coreHpBelowMul: 1,
+    shieldFrac: 0,
+    waveSkip: 0,
   };
 }
 
@@ -360,7 +371,10 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
           const m = 1 + (e.damageMul - 1) * n;
           if (e.when === 'targetSlowed') p.slowedMul *= m;
           else if (e.when === 'targetFrozen') p.frozenMul *= m;
-          else if (e.when === 'targetHpBelow') {
+          else if (e.when === 'coreHpBelow') {
+            p.coreHpBelowFrac = Math.max(p.coreHpBelowFrac, e.frac);
+            p.coreHpBelowMul *= m;
+          } else if (e.when === 'targetHpBelow') {
             p.hpBelowFrac = Math.max(p.hpBelowFrac, e.frac);
             p.hpBelowMul *= m;
           } else if (e.when === 'nthShot') {
@@ -372,6 +386,12 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
       case 'ruleChange':
         if (e.op === 'add') add[e.rule] = (add[e.rule] ?? 0) + e.value * n;
         else mul[e.rule] = (mul[e.rule] ?? 1) * powInt(e.value, n);
+        return;
+      case 'shield':
+        p.shieldFrac = Math.max(p.shieldFrac, e.frac);
+        return;
+      case 'waveSkip':
+        p.waveSkip += e.chance * n;
         return;
     }
   };
@@ -388,6 +408,7 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
       data.sets.sets[tag][String(t)]!.forEach((e, i) => fold(e, 1, `set:${tag}:${t}:${i}`));
     }
   }
+  for (const c of w.cards) c.effects.forEach((e, i) => fold(e, 1, `card:${c.id}:${i}`));
   for (const r of RULE_IDS) p.rules[r] = clampValue((p.rules[r] + (add[r] ?? 0)) * (mul[r] ?? 1));
   p.freezeTicks = Math.max(1, Math.round(freezeSeconds * p.rules.freezeSeconds * hz));
   return p;
