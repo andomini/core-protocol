@@ -5,7 +5,7 @@ Branch `m6-portals`, commits `0ac0ceb..HEAD`, on top of M2b (`c8b1be5`). Built i
 Status:
 - Tests 195 → 260.
 - `typecheck`, `build`, `build:crazygames`, `build:poki` and `build:all` are green. Every build runs `tools/postbuild.mjs`.
-- `npm run ui` passes 131/131: the 78 M2 checks plus 53 portal checks.
+- `npm run ui` passes 132/132: the 78 M2 checks plus 54 portal checks.
 - `npm run ui:portal-build` passes 22/22.
 - `npm run package` writes `dist/core-protocol-crazygames.zip` (374 KB) and `dist/core-protocol-poki.zip` (374 KB).
 
@@ -145,7 +145,7 @@ Portal checks:
 - with the real SDK URL fulfilled by the fake SDK through `page.route` (no network needed): `loadingStop`/`gameLoadingFinished` once, no gameplayStart before input, pause/resume via HUD taps, no other portal's host contacted, no console errors;
 - with the SDK URL blocked (adblock): the game still boots, with no errors.
 
-Screenshots: `reports/screens/portal-midgame-portrait.jpg`, `portal-midgame-landscape.jpg` and `portal-ad-fail-toast.jpg`.
+Screenshots: `reports/screens/portal-midgame-portrait.jpg`, `portal-midgame-landscape.jpg`, `portal-ad-fail-toast.jpg` (portrait) and `portal-toast-landscape.jpg`.
 
 **Merge hygiene:** a full `npm run ui` rewrites M2's screenshots and `reports/ui-smoke.json`. I restored them with `git checkout reports/` and committed only the `portal-*` shots.
 
@@ -168,7 +168,7 @@ Screenshots: `reports/screens/portal-midgame-portrait.jpg`, `portal-midgame-land
 | Midgame policy: never at the session's first break (first death), and ≥ 180 s since the last ad that **played** (midgame or rewarded), counted from session start. Numbers are in `src/data/ads.json` | CrazyGames docs: the SDK paces midgames to ≤ 1 per 3 min and asks to protect day-1 retention, so no ads in the first minutes. Poki: call `commercialBreak` at natural breaks and Poki paces it. A game-side floor keeps both portals and the local build consistent | One more ad opportunity lost per session at worst; tune in data |
 | A rewarded ad restarts the midgame gap | Avoids revive ad → death → midgame back to back; CrazyGames also adds "safeguards around rewarded ads" | Slightly fewer midgames |
 | The toast is for **rewarded** failures only; a failed or skipped midgame is silent | The player didn't ask for a midgame, so "No ad right now" would confuse them. The `?ads=fail` smoke checks the toast through `__cp.rewarded` | Trivial to add a toast to midgame |
-| The toast is DOM, not a Phaser Text | Any scene (battle, M4 workshop, offline modal) can use it without owning a game object; it uses palette tokens and is ≥ 16 CSS px | It doesn't appear in Phaser-only captures |
+| The toast is DOM, not a Phaser Text, anchored in the arena below the core (`main.ts` `toastAnchor`, from `layout.arena` and the canvas rect) | Any scene (battle, M4 workshop, offline modal) can use it without owning a game object; it uses palette tokens and is ≥ 16 CSS px. The arena anchor keeps it off the arena/panel seam in landscape | It doesn't appear in Phaser-only captures |
 | Portal init runs in parallel with Phaser boot. BootScene waits for fonts **and** init (capped at 2.5 s together) and then calls `loadingFinished`. A late init triggers `PortalGuard.portalReady()`, which replays `loadingFinished` and `gameplayStart` | Merge Wall blocked Phaser creation on init. Running them in parallel is faster, and the replay fixes the "CrazyGames loadingStart after we sent stop" hole | The replay is the only path for a late SDK; it is unit-tested (`crazygamesPortal.test.ts`, init 50 ms late) but has not been seen live |
 | `Portal.save/load` became `storage(): KeyValue` (the localStorage API) | Multiple keys: meta, run snapshot, settings. `SaveSlot` adds the versioning on top | — |
 | Audio mutes on the real ad start on **all** adapters (Poki via `commercialBreak(onStart)`/`rewardedBreak(onStart)`) | Same behaviour everywhere; the smoke can check it | If Poki's onStart never fires, audio stays on during that ad. Guard fallback: an adapter without `onAdStarted` mutes at request time |
@@ -176,7 +176,21 @@ Screenshots: `reports/screens/portal-midgame-portrait.jpg`, `portal-midgame-land
 | `game.sound.mute` is driven, but the dev state reports our own effective flag | Phaser's `mute` getter lags while the AudioContext is locked (seen in the smoke); the same issue was noted in Merge Wall | — |
 | Sim halts while `ads.running`, at the BattleScene `loop.frame` call | The CrazyGames and Poki docs require pausing at request | — |
 
+## Merge surface (files outside `src/portal`, `src/telemetry` and new tools)
+| File | Change | Resolving a conflict with M3 |
+|---|---|---|
+| `src/main.ts` | Rewritten into `async start()`: creates the portal, guard, ads, telemetry and services, then Phaser. The `scene: [BootScene, BattleScene]` list is now indented inside `start()` | Take this version and re-add M3's scenes to the `scene` list and its imports |
+| `src/render/scenes/BootScene.ts` | Waits for `services.portalInit` with the fonts, then `services.guard.loadingFinished()` right before `scene.start('Battle')` | Keep both edits; `loadingFinished` must stay the last thing before the first gameplay scene starts |
+| `src/render/scenes/BattleScene.ts` | Imports `RunLifecycle` and `services`; field `life`. One line each: `new RunLifecycle` at the top of `create()`; `life.runStarted` at the end of `create()` and of `restart()`; `life.hold('paused', p)` in `setPaused`; `life.onEvent(e, world)` as the first line of `onEvent`; DeathOverlay callback → `life.requestRestart(() => this.restart())`; `services.ads.running` added to the halt condition in `update` | Re-apply the one-liners on M3's version. Add `life.hold('perkPick', …)` around the perk pick |
+| `src/render/devHooks.ts` | `portalState()` merged into `state()`; new `requestRestart`, `rewarded` and `telemetry` | Union of both |
+| `tools/ui/harness.mjs` | Port 5199 → `UI_PORT` (default 5180); `open(browser, base, device, query, opts)` gains `opts.sdk`; returns `portal` and `sdkLog` | Union; existing four-argument calls still work |
+| `tools/ui/smoke.mjs` | New `portal` scenario plus helpers (`arenaTap`, `dieNow`, `midgameRestartChecks`) above `scenarios` | Union |
+| `vite.config.ts` | `__BUILD__` define (also declared in `src/env.d.ts`) | Union |
+| `package.json` | `build` now runs `node tools/postbuild.mjs`; new `build:local`, `build:all`, `package`, `ui:portal-build`, `telemetry:report` | Union. M3 builds then go through the postbuild checks |
+| `CLAUDE.md` | Four command lines and one rule line | Union |
+
 ## Known gaps
+- Telemetry flushes every 10 events. Hold-to-repeat buys emit about 18 `purchase` events/s, so that is about two stringify + localStorage writes per second while held (≤ 200 KB each). Move to a timed flush (e.g. every 5 s and on `session_end`) if it shows up in phone profiles.
 - Not tested against the **real** SDKs (no network in the harness). Before submission (M8), run each build on CrazyGames' QA tool and Poki's inspector.
 - No audio exists yet; mute is wired to `game.sound.mute` only. M7 audio must read `services.isMuted()`, or rely on Phaser's mute, and add a player mute toggle.
 - `happytime()` is not called anywhere. A candidate is a new best wave (M4).

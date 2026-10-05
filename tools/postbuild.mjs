@@ -23,8 +23,9 @@ const BRANDS = {
   crazygames: [/crazy\s*games/i, /sdk\.crazygames\.com/i, /hasAdblock/],
   poki: [/\bpoki/i, /PokiSDK/, /gameLoadingFinished/, /commercialBreak/],
 };
-const DEV_ONLY = [/__cp\b/, /installDevHooks/, /unlockall/, /coreHealth/, /enemyHpMul/, /midgame=always|"always"/, /get\("portal"\)/];
-const LOCAL_ONLY = [/Close early \(no reward\)/, /fake-ad/, /\[local\]/, /get\("ads"\)/];
+// Each pattern matches only a dev path: the __cp hooks, dev.json keys, and the dev query reads.
+const DEV_ONLY = [/__cp\b/, /installDevHooks/, /unlockall/, /coreHealth/, /enemyHpMul/, /get\([`"']midgame[`"']\)/, /get\([`"']portal[`"']\)/];
+const LOCAL_ONLY = [/Close early \(no reward\)/, /fake-ad/, /\[local\]/, /get\([`"']ads[`"']\)/];
 /** Chunks fetched only on demand (not part of the initial download). */
 const DEFERRED = [/^assets\/DevOverlay-/];
 

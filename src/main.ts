@@ -50,7 +50,7 @@ async function start(): Promise<void> {
     guard,
     policy: new MidgamePolicy(rules, () => performance.now()),
     telemetry,
-    toast: (t) => showToast(t, adsJson.toast.ms),
+    toast: (t) => showToast(t, adsJson.toast.ms, toastAnchor()),
     toastText: adsJson.toast.text,
   });
   // Poki's init can settle after its own cap; availability is re-read now and then (cheap).
@@ -77,6 +77,13 @@ async function start(): Promise<void> {
     scene: [BootScene, BattleScene],
   });
   game.registry.set('layout', layout);
+  // The toast sits in the arena (below the core), never across the arena/panel seam.
+  const toastAnchor = () => {
+    const r = game.canvas?.getBoundingClientRect();
+    if (!r || r.width === 0) return null;
+    const a = layout.arena;
+    return { x: r.left + ((a.x + a.w / 2) * r.width) / layout.w, y: r.top + ((a.y + a.h * 0.72) * r.height) / layout.h };
+  };
 
   // Effective mute = portal mute OR an ad is playing (audio mutes at the ad's real start, not at request).
   let portalMuted = false;

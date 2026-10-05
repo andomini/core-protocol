@@ -336,6 +336,10 @@ const scenarios = {
     const ns = await n.state();
     const nok = await n.call('rewarded', 'reroll');
     check(results, 'portal ads=none: adsAvailable false; rewarded false, no ad requested', !ns.adsAvailable && nok === false && !n.portal.some((x) => x.startsWith('rewardedAd')), { ns, portal: n.portal });
+    await n.p.waitForTimeout(150);
+    const nt = await n.p.evaluate(() => getComputedStyle(document.getElementById('cp-toast')).opacity);
+    check(results, 'portal ads=none: the toast shows in landscape too', nt === '1', nt);
+    await n.shot('portal-toast-landscape');
     // Telemetry overlay toggles with ~ in DEV.
     await n.p.keyboard.press('Backquote');
     const overlay = await n.p.evaluate(() => !!document.getElementById('cp-telemetry'));
