@@ -1,4 +1,4 @@
-// npm run sim:balance -- [--seeds 20] [--tier 1] [--out reports/balance-m2b.md] [--override patch.json]
+// npm run sim:balance -- [--seeds 24] [--tier 1] [--out reports/balance-m2b.md] [--override patch.json]
 // --override deep-merges a JSON patch into the game data (for tuning experiments; the report says so).
 // Runs every bot policy on N seeds (first run: no workshop, nothing unlocked) and writes a Markdown report.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -9,7 +9,7 @@ import { type RunResult, runBot } from './runner';
 
 const args = process.argv.slice(2);
 const arg = (k: string, d: string) => (args.includes(`--${k}`) ? args[args.indexOf(`--${k}`) + 1]! : d);
-const seeds = Number(arg('seeds', '20'));
+const seeds = Number(arg('seeds', '24'));
 const tier = Number(arg('tier', '1'));
 const out = arg('out', 'reports/balance-m2b.md');
 const override = arg('override', '');

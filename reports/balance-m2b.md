@@ -1,6 +1,6 @@
 # Balance report — M2b (in-run upgrades, first run)
 
-Seeds 1–24 · tier 1 · no workshop levels · starred stats locked · 5.8 s · `npm run sim:balance`
+Seeds 1–24 · tier 1 · no workshop levels · starred stats locked · 5.9 s · `npm run sim:balance`
 
 ## B2: first run dies at waves 12–20 (≈6–10 min at ×1); no-upgrade run much earlier
 
