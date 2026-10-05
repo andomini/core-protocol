@@ -1,0 +1,15 @@
+{
+  "midgame": {
+    "minGapSeconds": 180,
+    "skipFirstBreaks": 1,
+    "timeoutMs": 30000
+  },
+  "rewarded": {
+    "timeoutMs": 60000
+  },
+  "availabilityPollMs": 5000,
+  "toast": {
+    "text": "No ad right now",
+    "ms": 2200
+  }
+}
