@@ -67,7 +67,6 @@ describe('formatStat / formatPrice', () => {
   it('prices round up below 1000 and use suffixes above', () => {
     expect(formatPrice(5)).toBe('5');
     expect(formatPrice(5.6)).toBe('6');
-    expect(formatPrice(5.0000000001)).toBe('5');
     expect(formatPrice(1234)).toBe('1.23K');
   });
 });

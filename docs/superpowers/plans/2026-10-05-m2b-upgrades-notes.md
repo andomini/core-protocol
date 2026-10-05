@@ -1,6 +1,6 @@
 # M2b — in-run stats, Energy economy, upgrade panel: notes
 
-Branch `m2b-upgrades`, commits `605b5d1..` (plus this notes commit), on top of `93ae274`. Tests 108 → 195. `npm run typecheck`, `build`, `build:crazygames` and `build:poki` are green. `npm run ui` passes 61/61. No dev hooks or flags in `dist/` (grep for `__cp`, `unlockall` and `coreHealth` finds 0 files).
+Branch `m2b-upgrades`, commits `605b5d1..HEAD` (the last is the notes/fix commit), on top of `93ae274`. Tests 108 → 195. `npm run typecheck`, `build`, `build:crazygames` and `build:poki` are green. `npm run ui` passes 78/78. No dev hooks or flags in `dist/` (grep for `__cp`, `unlockall` and `coreHealth` finds 0 files).
 
 ## What exists now
 
@@ -21,7 +21,7 @@ Branch `m2b-upgrades`, commits `605b5d1..` (plus this notes commit), on top of `
 - **`src/sim/stats.ts`** exports:
   - `effectiveStats(data, {workshop, run, mods}) → CoreStats`, covering the 18 stats plus `interestCap`. Level = workshop + run on one curve. Then every `add` modifier, then every `mul`, so order doesn't matter, then the cap, then clamping.
   - `Modifier = {stat: StatId|'interestCap', op: 'add'|'mul', value, source}`;
-  - `costSum` (closed form with powInt; `Infinity` past 1e300, never stored), `maxAffordable` (exponential plus binary search: O(log²), no loop over levels, no log), and `quoteBuy`;
+  - `costSum` (closed form with powInt, rounded **up to whole Energy**; `Infinity` past 1e300, never stored), `maxAffordable` (exponential plus binary search: O(log²), no loop over levels, no log), and `quoteBuy`;
   - `zeroLevels` and `canonicalLevels`, which emit keys in STAT_IDS order. Key order is part of the hash.
 - **World v2.**
   - Adds `levels`, `workshop`, `unlocked`, `mods` and `rng.upgrades`.
@@ -55,7 +55,7 @@ Branch `m2b-upgrades`, commits `605b5d1..` (plus this notes commit), on top of `
   - `log` (each entry stamped with `world.tick`), `opts`, and `stats`, which is refreshed after steps and commands.
 - **`UpgradePanel` (`src/ui/UpgradePanel.ts`)** with geometry from `src/ui/panelLayout.ts`, which is pure and tested.
   - Tabs, a ×1/×10/MAX toggle and 6 reused rows: glyph · name · `LV n (+k)` · `value › next` · ⚡price.
-  - Rows switch to two-line when the row is ≥ 78 px.
+  - Rows switch to two-line when the row height is ≥ 1.4 × (name font + value font): 78 px in portrait (28 + 28), 48 px in landscape (18 + 16; landscape rows are 65 px, so always two-line).
   - Affordable rows glow in the tab colour with a gold price box. Locked rows show a padlock glyph and `LAB`.
   - Hold-to-repeat: 380 ms delay, then 150 → 55 ms. A held row only queues when the shared quote is affordable and nothing is pending.
   - Feedback comes from sim `buy` events: a row flash, a glyph punch, a value punch, and a rising `+N` (or `FREE +N`) tick.
@@ -70,9 +70,9 @@ Branch `m2b-upgrades`, commits `605b5d1..` (plus this notes commit), on top of `
 | policy | median wave | range | median sim-min |
 |---|---|---|---|
 | none | 7 | 6–8 | 3.0 |
-| **greedy** | **18** | 10–23 | **8.8** |
-| atk-first | 21 | 13–26 | 10.4 |
-| def-first | 8 | 6–10 | 3.9 |
+| **greedy** | **18** | 10–23 | **8.7** |
+| atk-first | 19 | 13–27 | 9.4 |
+| def-first | 8 | 6–10 | 3.7 |
 | round-robin | 8 | 6–10 | 4.0 |
 
 Tuning applied:
@@ -86,10 +86,11 @@ Tuning applied:
 |---|---|---|
 | Workshop and run levels share one value curve (level = workshop + run); in-run cost depends on run level only; `maxLevel` caps the **run** level | The simplest reading of "workshop sets the starting value". The in-run price restarts each run. | M4 may want separate workshop per-level values: add a `workshop` block to `StatDef`. |
 | Free Upgrade = one roll per accepted purchase; on success the **whole batch** is free | The expected refund (p × cost) equals rolling each level separately, and it stays O(1) for MAX. Uses its own `upgrades` stream (tested: combat and spawn streams are untouched). | Higher variance on big MAX buys. A per-level roll would need a loop. |
+| Prices are whole Energy (`⌈…⌉` of the closed-form sum) | The HUD floors Energy; with integer prices `floor(E) ≥ price` ⇔ affordable, so the HUD and a glowing row never disagree. Still O(1) and monotone in n. | Golden replay and balance re-run after the change (greedy median unchanged at 18). |
 | ×10 is all-or-nothing (clipped to the levels left); MAX buys every affordable level; an unaffordable MAX shows the next level's price | Predictable price on the button. | UX taste; it's one branch in `quoteBuy`. |
 | Bits/Kill is a % bonus (like Energy Bonus), Bits/Wave and Energy/Wave are flat | Read "same pattern for Bits" literally. | Retune in data, or switch Bits/Kill to flat. |
 | Interest cap = `interestCap × interestCapGrowth^(wave−1)` (50, 1.03), × `interestCap` modifiers | A fixed cap would go stale. Modifiers serve the Compound perk and the 💰6 set. | Data only. |
-| Boss ×20 HP (spec says ×40), damage ×3.3 basic; boss waves bring half the regulars (`bossWaveEnemyMul` 0.5) | At ×40 / full escort, every bot died at wave 10 (all 20 seeds); deaths clustered on boss waves 10/20/30. | M3 perks change DPS. Re-run `sim:balance`. |
+| Boss ×20 HP (spec says ×40), damage ×3.3 basic; boss waves bring half the regulars (`bossWaveEnemyMul` 0.5) | At ×40 / full escort, no policy survived past wave 10 (greedy and atk-first died at exactly 10 on all 20 seeds); with weaker bosses, deaths still clustered on boss waves 10/20/30. | M3 perks change DPS. Re-run `sim:balance`. |
 | Range max level 10 × 2 px (300 → 320) | Keeps the max-level ring inside the 720-px portrait width at the tallest aspect (tested). | **M4:** the lab's "+10 Range levels" (→ 340) overflows the portrait arena width by ~8 px at the tallest aspect. Either shrink the arena cap or accept slight cropping. |
 | Portrait arena gets 30 % of the extra height, capped at +72 px | A taller arena zooms the world in, which pushes side spawns further off-screen (the ≤ 1 s visibility rule, now tested at 1280, 1558 and 1560) and the ring toward the edges. | Purely layout constants. |
 | 1280-tall portrait uses compact single-line rows (52 px) | Fits 6 rows + tabs in 440 px with 28 px text and no scrolling. | Rows are ~28 CSS px tall on a 16:9 phone; the full row width (680 px) is the tap target. |
@@ -105,18 +106,19 @@ Tuning applied:
 
 ## Smoke and tools
 - `npm run ui` covers both orientations: portrait 390×844, landscape 1280×720 and 907×510.
-  - The Damage row bought by a real tap, both paused and running (level +1, Energy down).
+  - Plus a 16:9 phone (360×640 at DPR 3, the 1280-tall floor with compact rows): text sizes, the same upgrade checks, screenshot `portrait-169-upgrades.jpg`.
+  - The Damage row bought by a real tap, both paused and running (level +1, Energy down; the running tap waits for the row's own affordable flag).
+  - Panel fit: after a dev Energy grant and MAX buys, no name/level/value/price box overlaps or leaves its row, on all three tabs, in every viewport.
   - Tab and toggle taps, a no-op on a locked row, hold-to-repeat and release, and RESTART tapped from its rect.
   - The 1558 logical height.
   - Stress: 60 FPS on desktop and on the CPU-throttled phone.
-- Screenshots in `reports/screens/`: `portrait-upgrades.jpg`, `portrait-midwave.jpg`, `landscape-1280-720-upgrades.jpg`, `landscape-907-510-upgrades.jpg`, `landscape-midwave.jpg`, `stress.jpg`, plus the death screenshots.
+- Screenshots in `reports/screens/`: `portrait-upgrades.jpg`, `portrait-169-upgrades.jpg`, `portrait-360-640-upgrades.jpg`, `portrait-midwave.jpg`, `landscape-1280-720-upgrades.jpg`, `landscape-907-510-upgrades.jpg`, `landscape-midwave.jpg`, `stress.jpg`, plus the death screenshots.
 - `npm run sim:smoke -- <seed> <tier> [policy] [--unlockall]`, `npm run sim:balance [-- --override patch.json]` and `npm run replay:record [-- --update]`.
 
 ## Known gaps / for M3+
-- **DEF is weak.** `def-first` dies at wave 8 and `atk-first` beats `greedy` by 3 waves. Thorns and Knockback matter little against ranged pressure. Ranged viruses deal most of the late damage, because the core shoots the nearest melee first. Revisit with M3 perks (B6) and maybe target priority.
+- **DEF is weak.** `def-first` dies at wave 8 and `atk-first` edges out `greedy` (19 vs 18). Thorns and Knockback matter little against ranged pressure. Ranged viruses deal most of the late damage, because the core shoots the nearest melee first. Revisit with M3 perks (B6) and maybe target priority.
 - No bot ever buys Bits stats; they have no in-run value until M4's meta gives Bits a use.
 - Starred stats are expensive (Multishot 200, Lifesteal 50) and untested in balance. Balance them when labs unlock them (M4).
 - The panel does not scroll; 6 rows always fit. A 7th stat per tab would need a list.
-- Energy shown in the HUD is floored, while prices are rounded up below 1000. A row can glow at "5 ⚡" while the HUD shows 5.
 - `RunSession.log` grows for the whole run. That's fine for a run (thousands of entries); M2.5 snapshots will need to store it if replays should survive reloads.
 - Snapshot/save of the run is still not wired into the UI (spec §2.5).

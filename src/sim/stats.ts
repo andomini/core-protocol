@@ -77,7 +77,8 @@ export function levelCost(def: StatDef, level: number): number {
 }
 
 /**
- * Total price of levels `level … level+n−1`: base·c^L·(c^n − 1)/(c − 1), via powInt.
+ * Total price of levels `level … level+n−1`: ⌈base·c^L·(c^n − 1)/(c − 1)⌉, via powInt. Whole Energy, so
+ * the HUD's floored Energy and the shown price agree exactly on affordability. Monotone in n.
  * Returns Infinity (never affordable, never stored) when the price would pass MAX_VALUE.
  */
 export function costSum(def: StatDef, level: number, n: number): number {
@@ -87,7 +88,7 @@ export function costSum(def: StatDef, level: number, n: number): number {
   const q = powInt(c, n);
   if (a >= MAX_VALUE || q >= MAX_VALUE) return Infinity;
   const s = (def.cost.base * a * (q - 1)) / (c - 1);
-  return s > MAX_VALUE ? Infinity : s;
+  return s > MAX_VALUE ? Infinity : Math.ceil(s);
 }
 
 /** Levels still purchasable in this run (Infinity without a max level). */

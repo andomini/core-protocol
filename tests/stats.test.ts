@@ -96,19 +96,24 @@ describe('effectiveStats', () => {
 });
 
 describe('costs', () => {
-  it('level cost is base × growth^level', () => {
+  it('level cost is ⌈base × growth^level⌉ (whole Energy)', () => {
     const d = S.damage;
     expect(levelCost(d, 0)).toBe(d.cost.base);
-    expect(levelCost(d, 10)).toBeCloseTo(d.cost.base * Math.pow(d.cost.growth, 10), 9);
+    expect(levelCost(d, 10)).toBe(Math.ceil(d.cost.base * Math.pow(d.cost.growth, 10) - 1e-9));
+    for (const id of STAT_IDS) for (const L of [0, 3, 17, 90]) expect(Number.isInteger(levelCost(S[id], L))).toBe(true);
   });
 
-  it('the closed-form sum matches a per-level loop', () => {
+  it('the closed-form sum matches a per-level loop (up to the final round-up) and grows with n', () => {
     for (const id of STAT_IDS) {
       const d = S[id];
       for (const [L, n] of [[0, 1], [0, 10], [7, 13], [40, 60]] as const) {
-        let loop = 0;
-        for (let k = 0; k < n; k++) loop += levelCost(d, L + k);
-        expect(costSum(d, L, n) / loop).toBeCloseTo(1, 12);
+        let exact = 0;
+        for (let k = 0; k < n; k++) exact += d.cost.base * Math.pow(d.cost.growth, L + k);
+        const s = costSum(d, L, n);
+        expect(Number.isInteger(s)).toBe(true);
+        expect(s - exact).toBeGreaterThan(-1e-6 * exact);
+        expect(s - exact).toBeLessThan(1 + 1e-9 * exact);
+        expect(costSum(d, L, n + 1)).toBeGreaterThan(s);
       }
       expect(costSum(d, 5, 0)).toBe(0);
     }

@@ -48,8 +48,6 @@ interface Row {
   /** Last rendered state, to skip redundant setText / setTexture (text re-rasterises on change). */
   key: string;
   valueKey: string;
-  affordable: boolean;
-  locked: boolean;
 }
 
 export interface PanelRowInfo {
@@ -126,8 +124,6 @@ export class UpgradePanel {
         zone: this.zone(r, D, () => undefined),
         key: '',
         valueKey: '',
-        affordable: false,
-        locked: false,
       };
       row.zone.on('pointerdown', () => this.press(i));
       row.zone.on('pointerout', () => this.release());
@@ -272,8 +268,6 @@ export class UpgradePanel {
       const key = `${locked ? 'L' : maxed ? 'M' : affordable ? 'A' : 'N'}|${level}|${q.levels}|${formatPrice(q.cost)}`;
       if (key !== row.key) {
         row.key = key;
-        row.locked = locked;
-        row.affordable = affordable;
         row.bg.setTexture(affordable ? `up_row_${def.tab}` : 'up_row_off');
         row.priceBg.setTexture(affordable ? 'up_price_on' : 'up_price_off');
         row.glyph.setTexture(locked ? 'ic_lock' : `st_${id}`).setAlpha(locked ? 0.8 : affordable || maxed ? 1 : 0.6);
@@ -305,6 +299,24 @@ export class UpgradePanel {
     return p.x + p.w / 2;
   }
 
+  /** Dev/smoke: on-screen bounds of each row's texts and price box, to check nothing collides. */
+  textBounds(): { stat: StatId | null; row: Rect; parts: { what: string; text: string; r: Rect }[] }[] {
+    const b = (o: Phaser.GameObjects.Text | Phaser.GameObjects.Image): Rect => {
+      const r = o.getBounds();
+      return { x: r.x, y: r.y, w: r.width, h: r.height };
+    };
+    return this.rows.map((row, i) => {
+      const p = this.g.rows[i]!.price;
+      const parts = [
+        { what: 'name', text: row.name.text, r: b(row.name) },
+        { what: 'value', text: row.value.text, r: b(row.value) },
+        { what: 'price', text: row.price.text, r: { x: p.x, y: p.y, w: p.w, h: p.h } },
+      ];
+      if (row.level) parts.push({ what: 'level', text: row.level.text, r: b(row.level) });
+      return { stat: row.stat, row: this.g.rows[i]!.rect, parts: parts.filter((x) => x.text !== '' || x.what === 'price') };
+    });
+  }
+
   /** Dev/smoke: what each visible row shows and where it is (logical px). */
   info(): { tab: TabId; amount: BuyCount; tabs: { tab: TabId; rect: Rect }[]; amountRect: Rect; rows: PanelRowInfo[] } {
     const w = this.host.world();
@@ -314,7 +326,16 @@ export class UpgradePanel {
       tabs: TAB_IDS.map((tab, i) => ({ tab, rect: this.g.tabs[i]! })),
       amountRect: this.g.amount,
       rows: this.rows.flatMap((r, i) =>
-        r.stat === null ? [] : [{ stat: r.stat, rect: this.g.rows[i]!.rect, locked: r.locked, affordable: r.affordable, level: w.levels[r.stat] }],
+        r.stat === null
+          ? []
+          : [{
+              stat: r.stat,
+              rect: this.g.rows[i]!.rect,
+              // Computed now (not the last drawn state) so a read right after a tab switch is correct.
+              locked: !isUnlocked(w, this.data, r.stat),
+              affordable: isUnlocked(w, this.data, r.stat) && !w.dead && quoteFor(w, this.data, r.stat, this.amount).affordable,
+              level: w.levels[r.stat],
+            }],
       ),
     };
   }

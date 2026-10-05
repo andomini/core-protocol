@@ -99,15 +99,16 @@ async function upgradeChecks(h, label) {
   check(results, `${label}: tapping Damage while paused buys a level and spends Energy`, s1.levels.damage === s0.levels.damage + 1 && s1.energy < s0.energy && s1.tick === s0.tick, { s0: s0.energy, s1: s1.energy, l0: s0.levels.damage, l1: s1.levels.damage });
   await h.shot(`${label.replace(/ upgrades$/, '').replace(/[^a-z0-9]+/gi, '-')}-upgrades`);
 
-  // Running at ×1: queued, applied at the start of the next tick.
-  await h.call('setSpeed', 1);
+  // Running at ×1: queued, applied at the start of the next tick. Wait until the row itself (the sim's
+  // own quote) says the next level is affordable.
+  await h.call('setSpeed', 5);
   await h.call('pause', false);
+  const ready = await h.p.waitForFunction(() => window.__cp.ui().rows.find((r) => r.stat === 'damage').affordable, null, { timeout: 30000, polling: 50 }).then(() => true, () => false);
+  await h.call('setSpeed', 1);
   const r0 = await h.state();
-  if (r0.energy >= 6) {
-    await h.tapLogical(...centre(dmg.rect));
-    const r1 = await h.waitFor((s) => s.levels.damage === r0.levels.damage + 1, 2000, 30);
-    check(results, `${label}: tapping Damage while running buys on the next tick`, r1.ok && r1.s.commands === r0.commands + 1, { r0: r0.levels, r1: r1.s.levels });
-  }
+  await h.tapLogical(...centre(dmg.rect));
+  const r1 = await h.waitFor((s) => s.levels.damage === r0.levels.damage + 1, 2000, 30);
+  check(results, `${label}: tapping Damage while running buys on the next tick`, ready && r1.ok && r1.s.commands === r0.commands + 1 && (r1.s.energy < r0.energy || r1.s.kills > r0.kills), { ready, r0: r0.levels.damage, r1: r1.s.levels.damage, e0: r0.energy, e1: r1.s.energy });
   await h.call('pause', true);
 
   // Tabs and the amount toggle.
@@ -152,6 +153,33 @@ async function upgradeChecks(h, label) {
   await h.call('pause', false);
 }
 
+/** Big values in every row (dev Energy + MAX buys), then: no name/value/level/price box overlaps any other
+ *  in its row, and everything stays inside the row, on all three tabs. */
+async function panelFitCheck(h, label, shotName) {
+  await h.call('pause', true);
+  await h.call('give', 1e9);
+  for (const s of ['damage', 'attackSpeed', 'critFactor', 'health', 'regen', 'defense', 'energyBonus', 'energyPerWave', 'bitsPerKill', 'bitsPerWave', 'thorns', 'knockback']) await h.call('buy', s, 'max');
+  const bad = [];
+  for (const tab of ['atk', 'def', 'util']) {
+    await h.call('setTab', tab);
+    await h.p.waitForTimeout(80);
+    const rows = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').upgrades.textBounds());
+    const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    for (const row of rows) {
+      for (const p of row.parts) {
+        const r = p.r;
+        if (r.x < row.row.x - 1 || r.x + r.w > row.row.x + row.row.w + 1) bad.push({ tab, stat: row.stat, out: p.what, text: p.text });
+      }
+      for (let i = 0; i < row.parts.length; i++)
+        for (let j = i + 1; j < row.parts.length; j++)
+          if (hit(row.parts[i].r, row.parts[j].r)) bad.push({ tab, stat: row.stat, a: row.parts[i].what, b: row.parts[j].what, ta: row.parts[i].text, tb: row.parts[j].text });
+    }
+  }
+  check(results, `${label}: panel texts never overlap or leave their row (big values, all tabs)`, bad.length === 0, bad);
+  await h.call('setTab', 'atk');
+  if (shotName) await h.shot(shotName);
+}
+
 const scenarios = {
   async portrait() {
     const h = await open(browser, srv.base, 'phone', '?seed=7');
@@ -176,8 +204,19 @@ const scenarios = {
     const lay = await h.call('ui');
     check(results, 'portrait 390×844: the logical height adapts (no letterbox)', lay.layout.h === 1558, lay.layout);
     await upgradeChecks(h, 'portrait upgrades');
+    await panelFitCheck(h, 'portrait 390×844');
     check(results, 'portrait: no console errors', h.errors.length === 0, h.errors);
     await h.close();
+
+    // 16:9 phone: the 1280-tall floor with compact single-line rows.
+    const c = await open(browser, srv.base, 'phone169', '?seed=7');
+    const cl = await c.call('ui');
+    check(results, 'portrait 360×640: 1280-tall layout', cl.layout.h === 1280, cl.layout);
+    await minTextCheck(c, 'portrait 360×640');
+    await upgradeChecks(c, 'portrait 360×640 upgrades');
+    await panelFitCheck(c, 'portrait 360×640', 'portrait-169-upgrades');
+    check(results, 'portrait 360×640: no console errors', c.errors.length === 0, c.errors);
+    await c.close();
 
     const m = await open(browser, srv.base, 'phone', '?seed=11');
     await showcase(m);
@@ -210,6 +249,7 @@ const scenarios = {
       const w = await h.waitFor((x) => x.wave >= 2, 15000, 200);
       check(results, `${label}: the wave counter advances when sped up`, w.ok, w.s);
       await upgradeChecks(h, `${label} upgrades`);
+      await panelFitCheck(h, label);
       check(results, `${label}: no console errors`, h.errors.length === 0, h.errors);
       await h.close();
     }

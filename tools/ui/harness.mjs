@@ -11,6 +11,8 @@ export const VIEWPORTS = {
   phone: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
   desktop: { viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 },
   crazy: { viewport: { width: 907, height: 510 }, deviceScaleFactor: 1 },
+  /** A 16:9 phone: lands on the 1280-tall portrait floor (compact single-line panel rows). */
+  phone169: { viewport: { width: 360, height: 640 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
 };
 
 /** Console noise from headless GPU drivers that is not a game error. */

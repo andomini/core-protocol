@@ -1,9 +1,9 @@
 {
-  "date": "2026-10-05T18:41:21.969Z",
+  "date": "2026-10-05T18:49:25.474Z",
   "metrics": {
-    "portrait.firstVisibleSimS": 0.03,
+    "portrait.firstVisibleSimS": 0,
     "landscape 1280×720.firstVisibleSimS": 0,
-    "landscape 907×510.firstVisibleSimS": 0.03,
+    "landscape 907×510.firstVisibleSimS": 0,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
   },
@@ -14,11 +14,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pause",
-        "enemies": 0,
-        "visible": 0,
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -72,7 +72,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -120,7 +120,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -169,7 +169,7 @@
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 3,
+          "tick": 2,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -213,7 +213,7 @@
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 3,
+          "tick": 2,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -262,7 +262,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 3,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -310,7 +310,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 929,
+        "tick": 917,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -505,7 +505,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1139,
+        "tick": 1140,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -560,46 +560,11 @@
       "name": "portrait upgrades: tapping Damage while running buys on the next tick",
       "ok": true,
       "detail": {
-        "r0": {
-          "damage": 1,
-          "attackSpeed": 0,
-          "critChance": 0,
-          "critFactor": 0,
-          "range": 0,
-          "multishot": 0,
-          "health": 0,
-          "regen": 0,
-          "defense": 0,
-          "thorns": 0,
-          "lifesteal": 0,
-          "knockback": 0,
-          "energyBonus": 0,
-          "energyPerWave": 0,
-          "interest": 0,
-          "bitsPerKill": 0,
-          "bitsPerWave": 0,
-          "freeUpgrade": 0
-        },
-        "r1": {
-          "damage": 2,
-          "attackSpeed": 0,
-          "critChance": 0,
-          "critFactor": 0,
-          "range": 0,
-          "multishot": 0,
-          "health": 0,
-          "regen": 0,
-          "defense": 0,
-          "thorns": 0,
-          "lifesteal": 0,
-          "knockback": 0,
-          "energyBonus": 0,
-          "energyPerWave": 0,
-          "interest": 0,
-          "bitsPerKill": 0,
-          "bitsPerWave": 0,
-          "freeUpgrade": 0
-        }
+        "ready": true,
+        "r0": 1,
+        "r1": 2,
+        "e0": 15.119999999999997,
+        "e1": 9.119999999999997
       }
     },
     {
@@ -657,7 +622,301 @@
       }
     },
     {
+      "name": "portrait 390×844: panel texts never overlap or leave their row (big values, all tabs)",
+      "ok": true,
+      "detail": []
+    },
+    {
       "name": "portrait: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "portrait 360×640: 1280-tall layout",
+      "ok": true,
+      "detail": {
+        "w": 720,
+        "h": 1280,
+        "panel": {
+          "x": 0,
+          "y": 840,
+          "w": 720,
+          "h": 440
+        }
+      }
+    },
+    {
+      "name": "portrait 360×640: all 50 texts ≥ 28 px",
+      "ok": true,
+      "detail": {
+        "min": 28,
+        "count": 50,
+        "bad": []
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: panel shows the ATK tab with the Damage row",
+      "ok": true,
+      "detail": {
+        "tab": "atk",
+        "amount": 1,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 18,
+              "y": 858,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 196,
+              "y": 858,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 374,
+              "y": 858,
+              "w": 172,
+              "h": 58
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 552,
+          "y": 858,
+          "w": 150,
+          "h": 58
+        },
+        "rows": [
+          {
+            "stat": "damage",
+            "rect": {
+              "x": 18,
+              "y": 925,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": false,
+            "level": 0
+          },
+          {
+            "stat": "attackSpeed",
+            "rect": {
+              "x": 18,
+              "y": 981,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": false,
+            "level": 0
+          },
+          {
+            "stat": "critChance",
+            "rect": {
+              "x": 18,
+              "y": 1037,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": false,
+            "level": 0
+          },
+          {
+            "stat": "critFactor",
+            "rect": {
+              "x": 18,
+              "y": 1093,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": false,
+            "level": 0
+          },
+          {
+            "stat": "range",
+            "rect": {
+              "x": 18,
+              "y": 1149,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": false,
+            "level": 0
+          },
+          {
+            "stat": "multishot",
+            "rect": {
+              "x": 18,
+              "y": 1205,
+              "w": 684,
+              "h": 52
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0
+          }
+        ],
+        "restart": {
+          "x": 170,
+          "y": 820,
+          "w": 380,
+          "h": 92
+        },
+        "layout": {
+          "w": 720,
+          "h": 1280,
+          "panel": {
+            "x": 0,
+            "y": 840,
+            "w": 720,
+            "h": 440
+          }
+        }
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: Energy accumulates from kills",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "portrait",
+        "wave": 2,
+        "tick": 1136,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 10,
+        "energy": 20.119999999999997,
+        "bits": 10.059999999999999,
+        "coreHp": 100,
+        "speed": 5,
+        "paused": false,
+        "fps": 60,
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: tapping Damage while paused buys a level and spends Energy",
+      "ok": true,
+      "detail": {
+        "s0": 20.119999999999997,
+        "s1": 15.119999999999997,
+        "l0": 0,
+        "l1": 1
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: tapping Damage while running buys on the next tick",
+      "ok": true,
+      "detail": {
+        "ready": true,
+        "r0": 1,
+        "r1": 2,
+        "e0": 15.119999999999997,
+        "e1": 9.119999999999997
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: DEF tab tap switches rows",
+      "ok": true,
+      "detail": [
+        "health",
+        "regen",
+        "defense",
+        "thorns",
+        "lifesteal",
+        "knockback"
+      ]
+    },
+    {
+      "name": "portrait 360×640 upgrades: amount toggle ×1 → ×10",
+      "ok": true,
+      "detail": 10
+    },
+    {
+      "name": "portrait 360×640 upgrades: amount toggle cycles back to ×1",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "name": "portrait 360×640 upgrades: a locked row shows LAB and buying it does nothing",
+      "ok": true,
+      "detail": {
+        "stat": "lifesteal",
+        "rect": {
+          "x": 18,
+          "y": 1149,
+          "w": 684,
+          "h": 52
+        },
+        "locked": true,
+        "affordable": false,
+        "level": 0
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: holding a row keeps buying",
+      "ok": true,
+      "detail": {
+        "before": 0,
+        "after": 9
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: releasing stops buying",
+      "ok": true,
+      "detail": {
+        "h1": 9,
+        "h2": 9
+      }
+    },
+    {
+      "name": "portrait 360×640: panel texts never overlap or leave their row (big values, all tabs)",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "portrait 360×640: no console errors",
       "ok": true,
       "detail": []
     },
@@ -721,7 +980,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 51,
+        "tick": 47,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -735,7 +994,7 @@
         "speed": 5,
         "paused": false,
         "fps": 59,
-        "seed": 551791549,
+        "seed": 48388594,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -773,11 +1032,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pause",
-        "enemies": 0,
-        "visible": 0,
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -787,7 +1046,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 69,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -844,7 +1103,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 69,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -879,7 +1138,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -892,7 +1151,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 69,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -927,7 +1186,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 926,
+        "tick": 928,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1108,7 +1367,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1134,
+        "tick": 1138,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1163,46 +1422,11 @@
       "name": "landscape 1280×720 upgrades: tapping Damage while running buys on the next tick",
       "ok": true,
       "detail": {
-        "r0": {
-          "damage": 1,
-          "attackSpeed": 0,
-          "critChance": 0,
-          "critFactor": 0,
-          "range": 0,
-          "multishot": 0,
-          "health": 0,
-          "regen": 0,
-          "defense": 0,
-          "thorns": 0,
-          "lifesteal": 0,
-          "knockback": 0,
-          "energyBonus": 0,
-          "energyPerWave": 0,
-          "interest": 0,
-          "bitsPerKill": 0,
-          "bitsPerWave": 0,
-          "freeUpgrade": 0
-        },
-        "r1": {
-          "damage": 2,
-          "attackSpeed": 0,
-          "critChance": 0,
-          "critFactor": 0,
-          "range": 0,
-          "multishot": 0,
-          "health": 0,
-          "regen": 0,
-          "defense": 0,
-          "thorns": 0,
-          "lifesteal": 0,
-          "knockback": 0,
-          "energyBonus": 0,
-          "energyPerWave": 0,
-          "interest": 0,
-          "bitsPerKill": 0,
-          "bitsPerWave": 0,
-          "freeUpgrade": 0
-        }
+        "ready": true,
+        "r0": 1,
+        "r1": 2,
+        "e0": 15.119999999999997,
+        "e1": 9.119999999999997
       }
     },
     {
@@ -1260,6 +1484,11 @@
       }
     },
     {
+      "name": "landscape 1280×720: panel texts never overlap or leave their row (big values, all tabs)",
+      "ok": true,
+      "detail": []
+    },
+    {
       "name": "landscape 1280×720: no console errors",
       "ok": true,
       "detail": []
@@ -1270,11 +1499,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pause",
-        "enemies": 0,
-        "visible": 0,
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -1284,7 +1513,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 66,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1328,7 +1557,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1341,7 +1570,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 66,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1376,7 +1605,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1389,7 +1618,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 66,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1424,7 +1653,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 925,
+        "tick": 926,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1605,7 +1834,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1135,
+        "tick": 1134,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1660,46 +1889,11 @@
       "name": "landscape 907×510 upgrades: tapping Damage while running buys on the next tick",
       "ok": true,
       "detail": {
-        "r0": {
-          "damage": 1,
-          "attackSpeed": 0,
-          "critChance": 0,
-          "critFactor": 0,
-          "range": 0,
-          "multishot": 0,
-          "health": 0,
-          "regen": 0,
-          "defense": 0,
-          "thorns": 0,
-          "lifesteal": 0,
-          "knockback": 0,
-          "energyBonus": 0,
-          "energyPerWave": 0,
-          "interest": 0,
-          "bitsPerKill": 0,
-          "bitsPerWave": 0,
-          "freeUpgrade": 0
-        },
-        "r1": {
-          "damage": 2,
-          "attackSpeed": 0,
-          "critChance": 0,
-          "critFactor": 0,
-          "range": 0,
-          "multishot": 0,
-          "health": 0,
-          "regen": 0,
-          "defense": 0,
-          "thorns": 0,
-          "lifesteal": 0,
-          "knockback": 0,
-          "energyBonus": 0,
-          "energyPerWave": 0,
-          "interest": 0,
-          "bitsPerKill": 0,
-          "bitsPerWave": 0,
-          "freeUpgrade": 0
-        }
+        "ready": true,
+        "r0": 1,
+        "r1": 2,
+        "e0": 15.119999999999997,
+        "e1": 9.119999999999997
       }
     },
     {
@@ -1755,6 +1949,11 @@
         "h1": 9,
         "h2": 9
       }
+    },
+    {
+      "name": "landscape 907×510: panel texts never overlap or leave their row (big values, all tabs)",
+      "ok": true,
+      "detail": []
     },
     {
       "name": "landscape 907×510: no console errors",
@@ -1816,21 +2015,21 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1134,
+        "tick": 1132,
         "phase": "wave",
         "enemies": 200,
         "visible": 200,
-        "projectiles": 1,
+        "projectiles": 0,
         "dead": false,
         "overlay": false,
         "kills": 114,
         "energy": 228,
         "bits": 114,
-        "coreHp": 999999985238.0034,
+        "coreHp": 999999985241.9,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 320631687,
+        "seed": 148878600,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1860,7 +2059,7 @@
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00199342170836
+      "detail": 60.00318953831433
     },
     {
       "name": "stress desktop: no console errors",
@@ -1874,21 +2073,21 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1134,
+        "tick": 1135,
         "phase": "wave",
-        "enemies": 200,
-        "visible": 200,
-        "projectiles": 1,
+        "enemies": 199,
+        "visible": 199,
+        "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 114,
-        "energy": 228.04,
-        "bits": 114.02,
-        "coreHp": 999999985261.2135,
+        "kills": 115,
+        "energy": 230.04,
+        "bits": 115.02,
+        "coreHp": 999999985223.8102,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 756737644,
+        "seed": 1715020853,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,

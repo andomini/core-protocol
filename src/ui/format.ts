@@ -61,7 +61,7 @@ export function formatStat(kind: StatFormatKind, v: number): string {
   }
 }
 
-/** A price: rounded up below 1000 so a shown price is never less than what the buy needs. */
+/** A price (whole Energy, see costSum): exact below 1000, so it matches the HUD's floored Energy. */
 export function formatPrice(cost: number): string {
-  return cost < 1000 ? String(Math.ceil(cost - 1e-9)) : formatNum(cost);
+  return cost < 1000 ? String(Math.ceil(cost)) : formatNum(cost);
 }
