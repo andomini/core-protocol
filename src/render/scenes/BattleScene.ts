@@ -7,7 +7,8 @@ import { DeathOverlay } from '../../ui/DeathOverlay';
 import { Hud } from '../../ui/Hud';
 import { text } from '../../ui/kit';
 import { circleInRect, type Layout } from '../../ui/layout';
-import { battleData, DEV_TUNING, type DevFlags, readFlags } from '../devFlags';
+import battleJson from '../../data/battle.json';
+import { battleData, type DevFlags, readFlags, stressTuning } from '../devFlags';
 import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
 import { CRIMSON } from '../palette';
@@ -18,8 +19,8 @@ import { RS } from '../resolution';
 const MAX_TICKS_PER_FRAME = 4;
 const ENEMY_TEX: Record<EnemyKind, string> = { basic: 'e_basic', fast: 'e_fast', tank: 'e_tank', ranged: 'e_ranged', boss: 'e_boss_head' };
 const STRESS_KINDS: EnemyKind[] = ['basic', 'fast', 'tank', 'ranged'];
-/** Player-facing speeds; ×5 is reachable only through dev hooks / stress (labs unlock it in M4). */
-const SPEEDS = [1, 2];
+/** Player-facing speeds; up to maxSpeed only through dev hooks / stress (labs unlock ×3–×5 in M4). */
+const SPEEDS: number[] = battleJson.speeds;
 
 function newSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
@@ -43,6 +44,7 @@ export class BattleScene extends Phaser.Scene {
   private frameMs: number[] = [];
   private readonly tmp = { x: 0, y: 0 };
   private deathAt = 0;
+  private stressCount = 0;
 
   constructor() {
     super('Battle');
@@ -64,8 +66,10 @@ export class BattleScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(DEPTH.bars + 0.5)
       .setVisible(false);
-    if (this.flags.stress) {
-      this.speed = DEV_TUNING.stress.speed;
+    const stress = this.flags.stress ? stressTuning() : null;
+    this.stressCount = stress?.enemies ?? 0;
+    if (stress) {
+      this.speed = stress.speed;
       this.fpsText = text(this, a.x + 16, a.y + a.h - 16, '', this.L.minFont, { color: '#2bffb0', stroke: true }).setOrigin(0, 1).setDepth(DEPTH.overlay - 1);
     }
     this.input.keyboard?.on('keydown-SPACE', () => this.setPaused(!this.paused));
@@ -80,7 +84,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   setSpeed(n: number): void {
-    this.speed = Math.max(1, Math.min(DEV_TUNING.maxSpeed, Math.round(n)));
+    this.speed = Math.max(1, Math.min(battleJson.maxSpeed, Math.round(n)));
   }
 
   setPaused(p: boolean): void {
@@ -180,8 +184,8 @@ export class BattleScene extends Phaser.Scene {
 
   override update(time: number, delta: number): void {
     const w = this.session.world;
-    if (this.flags.stress && !w.dead) {
-      const missing = DEV_TUNING.stress.enemies - w.enemies.length;
+    if (this.stressCount > 0 && !w.dead) {
+      const missing = this.stressCount - w.enemies.length;
       for (let i = 0; i < missing; i++) this.session.spawn(STRESS_KINDS[(w.nextId + i) % STRESS_KINDS.length]!, 1, this.onEvent);
     }
     const n = this.loop.frame(delta, this.paused || w.dead ? 0 : this.speed);

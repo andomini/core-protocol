@@ -12,7 +12,6 @@ import { DEPTH } from './WorldView';
 const enum T {
   Beam,
   Ring,
-  Flare,
 }
 
 interface Transient {
@@ -206,8 +205,6 @@ export class Effects {
           g.lineStyle(3 * (1 - k) + 0.5, it.color, 0.9 * (1 - k)).strokeCircle(it.x, it.y, it.r * (0.35 + 0.65 * e));
           break;
         }
-        case T.Flare:
-          break;
       }
       // Compact live records to the front.
       if (n !== i) {

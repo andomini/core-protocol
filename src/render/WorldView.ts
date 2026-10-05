@@ -67,6 +67,8 @@ export class WorldView {
   private readonly tracerLive = new Map<number, Phaser.GameObjects.Image>();
   private readonly tracerStamp = new Map<number, number>();
   private readonly bars: Phaser.GameObjects.Graphics;
+  /** Glowing spine linking the boss worm's segments. */
+  private readonly spine: Phaser.GameObjects.Graphics;
   private readonly bossLabel: Phaser.GameObjects.Text;
   private readonly coreLight: Phaser.GameObjects.Image;
   private readonly coreOuter: Phaser.GameObjects.Image;
@@ -123,6 +125,8 @@ export class WorldView {
     this.bossImgs = new ImagePool(scene, 'e_boss_seg', DEPTH.boss, Phaser.BlendModes.NORMAL);
     this.tracers = new ImagePool(scene, 'tracer', DEPTH.projectile);
     this.bars = scene.add.graphics().setDepth(DEPTH.bars);
+    this.spine = scene.add.graphics().setDepth(DEPTH.boss - 0.5).setBlendMode(Phaser.BlendModes.ADD);
+    this.drawBrackets(scene);
     this.bossLabel = scene.add
       .text(0, 0, 'WORM.EXE', { fontFamily: '"Orbitron", monospace', fontSize: `${Math.max(L.minFont - 8, 14)}px`, fontStyle: '700', color: '#ff6b8b', resolution: RS })
       .setOrigin(0.5, 1)
@@ -204,7 +208,8 @@ export class WorldView {
     const L = this.L;
     const sess = this.session();
     const w = sess.world;
-    this.drawCore(w.core.hp / w.core.maxHp, now);
+    this.drawCore(w.core.hp / w.core.maxHp, now, w.dead);
+    this.spine.clear();
     this.drawPulses(dt);
 
     const bars = this.bars.clear();
@@ -358,6 +363,9 @@ export class WorldView {
     const ly = b.ty[b.head]!;
     if (Math.hypot(hx - lx, hy - ly) >= 3) this.pushTrail(b, hx, hy);
     s.img.setPosition(L.cx + hx * L.scale, L.cy + hy * L.scale).setRotation(toCore + Math.cos(b.phase * 1.8) * 0.35).setScale(k);
+    const sp = this.spine;
+    let lastX = s.img.x;
+    let lastY = s.img.y;
     // Walk back along the trail placing segments at fixed arc lengths.
     const spacing = this.segSpacing(e);
     let seg = 0;
@@ -377,6 +385,10 @@ export class WorldView {
         const img = b.segs[seg]!;
         const sc = SEG_SCALE[seg]!;
         img.setPosition(L.cx + x * L.scale, L.cy + y * L.scale).setScale(k * sc).setAlpha(fade);
+        sp.lineStyle(10 * sc, CRIMSON, 0.16 * fade).lineBetween(lastX, lastY, img.x, img.y);
+        sp.lineStyle(2.5, CRIMSON, 0.75 * fade).lineBetween(lastX, lastY, img.x, img.y);
+        lastX = img.x;
+        lastY = img.y;
         img.setRotation(this.lastNow * 0.001 * (seg % 2 ? 1 : -1));
         seg++;
         target += spacing * (0.55 + sc * 0.5);
@@ -388,8 +400,38 @@ export class WorldView {
     for (; seg < BOSS_SEGMENTS; seg++) b.segs[seg]!.setPosition(L.cx + px * L.scale, L.cy + py * L.scale).setScale(k * SEG_SCALE[seg]!);
   }
 
-  private drawCore(hpFrac: number, now: number): void {
+  /** Cyber-frame corner brackets around the arena. */
+  private drawBrackets(scene: Phaser.Scene): void {
+    const a = this.L.arena;
+    const g = scene.add.graphics().setDepth(DEPTH.scan + 0.5).setBlendMode(Phaser.BlendModes.ADD);
+    const m = 12;
+    const len = 34;
+    const x0 = a.x + m;
+    const y0 = a.y + m;
+    const x1 = a.x + a.w - m;
+    const y1 = a.y + a.h - m;
+    for (const [lw, al] of [[6, 0.1], [2, 0.55]] as const) {
+      g.lineStyle(lw, CORE, al);
+      g.strokePoints([{ x: x0, y: y0 + len }, { x: x0, y: y0 }, { x: x0 + len, y: y0 }]);
+      g.strokePoints([{ x: x1 - len, y: y0 }, { x: x1, y: y0 }, { x: x1, y: y0 + len }]);
+      g.strokePoints([{ x: x0, y: y1 - len }, { x: x0, y: y1 }, { x: x0 + len, y: y1 }]);
+      g.strokePoints([{ x: x1 - len, y: y1 }, { x: x1, y: y1 }, { x: x1, y: y1 - len }]);
+    }
+    // Small tick rows along the top and bottom edges.
+    g.fillStyle(CORE, 0.35);
+    for (let i = 0; i < 5; i++) {
+      g.fillRect(x0 + len + 10 + i * 9, y0 - 1, 5, 2);
+      g.fillRect(x1 - len - 15 - i * 9, y1 - 1, 5, 2);
+    }
+  }
+
+  private drawCore(hpFrac: number, now: number, dead: boolean): void {
     const L = this.L;
+    const show = !dead || Math.random() < 0.15;
+    this.coreOuter.setVisible(show);
+    this.coreInner.setVisible(show);
+    this.coreRing.setVisible(!dead);
+    this.coreLight.setVisible(!dead);
     let x = L.cx;
     let y = L.cy;
     if (now < this.coreShakeUntil) {

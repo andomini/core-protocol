@@ -102,8 +102,22 @@ function enemies(scene: Phaser.Scene, data: GameData): void {
     const i = h * 0.42;
     neon(ctx, [[c - i, c - i], [c + i, c - i], [c + i, c + i], [c - i, c + i]], C.basic, 1.6, 0.35, 6);
   });
-  shapeTexture(scene, 'e_fast', r('fast') * 1.4, (ctx, c) => {
+  shapeTexture(scene, 'e_fast', r('fast') * 2.2, (ctx, c) => {
     const pts = regular(c, c, r('fast') * 1.2, 3, 0);
+    // Speed streaks trailing behind (the texture points +x).
+    const rf = r('fast');
+    ctx.lineCap = 'round';
+    for (const [dy, len, a] of [[-rf * 0.5, rf * 1.1, 0.55], [rf * 0.5, rf * 1.1, 0.55], [0, rf * 0.7, 0.35]] as const) {
+      const g = ctx.createLinearGradient(c - rf * 0.7 - len, 0, c - rf * 0.5, 0);
+      g.addColorStop(0, rgba(C.fast, 0));
+      g.addColorStop(1, rgba(C.fast, a));
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(c - rf * 0.7 - len, c + dy);
+      ctx.lineTo(c - rf * 0.6, c + dy);
+      ctx.stroke();
+    }
     neon(ctx, pts, C.fast, 3);
     dot(ctx, c - r('fast') * 0.1, c, 2.2, C.fast, 6);
   });

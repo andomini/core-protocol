@@ -13,7 +13,10 @@ export interface DevFlags {
   seed: number | null;
 }
 
-export const DEV_TUNING = devJson;
+/** Stress-mode knobs, or null outside DEV (keeps dev.json out of production bundles). */
+export function stressTuning(): typeof devJson.stress | null {
+  return import.meta.env.DEV ? devJson.stress : null;
+}
 
 export function readFlags(search: string): DevFlags {
   if (!import.meta.env.DEV) return { stress: false, weak: false, seed: null };
@@ -24,7 +27,7 @@ export function readFlags(search: string): DevFlags {
 
 /** The data a battle runs on: the defaults, or a patched dev copy. */
 export function battleData(base: GameData, f: DevFlags): GameData {
-  if (!f.stress && !f.weak) return base;
+  if (!import.meta.env.DEV || (!f.stress && !f.weak)) return base;
   const d = structuredClone(base);
   if (f.stress) {
     const s = devJson.stress;

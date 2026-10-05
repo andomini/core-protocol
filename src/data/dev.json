@@ -10,6 +10,5 @@
     "coreHealth": 5,
     "coreRegen": 0,
     "coreAttackSpeed": 0.3
-  },
-  "maxSpeed": 5
+  }
 }
