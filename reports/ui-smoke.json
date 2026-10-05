@@ -1,9 +1,9 @@
 {
-  "date": "2026-10-05T18:11:51.268Z",
+  "date": "2026-10-05T18:41:21.969Z",
   "metrics": {
-    "portrait.firstVisibleSimS": 0,
-    "landscape 1280×720.firstVisibleSimS": 0.03,
-    "landscape 907×510.firstVisibleSimS": 0,
+    "portrait.firstVisibleSimS": 0.03,
+    "landscape 1280×720.firstVisibleSimS": 0,
+    "landscape 907×510.firstVisibleSimS": 0.03,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
   },
@@ -14,11 +14,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -29,15 +29,39 @@
         "speed": 1,
         "paused": false,
         "fps": 67,
-        "seed": 7
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
-      "name": "portrait: all 23 texts ≥ 28 px",
+      "name": "portrait: all 56 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 23,
+        "count": 56,
         "bad": []
       }
     },
@@ -48,7 +72,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -62,7 +86,31 @@
         "speed": 1,
         "paused": false,
         "fps": 67,
-        "seed": 7
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -72,7 +120,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -86,7 +134,31 @@
         "speed": 2,
         "paused": false,
         "fps": 67,
-        "seed": 7
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -97,7 +169,7 @@
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 2,
+          "tick": 3,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -111,13 +183,37 @@
           "speed": 2,
           "paused": true,
           "fps": 67,
-          "seed": 7
+          "seed": 7,
+          "levels": {
+            "damage": 0,
+            "attackSpeed": 0,
+            "critChance": 0,
+            "critFactor": 0,
+            "range": 0,
+            "multishot": 0,
+            "health": 0,
+            "regen": 0,
+            "defense": 0,
+            "thorns": 0,
+            "lifesteal": 0,
+            "knockback": 0,
+            "energyBonus": 0,
+            "energyPerWave": 0,
+            "interest": 0,
+            "bitsPerKill": 0,
+            "bitsPerWave": 0,
+            "freeUpgrade": 0
+          },
+          "unlocked": [],
+          "tab": "atk",
+          "amount": 1,
+          "commands": 0
         },
         "p1": {
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 2,
+          "tick": 3,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -131,7 +227,31 @@
           "speed": 2,
           "paused": true,
           "fps": 61,
-          "seed": 7
+          "seed": 7,
+          "levels": {
+            "damage": 0,
+            "attackSpeed": 0,
+            "critChance": 0,
+            "critFactor": 0,
+            "range": 0,
+            "multishot": 0,
+            "health": 0,
+            "regen": 0,
+            "defense": 0,
+            "thorns": 0,
+            "lifesteal": 0,
+            "knockback": 0,
+            "energyBonus": 0,
+            "energyPerWave": 0,
+            "interest": 0,
+            "bitsPerKill": 0,
+            "bitsPerWave": 0,
+            "freeUpgrade": 0
+          },
+          "unlocked": [],
+          "tab": "atk",
+          "amount": 1,
+          "commands": 0
         }
       }
     },
@@ -156,7 +276,31 @@
         "speed": 2,
         "paused": false,
         "fps": 61,
-        "seed": 7
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -166,7 +310,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 927,
+        "tick": 929,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -180,7 +324,336 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 7
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
+      }
+    },
+    {
+      "name": "portrait 390×844: the logical height adapts (no letterbox)",
+      "ok": true,
+      "detail": {
+        "w": 720,
+        "h": 1558,
+        "panel": {
+          "x": 0,
+          "y": 912,
+          "w": 720,
+          "h": 646
+        }
+      }
+    },
+    {
+      "name": "portrait upgrades: panel shows the ATK tab with the Damage row",
+      "ok": true,
+      "detail": {
+        "tab": "atk",
+        "amount": 1,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 18,
+              "y": 930,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 196,
+              "y": 930,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 374,
+              "y": 930,
+              "w": 172,
+              "h": 58
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 552,
+          "y": 930,
+          "w": 150,
+          "h": 58
+        },
+        "rows": [
+          {
+            "stat": "damage",
+            "rect": {
+              "x": 18,
+              "y": 997,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "attackSpeed",
+            "rect": {
+              "x": 18,
+              "y": 1088,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "critChance",
+            "rect": {
+              "x": 18,
+              "y": 1179,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "critFactor",
+            "rect": {
+              "x": 18,
+              "y": 1270,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "range",
+            "rect": {
+              "x": 18,
+              "y": 1361,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "multishot",
+            "rect": {
+              "x": 18,
+              "y": 1452,
+              "w": 684,
+              "h": 87
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0
+          }
+        ],
+        "restart": {
+          "x": 170,
+          "y": 959,
+          "w": 380,
+          "h": 92
+        },
+        "layout": {
+          "w": 720,
+          "h": 1558,
+          "panel": {
+            "x": 0,
+            "y": 912,
+            "w": 720,
+            "h": 646
+          }
+        }
+      }
+    },
+    {
+      "name": "portrait upgrades: Energy accumulates from kills",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "portrait",
+        "wave": 2,
+        "tick": 1139,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 10,
+        "energy": 20.119999999999997,
+        "bits": 10.059999999999999,
+        "coreHp": 100,
+        "speed": 5,
+        "paused": false,
+        "fps": 60,
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
+      }
+    },
+    {
+      "name": "portrait upgrades: tapping Damage while paused buys a level and spends Energy",
+      "ok": true,
+      "detail": {
+        "s0": 20.119999999999997,
+        "s1": 15.119999999999997,
+        "l0": 0,
+        "l1": 1
+      }
+    },
+    {
+      "name": "portrait upgrades: tapping Damage while running buys on the next tick",
+      "ok": true,
+      "detail": {
+        "r0": {
+          "damage": 1,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "r1": {
+          "damage": 2,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        }
+      }
+    },
+    {
+      "name": "portrait upgrades: DEF tab tap switches rows",
+      "ok": true,
+      "detail": [
+        "health",
+        "regen",
+        "defense",
+        "thorns",
+        "lifesteal",
+        "knockback"
+      ]
+    },
+    {
+      "name": "portrait upgrades: amount toggle ×1 → ×10",
+      "ok": true,
+      "detail": 10
+    },
+    {
+      "name": "portrait upgrades: amount toggle cycles back to ×1",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "name": "portrait upgrades: a locked row shows LAB and buying it does nothing",
+      "ok": true,
+      "detail": {
+        "stat": "lifesteal",
+        "rect": {
+          "x": 18,
+          "y": 1361,
+          "w": 684,
+          "h": 87
+        },
+        "locked": true,
+        "affordable": false,
+        "level": 0
+      }
+    },
+    {
+      "name": "portrait upgrades: holding a row keeps buying",
+      "ok": true,
+      "detail": {
+        "before": 0,
+        "after": 9
+      }
+    },
+    {
+      "name": "portrait upgrades: releasing stops buying",
+      "ok": true,
+      "detail": {
+        "h1": 9,
+        "h2": 9
       }
     },
     {
@@ -214,7 +687,31 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 3
+        "seed": 3,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -224,7 +721,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 47,
+        "tick": 51,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -238,7 +735,31 @@
         "speed": 5,
         "paused": false,
         "fps": 59,
-        "seed": 72668684
+        "seed": 551791549,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -266,16 +787,40 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
-        "seed": 5
+        "fps": 69,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
-      "name": "landscape 1280×720: all 23 texts ≥ 16 px",
+      "name": "landscape 1280×720: all 56 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 23,
+        "count": 56,
         "bad": []
       }
     },
@@ -286,7 +831,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -299,8 +844,32 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
-        "seed": 5
+        "fps": 69,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -310,7 +879,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 3,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -323,8 +892,32 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 67,
-        "seed": 5
+        "fps": 69,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -334,7 +927,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 924,
+        "tick": 926,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -348,7 +941,322 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 5
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: panel shows the ATK tab with the Damage row",
+      "ok": true,
+      "detail": {
+        "tab": "atk",
+        "amount": 1,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 790,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 914,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 1038,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 1162,
+          "y": 230,
+          "w": 96,
+          "h": 44
+        },
+        "rows": [
+          {
+            "stat": "damage",
+            "rect": {
+              "x": 790,
+              "y": 283,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "attackSpeed",
+            "rect": {
+              "x": 790,
+              "y": 353,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "critChance",
+            "rect": {
+              "x": 790,
+              "y": 423,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "critFactor",
+            "rect": {
+              "x": 790,
+              "y": 493,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "range",
+            "rect": {
+              "x": 790,
+              "y": 563,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "multishot",
+            "rect": {
+              "x": 790,
+              "y": 633,
+              "w": 468,
+              "h": 65
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0
+          }
+        ],
+        "restart": {
+          "x": 500,
+          "y": 497,
+          "w": 280,
+          "h": 62
+        },
+        "layout": {
+          "w": 1280,
+          "h": 720,
+          "panel": {
+            "x": 768,
+            "y": 208,
+            "w": 512,
+            "h": 512
+          }
+        }
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: Energy accumulates from kills",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 2,
+        "tick": 1134,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 10,
+        "energy": 20.119999999999997,
+        "bits": 10.059999999999999,
+        "coreHp": 100,
+        "speed": 5,
+        "paused": false,
+        "fps": 60,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: tapping Damage while paused buys a level and spends Energy",
+      "ok": true,
+      "detail": {
+        "s0": 20.119999999999997,
+        "s1": 15.119999999999997,
+        "l0": 0,
+        "l1": 1
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: tapping Damage while running buys on the next tick",
+      "ok": true,
+      "detail": {
+        "r0": {
+          "damage": 1,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "r1": {
+          "damage": 2,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        }
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: DEF tab tap switches rows",
+      "ok": true,
+      "detail": [
+        "health",
+        "regen",
+        "defense",
+        "thorns",
+        "lifesteal",
+        "knockback"
+      ]
+    },
+    {
+      "name": "landscape 1280×720 upgrades: amount toggle ×1 → ×10",
+      "ok": true,
+      "detail": 10
+    },
+    {
+      "name": "landscape 1280×720 upgrades: amount toggle cycles back to ×1",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "name": "landscape 1280×720 upgrades: a locked row shows LAB and buying it does nothing",
+      "ok": true,
+      "detail": {
+        "stat": "lifesteal",
+        "rect": {
+          "x": 790,
+          "y": 563,
+          "w": 468,
+          "h": 65
+        },
+        "locked": true,
+        "affordable": false,
+        "level": 0
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: holding a row keeps buying",
+      "ok": true,
+      "detail": {
+        "before": 0,
+        "after": 9
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: releasing stops buying",
+      "ok": true,
+      "detail": {
+        "h1": 9,
+        "h2": 9
       }
     },
     {
@@ -377,15 +1285,39 @@
         "speed": 1,
         "paused": false,
         "fps": 66,
-        "seed": 5
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
-      "name": "landscape 907×510: all 23 texts ≥ 16 px",
+      "name": "landscape 907×510: all 56 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 23,
+        "count": 56,
         "bad": []
       }
     },
@@ -396,7 +1328,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -410,7 +1342,31 @@
         "speed": 1,
         "paused": false,
         "fps": 66,
-        "seed": 5
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -420,7 +1376,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -434,7 +1390,31 @@
         "speed": 2,
         "paused": false,
         "fps": 66,
-        "seed": 5
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -444,7 +1424,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 924,
+        "tick": 925,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -458,7 +1438,322 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 5
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: panel shows the ATK tab with the Damage row",
+      "ok": true,
+      "detail": {
+        "tab": "atk",
+        "amount": 1,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 790,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 914,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 1038,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 1162,
+          "y": 230,
+          "w": 96,
+          "h": 44
+        },
+        "rows": [
+          {
+            "stat": "damage",
+            "rect": {
+              "x": 790,
+              "y": 283,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "attackSpeed",
+            "rect": {
+              "x": 790,
+              "y": 353,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "critChance",
+            "rect": {
+              "x": 790,
+              "y": 423,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "critFactor",
+            "rect": {
+              "x": 790,
+              "y": 493,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "range",
+            "rect": {
+              "x": 790,
+              "y": 563,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0
+          },
+          {
+            "stat": "multishot",
+            "rect": {
+              "x": 790,
+              "y": 633,
+              "w": 468,
+              "h": 65
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0
+          }
+        ],
+        "restart": {
+          "x": 500,
+          "y": 497,
+          "w": 280,
+          "h": 62
+        },
+        "layout": {
+          "w": 1280,
+          "h": 720,
+          "panel": {
+            "x": 768,
+            "y": 208,
+            "w": 512,
+            "h": 512
+          }
+        }
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: Energy accumulates from kills",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 2,
+        "tick": 1135,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 10,
+        "energy": 20.119999999999997,
+        "bits": 10.059999999999999,
+        "coreHp": 100,
+        "speed": 5,
+        "paused": false,
+        "fps": 60,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: tapping Damage while paused buys a level and spends Energy",
+      "ok": true,
+      "detail": {
+        "s0": 20.119999999999997,
+        "s1": 15.119999999999997,
+        "l0": 0,
+        "l1": 1
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: tapping Damage while running buys on the next tick",
+      "ok": true,
+      "detail": {
+        "r0": {
+          "damage": 1,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "r1": {
+          "damage": 2,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        }
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: DEF tab tap switches rows",
+      "ok": true,
+      "detail": [
+        "health",
+        "regen",
+        "defense",
+        "thorns",
+        "lifesteal",
+        "knockback"
+      ]
+    },
+    {
+      "name": "landscape 907×510 upgrades: amount toggle ×1 → ×10",
+      "ok": true,
+      "detail": 10
+    },
+    {
+      "name": "landscape 907×510 upgrades: amount toggle cycles back to ×1",
+      "ok": true,
+      "detail": 1
+    },
+    {
+      "name": "landscape 907×510 upgrades: a locked row shows LAB and buying it does nothing",
+      "ok": true,
+      "detail": {
+        "stat": "lifesteal",
+        "rect": {
+          "x": 790,
+          "y": 563,
+          "w": 468,
+          "h": 65
+        },
+        "locked": true,
+        "affordable": false,
+        "level": 0
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: holding a row keeps buying",
+      "ok": true,
+      "detail": {
+        "before": 0,
+        "after": 9
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: releasing stops buying",
+      "ok": true,
+      "detail": {
+        "h1": 9,
+        "h2": 9
       }
     },
     {
@@ -487,7 +1782,31 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 3
+        "seed": 3,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
@@ -497,27 +1816,51 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1132,
+        "tick": 1134,
         "phase": "wave",
         "enemies": 200,
         "visible": 200,
-        "projectiles": 0,
+        "projectiles": 1,
         "dead": false,
         "overlay": false,
         "kills": 114,
         "energy": 228,
         "bits": 114,
-        "coreHp": 999999985260.39,
+        "coreHp": 999999985238.0034,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 708241128
+        "seed": 320631687,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00318953831433
+      "detail": 60.00199342170836
     },
     {
       "name": "stress desktop: no console errors",
@@ -539,13 +1882,37 @@
         "dead": false,
         "overlay": false,
         "kills": 114,
-        "energy": 228.06,
+        "energy": 228.04,
         "bits": 114.02,
-        "coreHp": 999999985255.2135,
+        "coreHp": 999999985261.2135,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1434514947
+        "seed": 756737644,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0
       }
     },
     {

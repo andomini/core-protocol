@@ -22,6 +22,11 @@ export class DeathOverlay {
   private readonly ghostA: Phaser.GameObjects.Text;
   private readonly ghostB: Phaser.GameObjects.Text;
   private readonly restart: Button;
+
+  /** RESTART button rect (logical px), for the UI smoke. */
+  restartRect(): { x: number; y: number; w: number; h: number } {
+    return this.restart.r;
+  }
   private readonly blocker: Phaser.GameObjects.Zone;
   visible = false;
   private shownAt = 0;

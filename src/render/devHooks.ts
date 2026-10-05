@@ -2,7 +2,8 @@
 // import.meta.env.DEV is true, so production builds contain none of it (checked by grepping dist/).
 
 import type Phaser from 'phaser';
-import type { EnemyKind } from '../sim/data';
+import type { BuyCount } from '../sim/commands';
+import type { EnemyKind, StatId, TabId } from '../sim/data';
 import type { BattleScene } from './scenes/BattleScene';
 
 export function installDevHooks(game: Phaser.Game): void {
@@ -36,7 +37,26 @@ export function installDevHooks(game: Phaser.Game): void {
         paused: b.paused,
         fps: Math.round(b.avgFps()),
         seed: w.seed,
+        levels: { ...w.levels },
+        unlocked: [...w.unlocked],
+        tab: b.upgrades.tab,
+        amount: b.upgrades.amount,
+        commands: b.session.log.length,
       };
+    },
+    /** Upgrade panel and overlay geometry (logical px) for real taps in the smoke. */
+    ui: () => {
+      const b = battle();
+      if (!b) return null;
+      return { ...b.upgrades.info(), restart: b.death.restartRect(), layout: { w: b.L.w, h: b.L.h, panel: b.L.panel } };
+    },
+    setTab: (t: TabId) => battle()?.upgrades.setTab(t),
+    /** Issues a buy command exactly like a row tap would. */
+    buy: (stat: StatId, count: BuyCount = 1) => battle()?.command({ type: 'buy', stat, count }),
+    /** Dev cheat for manual testing: adds Energy outside the command log (breaks replay of this run). */
+    give: (energy: number) => {
+      const b = battle();
+      if (b) b.session.world.energy += energy;
     },
     setSpeed: (n: number) => battle()?.setSpeed(n),
     pause: (on = true) => battle()?.setPaused(on),

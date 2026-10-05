@@ -1,11 +1,15 @@
-// The battle: a RunSession stepped by a FixedLoop, drawn by WorldView + Effects, with HUD and death overlay.
+// The battle: a RunSession stepped by a FixedLoop, drawn by WorldView + Effects, with HUD, the upgrade
+// panel and the death overlay.
 
 import Phaser from 'phaser';
-import { DEFAULT_DATA, type EnemyKind, type GameData } from '../../sim/data';
+import type { Command } from '../../sim/commands';
+import { DEFAULT_DATA, type EnemyKind, type GameData, STAT_IDS } from '../../sim/data';
+import type { RunOptions } from '../../sim/state';
 import type { SimEvent } from '../../sim/events';
 import { DeathOverlay } from '../../ui/DeathOverlay';
 import { Hud } from '../../ui/Hud';
 import { text } from '../../ui/kit';
+import { UpgradePanel } from '../../ui/UpgradePanel';
 import { circleInRect, type Layout } from '../../ui/layout';
 import battleJson from '../../data/battle.json';
 import { battleData, type DevFlags, readFlags, stressTuning } from '../devFlags';
@@ -34,6 +38,7 @@ export class BattleScene extends Phaser.Scene {
   view!: WorldView;
   fx!: Effects;
   hud!: Hud;
+  upgrades!: UpgradePanel;
   death!: DeathOverlay;
   loop!: FixedLoop;
   speed = 1;
@@ -55,11 +60,17 @@ export class BattleScene extends Phaser.Scene {
     this.flags = readFlags(location.search);
     this.gd = battleData(DEFAULT_DATA, this.flags);
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
-    this.session = new RunSession(this.gd, { seed: this.flags.seed ?? newSeed(), tier: 1 });
+    this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
     this.loop = new FixedLoop(this.gd.config.tickHz, MAX_TICKS_PER_FRAME);
     this.view = new WorldView(this, this.L, () => this.session);
     this.fx = new Effects(this);
     this.hud = new Hud(this, this.L, this.gd, { onSpeed: () => this.cycleSpeed(), onPause: () => this.setPaused(!this.paused) });
+    this.upgrades = new UpgradePanel(this, this.L, this.gd, {
+      world: () => this.session.world,
+      stats: () => this.session.stats,
+      command: (cmd) => this.command(cmd),
+      pending: () => this.session.hasPending,
+    });
     this.death = new DeathOverlay(this, this.L, () => this.restart());
     const a = this.L.arena;
     this.banner = text(this, a.x + a.w / 2, a.y + a.h * 0.18, '', this.L.o === 'portrait' ? 44 : 34, { font: 'title', weight: '900', glow: '#22e5ff', blur: 16 })
@@ -78,6 +89,17 @@ export class BattleScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.HIDDEN, () => this.loop.reset());
   }
 
+  /** First-run options: nothing unlocked (labs come in M4) unless ?unlockall=1 (dev). */
+  private runOptions(seed: number): RunOptions {
+    return { seed, tier: 1, unlocked: this.flags.unlockAll ? [...STAT_IDS] : [] };
+  }
+
+  /** A player command: queued for the next tick, or applied at once while the sim is not stepping. */
+  command(cmd: Command): void {
+    this.session.queue(cmd);
+    if (this.paused || this.session.world.dead) this.session.applyPendingNow(this.onEvent);
+  }
+
   cycleSpeed(): void {
     const i = SPEEDS.indexOf(this.speed);
     this.setSpeed(SPEEDS[(i + 1) % SPEEDS.length]!);
@@ -93,10 +115,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   restart(): void {
-    this.session.restart({ seed: newSeed(), tier: 1 });
+    this.session.restart(this.runOptions(newSeed()));
     this.view.reset();
     this.fx.reset();
     this.hud.reset();
+    this.upgrades.reset();
     this.loop.reset();
     this.death.hide();
     this.paused = false;
@@ -140,6 +163,10 @@ export class BattleScene extends Phaser.Scene {
 
   private readonly onEvent = (e: SimEvent): void => {
     const now = this.time.now;
+    if (e.type === 'buy' || e.type === 'buyRejected') {
+      this.upgrades.onEvent(e);
+      return;
+    }
     const L = this.L;
     const coreR = this.gd.core.radius * L.scale * 1.15;
     switch (e.type) {
@@ -194,6 +221,7 @@ export class BattleScene extends Phaser.Scene {
     this.view.draw(alpha, time);
     this.fx.update();
     this.hud.update(this.session.world, this.session.stats, this.speed, this.paused, time, delta);
+    this.upgrades.update(time);
     if (this.bannerUntil > 0) {
       const left = this.bannerUntil - time;
       if (left <= 0) {

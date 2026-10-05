@@ -1,4 +1,4 @@
-// UI smoke for the M2a battle view. Starts its own Vite dev server (or uses UI_BASE) and drives the
+// UI smoke for the battle view (M2a) and the upgrade panel (M2b). Starts its own Vite dev server (or uses UI_BASE) and drives the
 // dev-only window.__cp hooks. Usage: npm run ui [-- --only portrait|landscape|stress]
 // Screenshots: reports/screens/*.jpg (committed), full PNGs in .superpowers/screens/ (for review).
 import { writeFileSync } from 'node:fs';
@@ -75,6 +75,83 @@ async function bootChecks(h, label, orientation) {
   return vis;
 }
 
+const centre = (r) => [r.x + r.w / 2, r.y + r.h / 2];
+
+/**
+ * The upgrade panel through real taps: earn Energy at ×5, then tap the Damage row while paused
+ * (applied at once) and while running (queued for the next tick); level +1 and Energy down each time.
+ * Also: tab switching, the ×1/×10/MAX toggle, a locked row (no-op) and hold-to-repeat.
+ */
+async function upgradeChecks(h, label) {
+  let ui = await h.call('ui');
+  const dmg = ui.rows.find((r) => r.stat === 'damage');
+  check(results, `${label}: panel shows the ATK tab with the Damage row`, ui.tab === 'atk' && dmg && ui.rows.length === 6, ui);
+  await h.call('setSpeed', 5);
+  const rich = await h.waitFor((s) => s.energy >= 20, 20000, 100);
+  check(results, `${label}: Energy accumulates from kills`, rich.ok, rich.s);
+
+  // Paused: the tap is applied immediately.
+  await h.call('pause', true);
+  const s0 = await h.state();
+  await h.tapLogical(...centre(dmg.rect));
+  await h.p.waitForTimeout(120);
+  const s1 = await h.state();
+  check(results, `${label}: tapping Damage while paused buys a level and spends Energy`, s1.levels.damage === s0.levels.damage + 1 && s1.energy < s0.energy && s1.tick === s0.tick, { s0: s0.energy, s1: s1.energy, l0: s0.levels.damage, l1: s1.levels.damage });
+  await h.shot(`${label.replace(/ upgrades$/, '').replace(/[^a-z0-9]+/gi, '-')}-upgrades`);
+
+  // Running at ×1: queued, applied at the start of the next tick.
+  await h.call('setSpeed', 1);
+  await h.call('pause', false);
+  const r0 = await h.state();
+  if (r0.energy >= 6) {
+    await h.tapLogical(...centre(dmg.rect));
+    const r1 = await h.waitFor((s) => s.levels.damage === r0.levels.damage + 1, 2000, 30);
+    check(results, `${label}: tapping Damage while running buys on the next tick`, r1.ok && r1.s.commands === r0.commands + 1, { r0: r0.levels, r1: r1.s.levels });
+  }
+  await h.call('pause', true);
+
+  // Tabs and the amount toggle.
+  await h.tapLogical(...centre(ui.tabs.find((t) => t.tab === 'def').rect));
+  ui = await h.call('ui');
+  check(results, `${label}: DEF tab tap switches rows`, ui.tab === 'def' && ui.rows[0].stat === 'health', ui.rows.map((r) => r.stat));
+  await h.tapLogical(...centre(ui.amountRect));
+  ui = await h.call('ui');
+  check(results, `${label}: amount toggle ×1 → ×10`, ui.amount === 10, ui.amount);
+  await h.tapLogical(...centre(ui.amountRect));
+  await h.tapLogical(...centre(ui.amountRect));
+  ui = await h.call('ui');
+  check(results, `${label}: amount toggle cycles back to ×1`, ui.amount === 1, ui.amount);
+
+  // A locked row (Lifesteal on DEF) is a no-op.
+  const ls = ui.rows.find((r) => r.stat === 'lifesteal');
+  const l0 = await h.state();
+  await h.tapLogical(...centre(ls.rect));
+  await h.p.waitForTimeout(100);
+  const l1 = await h.state();
+  check(results, `${label}: a locked row shows LAB and buying it does nothing`, ls.locked && l1.levels.lifesteal === 0 && l1.energy === l0.energy, ls);
+
+  // Hold-to-repeat on Health (dev Energy grant so the hold has something to spend).
+  await h.call('give', 5000);
+  const hrow = ui.rows.find((r) => r.stat === 'health');
+  const h0 = await h.state();
+  const box = await h.p.evaluate(() => {
+    const r = document.querySelector('canvas').getBoundingClientRect();
+    return { x: r.x, y: r.y, s: r.width / window.__cp.game.registry.get('layout').w };
+  });
+  const [hx, hy] = centre(hrow.rect);
+  await h.p.mouse.move(box.x + hx * box.s, box.y + hy * box.s);
+  await h.p.mouse.down();
+  await h.p.waitForTimeout(1200);
+  await h.p.mouse.up();
+  const h1 = await h.state();
+  check(results, `${label}: holding a row keeps buying`, h1.levels.health >= h0.levels.health + 5, { before: h0.levels.health, after: h1.levels.health });
+  await h.p.waitForTimeout(400);
+  const h2 = await h.state();
+  check(results, `${label}: releasing stops buying`, h2.levels.health === h1.levels.health, { h1: h1.levels.health, h2: h2.levels.health });
+  await h.tapLogical(...centre(ui.tabs.find((t) => t.tab === 'atk').rect));
+  await h.call('pause', false);
+}
+
 const scenarios = {
   async portrait() {
     const h = await open(browser, srv.base, 'phone', '?seed=7');
@@ -96,6 +173,9 @@ const scenarios = {
     await h.call('setSpeed', 5);
     const w = await h.waitFor((x) => x.wave >= 2, 15000, 200);
     check(results, 'portrait: the wave counter advances when sped up', w.ok, w.s);
+    const lay = await h.call('ui');
+    check(results, 'portrait 390×844: the logical height adapts (no letterbox)', lay.layout.h === 1558, lay.layout);
+    await upgradeChecks(h, 'portrait upgrades');
     check(results, 'portrait: no console errors', h.errors.length === 0, h.errors);
     await h.close();
 
@@ -111,8 +191,7 @@ const scenarios = {
     check(results, 'portrait: a weak core dies and the death overlay appears', dead.ok && dead.s.dead, dead.s);
     await d.p.waitForTimeout(500);
     await d.shot('portrait-death');
-    // RESTART button centre in the portrait death card.
-    await d.tapLogical(360, 866);
+    await d.tapLogical(...centre((await d.call('ui')).restart));
     await d.p.waitForTimeout(300);
     const r = await d.state();
     check(results, 'portrait: RESTART starts a new run with a new seed', !r.dead && !r.overlay && r.seed !== dead.s.seed && r.tick < 60, r);
@@ -130,6 +209,7 @@ const scenarios = {
       await h.call('setSpeed', 5);
       const w = await h.waitFor((x) => x.wave >= 2, 15000, 200);
       check(results, `${label}: the wave counter advances when sped up`, w.ok, w.s);
+      await upgradeChecks(h, `${label} upgrades`);
       check(results, `${label}: no console errors`, h.errors.length === 0, h.errors);
       await h.close();
     }

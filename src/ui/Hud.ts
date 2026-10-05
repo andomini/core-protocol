@@ -1,6 +1,6 @@
 // Battle HUD: wave number + wave/break timer bar, core HP bar with numbers, Energy, speed toggle, pause.
 // Portrait: a strip above the arena. Landscape: the top of the right column.
-// Also draws the reserved (empty) upgrade panel frame for M2b.
+// Also paints the opaque backing under the upgrade panel (src/ui/UpgradePanel.ts draws the panel).
 
 import Phaser from 'phaser';
 import { BG, BREAK, CYAN, ENERGY_CSS, HP_LOW, HP_OK, PANEL_FILL, TEXT_DIM, WHITE } from '../render/palette';
@@ -85,8 +85,8 @@ export class Hud {
   private hitUntil = 0;
 
   constructor(
-    private readonly scene: Phaser.Scene,
-    private readonly L: Layout,
+    scene: Phaser.Scene,
+    L: Layout,
     private readonly data: GameData,
     h: HudHandlers,
   ) {
@@ -105,7 +105,6 @@ export class Hud {
       bg.lineStyle(2, CYAN, 0.7).lineBetween(L.arena.w + 1, 0, L.arena.w + 1, L.h);
       panel(scene, { x: L.hud.x + 14, y: 12, w: L.hud.w - 28, h: L.hud.h - 18 }, D - 0.5, { fillA: 0.6, cut: 16, blur: 8 });
     }
-    this.drawPanel();
 
     this.waveText = text(scene, g.wave[0], g.wave[1], 'WAVE 1', g.wave[2], { font: 'title', weight: '900', glow: '#22e5ff', blur: 12 }).setDepth(D);
     this.secsText = text(scene, g.secs[0], g.secs[1], '', L.minFont, { color: TEXT_DIM }).setDepth(D);
@@ -122,28 +121,6 @@ export class Hud {
       .setOrigin(0.5)
       .setDepth(DEPTH.overlay - 1)
       .setVisible(false);
-  }
-
-  /** The reserved upgrade panel: an empty neon frame for M2b. */
-  private drawPanel(): void {
-    const L = this.L;
-    const p = L.panel;
-    const m = L.o === 'portrait' ? 20 : 14;
-    const r = { x: p.x + m, y: p.y + m, w: p.w - m * 2, h: p.h - m * 2 };
-    panel(this.scene, r, DEPTH.hud - 0.5, { fillA: 0.55, cut: 22, blur: 10, edge: 0x1f6bff });
-    const g = this.scene.add.graphics().setDepth(DEPTH.hud - 0.4);
-    // Faint diagonal hatching: "reserved" without looking broken.
-    g.lineStyle(1, 0x1f6bff, 0.08);
-    for (let x = r.x - r.h; x < r.x + r.w; x += 22) {
-      const x0 = Math.max(r.x, x);
-      const y0 = r.y + (x0 - x);
-      const x1 = Math.min(r.x + r.w, x + r.h);
-      const y1 = r.y + (x1 - x);
-      g.lineBetween(x0, y0, x1, y1);
-    }
-    text(this.scene, r.x + r.w / 2, r.y + r.h / 2, 'UPGRADES — M2b', L.o === 'portrait' ? 32 : 22, { font: 'title', weight: '700', color: '#3f6fd8', glow: '#1f6bff', blur: 10 })
-      .setOrigin(0.5)
-      .setDepth(DEPTH.hud);
   }
 
   coreHit(now: number): void {

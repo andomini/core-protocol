@@ -3,9 +3,9 @@
 // Images using these textures are scaled by ps() and drawn with ADD blending.
 
 import Phaser from 'phaser';
-import type { EnemyKind, GameData } from '../sim/data';
+import { type EnemyKind, type GameData, STAT_IDS, type StatId } from '../sim/data';
 import {
-  BITS, CORE, CYAN, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, PANEL_EDGE, PANEL_FILL, TRACER, WHITE,
+  BITS, CORE, CYAN, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, LOCKED, PANEL_EDGE, PANEL_FILL, TAB_COLOR, TRACER, WHITE,
 } from './palette';
 import { RS } from './resolution';
 
@@ -316,6 +316,193 @@ function icons(scene: Phaser.Scene): void {
   });
 }
 
+/** Strokes an open path as a neon tube: soft bloom, coloured line, white-hot core. */
+function glow(ctx: Ctx, color: number, lw: number, path: () => void, fillA = 0): void {
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.shadowColor = rgba(color, 1);
+  ctx.shadowBlur = 9 * RS;
+  ctx.strokeStyle = rgba(color, 0.35);
+  ctx.lineWidth = lw * 2.6;
+  ctx.beginPath();
+  path();
+  ctx.stroke();
+  if (fillA > 0) {
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = rgba(color, fillA);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 6 * RS;
+  ctx.strokeStyle = rgba(color, 1);
+  ctx.lineWidth = lw;
+  ctx.beginPath();
+  path();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = rgba(WHITE, 0.8);
+  ctx.lineWidth = Math.max(0.8, lw * 0.35);
+  ctx.beginPath();
+  path();
+  ctx.stroke();
+}
+
+/** Icon box for stat glyphs (logical px); glyphs are drawn within ±17 px of the centre (room for glow). */
+export const STAT_ICON = 56;
+
+type Glyph = (ctx: Ctx, c: number, col: number) => void;
+const TAU = Math.PI * 2;
+const bolt = (c: number, s: number): Pt[] => [[c + 3 * s, c - 13 * s], [c - 8 * s, c + 2 * s], [c - 1 * s, c + 2 * s], [c - 3 * s, c + 13 * s], [c + 8 * s, c - 2 * s], [c + 1 * s, c - 2 * s]];
+const diamond = (x: number, y: number, r: number): Pt[] => [[x, y - r], [x + r * 0.8, y], [x, y + r], [x - r * 0.8, y]];
+function polyPath(ctx: Ctx, pts: readonly Pt[], close = true): void {
+  pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+  if (close) ctx.closePath();
+}
+function cross(ctx: Ctx, x: number, y: number, r: number): void {
+  ctx.moveTo(x - r, y);
+  ctx.lineTo(x + r, y);
+  ctx.moveTo(x, y - r);
+  ctx.lineTo(x, y + r);
+}
+
+const GLYPHS: Record<StatId, Glyph> = {
+  damage: (ctx, c, col) => glow(ctx, col, 2.2, () => polyPath(ctx, [[c - 14, c + 14], [c + 4, c - 4], [c + 1, c - 9], [c + 15, c - 15], [c + 9, c - 1], [c + 4, c - 4], [c + 9, c - 1], [c - 9, c + 17]]), 0.25),
+  attackSpeed: (ctx, c, col) =>
+    glow(ctx, col, 2.6, () => {
+      polyPath(ctx, [[c - 14, c - 12], [c - 2, c], [c - 14, c + 12]], false);
+      polyPath(ctx, [[c, c - 12], [c + 12, c], [c, c + 12]], false);
+    }),
+  critChance: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      ctx.arc(c, c, 11, 0, TAU);
+      ctx.moveTo(c + 3, c);
+      ctx.arc(c, c, 3, 0, TAU);
+      ctx.moveTo(c, c - 17);
+      ctx.lineTo(c, c - 7);
+      ctx.moveTo(c, c + 7);
+      ctx.lineTo(c, c + 17);
+      ctx.moveTo(c - 17, c);
+      ctx.lineTo(c - 7, c);
+      ctx.moveTo(c + 7, c);
+      ctx.lineTo(c + 17, c);
+    }),
+  critFactor: (ctx, c, col) => {
+    const pts: Pt[] = [];
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU - Math.PI / 2;
+      const r = i % 2 === 0 ? (i % 4 === 0 ? 17 : 12) : 6;
+      pts.push([c + Math.cos(a) * r, c + Math.sin(a) * r]);
+    }
+    glow(ctx, col, 2, () => polyPath(ctx, pts), 0.3);
+  },
+  range: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      const ox = c - 12;
+      const oy = c + 12;
+      ctx.moveTo(ox + 2, oy);
+      ctx.arc(ox, oy, 2, 0, TAU);
+      for (const r of [11, 19, 27]) {
+        ctx.moveTo(ox + r, oy);
+        ctx.arc(ox, oy, r, 0, -Math.PI / 2, true);
+      }
+    }),
+  multishot: (ctx, c, col) =>
+    glow(ctx, col, 2, () => {
+      polyPath(ctx, diamond(c - 10, c + 6, 7));
+      polyPath(ctx, diamond(c, c - 6, 7));
+      polyPath(ctx, diamond(c + 10, c + 6, 7));
+    }, 0.3),
+  health: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      polyPath(ctx, regular(c, c, 16, 6, Math.PI / 6));
+      cross(ctx, c, c, 7);
+    }, 0.2),
+  regen: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      ctx.arc(c, c, 14, -Math.PI * 0.35, Math.PI * 1.35);
+      polyPath(ctx, [[c + 4, c - 18], [c + 10, c - 12], [c + 3, c - 8]], false);
+      cross(ctx, c, c, 6);
+    }),
+  defense: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => polyPath(ctx, [[c, c - 17], [c + 14, c - 11], [c + 12, c + 4], [c, c + 17], [c - 12, c + 4], [c - 14, c - 11]]), 0.25),
+  thorns: (ctx, c, col) => {
+    const pts: Pt[] = [];
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * TAU;
+      const r = i % 2 === 0 ? 17 : 9;
+      pts.push([c + Math.cos(a) * r, c + Math.sin(a) * r]);
+    }
+    glow(ctx, col, 1.8, () => polyPath(ctx, pts), 0.2);
+  },
+  lifesteal: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      ctx.moveTo(c, c - 17);
+      ctx.bezierCurveTo(c + 6, c - 7, c + 13, c, c + 12, c + 6);
+      ctx.arc(c, c + 6, 12, 0, Math.PI, false);
+      ctx.bezierCurveTo(c - 13, c, c - 6, c - 7, c, c - 17);
+    }, 0.3),
+  knockback: (ctx, c, col) =>
+    glow(ctx, col, 2.4, () => {
+      ctx.moveTo(c - 15, c - 15);
+      ctx.lineTo(c - 15, c + 15);
+      ctx.moveTo(c - 9, c);
+      ctx.lineTo(c + 15, c);
+      polyPath(ctx, [[c + 6, c - 9], [c + 15, c], [c + 6, c + 9]], false);
+    }),
+  energyBonus: (ctx, c, col) => {
+    glow(ctx, col, 2, () => polyPath(ctx, bolt(c - 3, 1)), 0.3);
+    glow(ctx, WHITE, 2, () => cross(ctx, c + 12, c - 11, 5));
+  },
+  energyPerWave: (ctx, c, col) => {
+    glow(ctx, col, 2, () => polyPath(ctx, bolt(c, 0.85).map(([x, y]) => [x, y - 4] as Pt)), 0.3);
+    glow(ctx, col, 2, () => polyPath(ctx, [[c - 16, c + 15], [c - 8, c + 9], [c, c + 15], [c + 8, c + 9], [c + 16, c + 15]], false));
+  },
+  interest: (ctx, c, col) =>
+    glow(ctx, col, 2.4, () => {
+      ctx.moveTo(c - 4, c - 10);
+      ctx.arc(c - 9, c - 10, 5, 0, TAU);
+      ctx.moveTo(c + 14, c + 10);
+      ctx.arc(c + 9, c + 10, 5, 0, TAU);
+      ctx.moveTo(c + 13, c - 16);
+      ctx.lineTo(c - 13, c + 16);
+    }),
+  bitsPerKill: (ctx, c, col) => {
+    glow(ctx, col, 2.2, () => polyPath(ctx, diamond(c - 2, c + 2, 15)), 0.3);
+    glow(ctx, WHITE, 2, () => cross(ctx, c + 12, c - 11, 5));
+  },
+  bitsPerWave: (ctx, c, col) => {
+    glow(ctx, col, 2, () => {
+      polyPath(ctx, diamond(c - 6, c - 3, 11));
+      polyPath(ctx, diamond(c + 7, c - 3, 11));
+    }, 0.25);
+    glow(ctx, col, 2, () => polyPath(ctx, [[c - 16, c + 15], [c - 8, c + 9], [c, c + 15], [c + 8, c + 9], [c + 16, c + 15]], false));
+  },
+  freeUpgrade: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      polyPath(ctx, chamfer(c - 15, c - 15, 30, 30, 7));
+      polyPath(ctx, [[c - 8, c + 3], [c, c - 6], [c + 8, c + 3]], false);
+      ctx.moveTo(c, c - 6);
+      ctx.lineTo(c, c + 9);
+    }),
+};
+
+/** Stat glyphs (`st_<id>`, tinted by tab) and the padlock for locked rows. */
+function statIcons(scene: Phaser.Scene, data: GameData): void {
+  const c = STAT_ICON / 2;
+  for (const id of STAT_IDS) {
+    const col = TAB_COLOR[data.stats.stats[id].tab];
+    bake(scene, `st_${id}`, STAT_ICON, STAT_ICON, (ctx) => GLYPHS[id](ctx, c, col));
+  }
+  bake(scene, 'ic_lock', STAT_ICON, STAT_ICON, (ctx) =>
+    glow(ctx, LOCKED, 2.2, () => {
+      ctx.moveTo(c - 7, c - 2);
+      ctx.lineTo(c - 7, c - 8);
+      ctx.arc(c, c - 8, 7, Math.PI, 0);
+      ctx.lineTo(c + 7, c - 2);
+      polyPath(ctx, [[c - 11, c - 2], [c + 11, c - 2], [c + 11, c + 14], [c - 11, c + 14]]);
+    }, 0.25),
+  );
+}
+
 /** Chamfered rectangle outline points (cut corners: top-left and bottom-right). */
 export function chamfer(x: number, y: number, w: number, h: number, cut: number): Pt[] {
   return [[x + cut, y], [x + w, y], [x + w, y + h - cut], [x + w - cut, y + h], [x, y + h], [x, y + cut]];
@@ -360,5 +547,6 @@ export function generateTextures(scene: Phaser.Scene, data: GameData): void {
   core(scene, data);
   fx(scene);
   icons(scene);
+  statIcons(scene, data);
 }
 

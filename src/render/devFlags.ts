@@ -3,6 +3,7 @@
 //   ?stress=1  200 enemies kept alive on the ring, a core that cannot die, speed ×5, FPS readout
 //   ?weak=1    a core that dies in wave 1 (death overlay checks)
 //   ?seed=N    fixed run seed
+//   ?unlockall=1  unlock the starred (lab-locked) stats: Multishot, Lifesteal, Interest, Free Upgrade
 
 import devJson from '../data/dev.json';
 import { ENEMY_KINDS, type GameData, validateData } from '../sim/data';
@@ -11,6 +12,7 @@ export interface DevFlags {
   stress: boolean;
   weak: boolean;
   seed: number | null;
+  unlockAll: boolean;
 }
 
 /** Stress-mode knobs, or null outside DEV (keeps dev.json out of production bundles). */
@@ -19,10 +21,15 @@ export function stressTuning(): typeof devJson.stress | null {
 }
 
 export function readFlags(search: string): DevFlags {
-  if (!import.meta.env.DEV) return { stress: false, weak: false, seed: null };
+  if (!import.meta.env.DEV) return { stress: false, weak: false, seed: null, unlockAll: false };
   const q = new URLSearchParams(search);
   const seed = q.get('seed');
-  return { stress: q.get('stress') === '1', weak: q.get('weak') === '1', seed: seed !== null && /^-?\d+$/.test(seed) ? Number(seed) : null };
+  return {
+    stress: q.get('stress') === '1',
+    weak: q.get('weak') === '1',
+    seed: seed !== null && /^-?\d+$/.test(seed) ? Number(seed) : null,
+    unlockAll: q.get('unlockall') === '1',
+  };
 }
 
 /** The data a battle runs on: the defaults, or a patched dev copy. */
