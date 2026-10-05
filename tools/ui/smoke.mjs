@@ -56,7 +56,8 @@ function measureFps(h, ms) {
 /** Every Text object in the Battle scene (HUD, banners, hidden death overlay) is at least the layout minimum. */
 async function minTextCheck(h, label) {
   const r = await h.p.evaluate(() => {
-    const scene = window.__cp.game.scene.getScene('Battle');
+    const g = window.__cp.game.scene;
+    const scene = g.isActive('Battle') ? g.getScene('Battle') : g.getScene('Home');
     const min = window.__cp.game.registry.get('layout').minFont;
     const sizes = scene.children.list.filter((o) => o.type === 'Text').map((t) => ({ s: parseFloat(t.style.fontSize), text: t.text }));
     return { min, count: sizes.length, bad: sizes.filter((x) => !(x.s >= min)) };
@@ -524,6 +525,12 @@ const scenarios = {
       await h.p.waitForTimeout(500);
       const sh = await h.state();
       check(results, `${label} meta: HOME opens the home screen`, sh.scene !== 'Battle', sh);
+      // The first run's starter cards are revealed on Home: close the reveal.
+      const okR = await h.p.evaluate(() => window.__cp.game.scene.getScene('Home').modalButtons[0]?.r ?? null);
+      if (okR) {
+        await h.tapLogical(...centre(okR));
+        await h.p.waitForTimeout(200);
+      }
       // Workshop: buy Damage with the Bits we have.
       await h.call('meta', { bits: 5000 });
       await h.call('homeTab', 'workshop');
@@ -562,6 +569,50 @@ const scenarios = {
       const c = await h.state();
       check(results, `${label} meta: CONTINUE resumes the saved run`, c.wave === w2.s.wave || c.wave === w2.s.wave + 1, { saved: w2.s.wave, now: c.wave });
       check(results, `${label} meta: no console errors`, h.errors.length === 0, h.errors);
+      await h.close();
+    }
+  },
+
+  async cards() {
+    for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
+      const h = await open(browser, srv.base, device, '?weak=1&seed=4');
+      await h.call('setSpeed', 5);
+      await h.waitFor((x) => x.overlay, 25000, 100);
+      const m1 = await h.call('meta');
+      check(results, `${label} cards: the first death grants 2 starter cards of different tags, equipped`, m1.starterGiven && m1.loadout.length === 2 && Object.keys(m1.cards).length === 2, { cards: m1.cards, loadout: m1.loadout });
+      await h.tapLogical(...centre((await h.call('ui')).home));
+      await h.p.waitForTimeout(700);
+      const modal = await h.p.evaluate(() => {
+        const sc = window.__cp.game.scene.getScene('Home');
+        return { n: sc.modal.length, ok: sc.modalButtons[0]?.r ?? null, tabs: sc.tabButtons.map((b) => b.label.text) };
+      });
+      check(results, `${label} cards: Home reveals the starter cards; the CARDS tab exists`, modal.n > 0 && modal.ok !== null && modal.tabs.includes('CARDS'), modal);
+      await h.shot(`starter-${label}`);
+      await h.tapLogical(...centre(modal.ok));
+      await h.p.waitForTimeout(200);
+      await h.call('meta', { keys: 30 });
+      await h.call('homeTab', 'cards');
+      await h.p.waitForTimeout(300);
+      const packBtn = await h.p.evaluate(() => window.__cp.game.scene.getScene('Home').buttons.find((b) => /PACK · /.test(b.label.text)).r);
+      await h.tapLogical(...centre(packBtn));
+      await h.p.waitForTimeout(800);
+      const m2 = await h.call('meta');
+      const copies = Object.values(m2.cards).reduce((a, b) => a + b, 0);
+      check(results, `${label} cards: OPEN PACK spends 10 Keys for 3 cards`, m2.keys === 20 && copies === 5 && m2.packs === 1, { keys: m2.keys, copies });
+      await h.shot(`pack-${label}`);
+      const ok2 = await h.p.evaluate(() => window.__cp.game.scene.getScene('Home').modalButtons[0].r);
+      await h.tapLogical(...centre(ok2));
+      await h.p.waitForTimeout(200);
+      await minTextCheck(h, `${label} cards tab`);
+      await h.shot(`cards-${label}`);
+      await h.call('goto', 'Battle', { mode: 'new', tier: 1 });
+      await h.p.waitForFunction(() => window.__cp.ready() && window.__cp.state().scene === 'Battle', null, { timeout: 5000 });
+      const run = await h.p.evaluate(() => {
+        const w = window.__cp.game.scene.getScene('Battle').session.world;
+        return { tags: w.cardTags, cards: w.cards.map((c) => c.id), sets: w.setTiers };
+      });
+      check(results, `${label} cards: the equipped cards reach the run (tags count toward sets)`, run.tags.length === 2, run);
+      check(results, `${label} cards: no console errors`, h.errors.length === 0, h.errors);
       await h.close();
     }
   },

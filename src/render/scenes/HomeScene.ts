@@ -74,8 +74,10 @@ export class HomeScene extends Phaser.Scene {
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
     this.drawBackdrop();
     this.drawTopBar();
+    // Five tabs do not fit full names on a phone: short labels there.
+    const SHORT: Record<string, string> = { battle: 'RUN', workshop: 'SHOP', labs: 'LABS', cards: 'CARDS', settings: 'SETUP' };
     TABS.forEach((t, i) => {
-      const b = new Button(this, this.G.tabs[i]!, t.label, this.G.font, 5, () => this.setTab(t.id), { font: 'ui', cut: 12, blur: 10 });
+      const b = new Button(this, this.G.tabs[i]!, this.L.o === 'portrait' && TABS.length > 4 ? SHORT[t.id]! : t.label, this.G.font, 5, () => this.setTab(t.id), { font: 'ui', cut: 12, blur: 10 });
       this.tabButtons.push(b);
     });
     this.refresh();
@@ -517,7 +519,10 @@ export class HomeScene extends Phaser.Scene {
       const fr = panel(this, r, D + 0.1, { edge: RARITY_COLOR[def.rarity], fill: PANEL_FILL, fillA: 0.97, cut: 16, blur: def.rarity === 'common' ? 6 : 18, lw: def.rarity === 'epic' ? 3.5 : 2.5 });
       const g = this.add.graphics().setDepth(D + 0.2);
       g.fillStyle(col, 0.12).fillCircle(r.x + (portrait ? 80 : r.w / 2), r.y + (portrait ? r.h / 2 : 70), 44);
-      if (def.tag) drawTagIcon(g, def.tag, r.x + (portrait ? 80 : r.w / 2), r.y + (portrait ? r.h / 2 : 70), 46, col);
+      const gx = r.x + (portrait ? 80 : r.w / 2);
+      const gy2 = r.y + (portrait ? r.h / 2 : 70);
+      if (def.tag) drawTagIcon(g, def.tag, gx, gy2, 46, col);
+      else g.lineStyle(4, col, 0.9).strokeRoundedRect(gx - 16, gy2 - 22, 32, 44, 6);
       const tx = portrait ? r.x + 150 : r.x + r.w / 2;
       const ox = portrait ? 0 : 0.5;
       const stars = starsFor(services.meta.meta.cards[pc.id] ?? 0);
