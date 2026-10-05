@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node tools/postbuild.mjs",
     "build:crazygames": "VITE_PORTAL=crazygames npm run build",
     "build:poki": "VITE_PORTAL=poki npm run build",
     "preview": "vite preview",
@@ -15,7 +15,12 @@
     "sim:smoke": "tsx tools/sim/smoke.ts",
     "ui": "node tools/ui/smoke.mjs",
     "sim:balance": "tsx tools/sim/balance.ts",
-    "replay:record": "tsx tools/sim/record-replay.ts"
+    "replay:record": "tsx tools/sim/record-replay.ts",
+    "build:local": "VITE_PORTAL=local npm run build",
+    "build:all": "npm run build:local && npm run build:crazygames && npm run build:poki",
+    "package": "npm run build:all && node tools/package.mjs",
+    "ui:portal-build": "node tools/ui/portal-check.mjs",
+    "telemetry:report": "tsx tools/telemetry-report/report.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"

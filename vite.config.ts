@@ -30,7 +30,11 @@ export default defineConfig(({ mode }) => {
   return {
     // Relative paths: portals serve the build from arbitrary sub-paths.
     base: './',
-    define: { __PORTAL__: JSON.stringify(portal) },
+    define: {
+      __PORTAL__: JSON.stringify(portal),
+      // Telemetry build tag: portal + build time (UTC, minutes).
+      __BUILD__: JSON.stringify(`${portal}-${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}`),
+    },
     plugins: [portalHtml(portal)],
     server: { host: true, port: 5173 },
     build: {

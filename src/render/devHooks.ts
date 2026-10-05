@@ -2,11 +2,21 @@
 // import.meta.env.DEV is true, so production builds contain none of it (checked by grepping dist/).
 
 import type Phaser from 'phaser';
+import type { RewardedPlacement } from '../portal/ads';
+import { services } from '../services';
 import type { BuyCount } from '../sim/commands';
 import type { EnemyKind, StatId, TabId } from '../sim/data';
 import type { BattleScene } from './scenes/BattleScene';
 
 export function installDevHooks(game: Phaser.Game): void {
+  const portalState = () => ({
+    portal: services.portal.name,
+    adRunning: services.ads.running,
+    adAudioMuted: services.guard.isAdAudioMuted,
+    soundMuted: game.sound.mute,
+    gameplay: services.guard.isPlaying,
+    adsAvailable: services.ads.available,
+  });
   const battle = (): BattleScene | null => {
     const s = game.scene.getScene('Battle') as unknown as BattleScene | null;
     return s && s.sys.isActive() ? s : null;
@@ -16,7 +26,7 @@ export function installDevHooks(game: Phaser.Game): void {
     ready: () => battle() !== null && battle()!.session !== undefined,
     state: () => {
       const b = battle();
-      if (!b) return { scene: game.scene.getScenes(true).map((s) => s.sys.settings.key).join(',') };
+      if (!b) return { scene: game.scene.getScenes(true).map((s) => s.sys.settings.key).join(','), ...portalState() };
       const w = b.session.world;
       return {
         scene: 'Battle',
@@ -42,6 +52,8 @@ export function installDevHooks(game: Phaser.Game): void {
         tab: b.upgrades.tab,
         amount: b.upgrades.amount,
         commands: b.session.log.length,
+        ...portalState(),
+        restarting: b.life.isRestarting,
       };
     },
     /** Upgrade panel and overlay geometry (logical px) for real taps in the smoke. */
@@ -62,5 +74,13 @@ export function installDevHooks(game: Phaser.Game): void {
     pause: (on = true) => battle()?.setPaused(on),
     spawn: (kind: EnemyKind, n = 1, dir?: number) => battle()?.spawn(kind, n, dir),
     restart: () => battle()?.restart(),
+    /** The RESTART button path (midgame ad offer first). */
+    requestRestart: () => {
+      const b = battle();
+      if (b) void b.life.requestRestart(() => b.restart());
+    },
+    /** A rewarded ad through the real service (toast on failure); resolves true if it completed. */
+    rewarded: (placement: RewardedPlacement) => services.ads.rewarded(placement),
+    telemetry: () => services.telemetry.all(),
   };
 }
