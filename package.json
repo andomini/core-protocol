@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "gen:directions": "tsx tools/gen-directions.ts"
+    "gen:directions": "tsx tools/gen-directions.ts",
+    "sim:smoke": "tsx tools/sim/smoke.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"
