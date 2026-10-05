@@ -8,6 +8,7 @@ import { ps } from '../render/resolution';
 import { DEPTH } from '../render/WorldView';
 import type { GameData } from '../sim/data';
 import type { World } from '../sim/state';
+import type { CoreStats } from '../sim/stats';
 import { pauseTicks, waveTicks } from '../sim/waves';
 import { formatNum } from './format';
 import { Button, panel, text } from './kit';
@@ -154,7 +155,7 @@ export class Hud {
     this.hpShown = 1;
   }
 
-  update(w: World, speed: number, paused: boolean, now: number, dt: number): void {
+  update(w: World, st: CoreStats, speed: number, paused: boolean, now: number, dt: number): void {
     const L = this.last;
     if (w.wave !== L.wave) {
       L.wave = w.wave;
@@ -170,7 +171,7 @@ export class Hud {
     if (secs !== L.secs) this.secsText.setText((L.secs = secs));
     const energy = formatNum(w.energy);
     if (energy !== L.energy) this.energyText.setText((L.energy = energy));
-    const hp = `${formatNum(Math.ceil(w.core.hp))} / ${formatNum(w.core.maxHp)}`;
+    const hp = `${formatNum(Math.ceil(w.core.hp))} / ${formatNum(st.health)}`;
     if (hp !== L.hp) this.hpText.setText((L.hp = hp));
     if (speed !== L.speed) {
       L.speed = speed;
@@ -193,7 +194,7 @@ export class Hud {
     g.fillStyle(tc, 1).fillRect(t.x, t.y, t.w * frac, t.h);
     g.fillStyle(WHITE, 0.9).fillRect(t.x + t.w * frac - 3, t.y - 2, 3, t.h + 4);
 
-    const target = Math.max(0, w.core.hp / w.core.maxHp);
+    const target = Math.max(0, w.core.hp / st.health);
     // The trailing "damage" segment eases down to the real value.
     this.hpShown = target > this.hpShown ? target : this.hpShown + (target - this.hpShown) * Math.min(1, dt / 220);
     const r = this.g.hp;

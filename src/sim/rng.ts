@@ -81,3 +81,10 @@ export function pickWeighted<K extends string>(s: RngState, keys: readonly K[], 
   }
   return keys[keys.length - 1] as K;
 }
+
+/** True with probability `p` (a float in 0..1). Draws only when 0 < p < 1; exact float compare, so deterministic. */
+export function chance(s: RngState, p: number): boolean {
+  if (!(p > 0)) return false;
+  if (p >= 1) return true;
+  return nextU32(s) < p * U32;
+}

@@ -8,5 +8,6 @@
   "enemiesPerWaveGrowth": 1.5,
   "maxEnemiesPerWave": 120,
   "energyGrowth": 1.03,
-  "bitsGrowth": 1.02
+  "bitsGrowth": 1.02,
+  "hashCell": 64
 }

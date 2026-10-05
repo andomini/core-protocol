@@ -6,7 +6,7 @@ import { step } from '../src/sim/step';
 import { testData } from './helpers';
 
 // 10 minutes of play with a core that survives, so every system keeps running.
-const data = testData({ core: { health: 1e9 } });
+const data = testData({}, { health: 1e9 });
 const TICKS = 10 * 60 * data.config.tickHz;
 
 function run(seed: number) {
@@ -14,7 +14,7 @@ function run(seed: number) {
   const hashes: string[] = [];
   const events: SimEvent[] = [];
   for (let i = 1; i <= TICKS; i++) {
-    step(w, data, events);
+    step(w, data, [], events);
     events.length = 0;
     if (i % 100 === 0) hashes.push(hashWorld(w));
   }

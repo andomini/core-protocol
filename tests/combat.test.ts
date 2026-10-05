@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { nearestInRange } from '../src/sim/core';
-import type { CoreDef } from '../src/sim/data';
-import { createWorld } from '../src/sim/state';
+import { createWorld, worldStats } from '../src/sim/state';
 import { spawnEnemy } from '../src/sim/waves';
-import { ofType, stepN, testData } from './helpers';
+import { ofType, type StatBases, stepN, testData } from './helpers';
 
-function setup(core: Partial<CoreDef> = {}) {
-  const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 }, core });
+function setup(core: StatBases = {}) {
+  const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 } }, core);
   const w = createWorld(data, { seed: 1, tier: 1 });
   stepN(w, data, 1); // start wave 1
   return { data, w };
@@ -36,10 +35,10 @@ describe('combat', () => {
     spawnEnemy(w, data, 'basic', 400, 0, []); // out of range 300
     spawnEnemy(w, data, 'basic', 200, 0, []);
     const c = spawnEnemy(w, data, 'basic', 0, 150, []);
-    expect(nearestInRange(w.enemies, data.core.range)?.id).toBe(c.id);
+    expect(nearestInRange(w.enemies, data.stats.stats.range.base)?.id).toBe(c.id);
     const d = spawnEnemy(w, data, 'basic', 100, 0, []);
     spawnEnemy(w, data, 'basic', 0, 100, []);
-    expect(nearestInRange(w.enemies, data.core.range)?.id).toBe(d.id);
+    expect(nearestInRange(w.enemies, data.stats.stats.range.base)?.id).toBe(d.id);
   });
 
   it('two lethal projectiles on one target pay out once', () => {
@@ -57,9 +56,9 @@ describe('combat', () => {
     w.core.hp = 50;
     stepN(w, data, data.config.tickHz);
     expect(w.core.hp).toBeCloseTo(53, 9);
-    w.core.hp = w.core.maxHp - 0.01;
+    w.core.hp = worldStats(w, data).health - 0.01;
     stepN(w, data, data.config.tickHz);
-    expect(w.core.hp).toBe(w.core.maxHp);
+    expect(w.core.hp).toBe(worldStats(w, data).health);
   });
 
   it('a run with default data ends in death within an hour of sim time', () => {

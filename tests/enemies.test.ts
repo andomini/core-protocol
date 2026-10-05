@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { CoreDef } from '../src/sim/data';
 import { createWorld } from '../src/sim/state';
 import { spawnEnemy } from '../src/sim/waves';
-import { ofType, stepN, testData } from './helpers';
+import { ofType, type StatBases, stepN, testData } from './helpers';
 
 // No random spawns, a harmless core without regen: only the enemies the test places.
-const quiet = (core: Partial<CoreDef> = {}) =>
-  testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 }, core: { damage: 0, regen: 0, ...core } });
+const quiet = (core: StatBases = {}) =>
+  testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 } }, { damage: 0, regen: 0, ...core });
 
-function setup(core: Partial<CoreDef> = {}) {
+function setup(core: StatBases = {}) {
   const data = quiet(core);
   const w = createWorld(data, { seed: 1, tier: 1 });
   stepN(w, data, 1); // start wave 1
@@ -22,7 +21,7 @@ describe('enemies', () => {
     const e = spawnEnemy(w, data, 'basic', stopAt + 3, 0, []); // 2 ticks of travel at 1.5 px/tick
     expect(ofType(stepN(w, data, 3), 'coreHit')).toHaveLength(1);
     expect(e.x).toBeCloseTo(stopAt, 6);
-    expect(w.core.hp).toBe(data.core.health - e.damage);
+    expect(w.core.hp).toBe(data.stats.stats.health.base - e.damage);
     expect(ofType(stepN(w, data, e.attackIntervalTicks - 2), 'coreHit')).toHaveLength(0);
     expect(ofType(stepN(w, data, 1), 'coreHit')).toHaveLength(1);
   });

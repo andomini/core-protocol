@@ -31,14 +31,14 @@ export function battleData(base: GameData, f: DevFlags): GameData {
   const d = structuredClone(base);
   if (f.stress) {
     const s = devJson.stress;
-    d.core.health = s.coreHealth;
-    d.core.attackSpeed = s.coreAttackSpeed;
+    d.stats.stats.health.base = s.coreHealth;
+    d.stats.stats.attackSpeed.base = s.coreAttackSpeed;
     for (const k of ENEMY_KINDS) d.enemies[k].hp *= s.enemyHpMul;
   }
   if (f.weak) {
-    d.core.health = devJson.weak.coreHealth;
-    d.core.regen = devJson.weak.coreRegen;
-    d.core.attackSpeed = devJson.weak.coreAttackSpeed;
+    d.stats.stats.health.base = devJson.weak.coreHealth;
+    d.stats.stats.regen.base = devJson.weak.coreRegen;
+    d.stats.stats.attackSpeed.base = devJson.weak.coreAttackSpeed;
   }
   return validateData(d);
 }

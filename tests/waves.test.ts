@@ -6,7 +6,7 @@ import { enemiesPerWave, scaleForWave } from '../src/sim/waves';
 import { ofType, stepN, testData } from './helpers';
 
 // A core that cannot die, so long runs stay alive regardless of later combat tasks.
-const tough = () => testData({ core: { health: 1e9 } });
+const tough = () => testData({}, { health: 1e9 });
 
 describe('waves', () => {
   it('the first tick starts wave 1 (no boss)', () => {

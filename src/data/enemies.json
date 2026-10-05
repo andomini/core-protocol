@@ -1,7 +1,7 @@
 {
-  "basic":  { "hp": 6,   "damage": 3,  "speed": 45, "radius": 14, "attackInterval": 1,   "standoff": 0,   "energy": 2,  "bits": 1,  "firstWave": 1,  "weight": 10 },
-  "fast":   { "hp": 3,   "damage": 2,  "speed": 90, "radius": 11, "attackInterval": 0.8, "standoff": 0,   "energy": 2,  "bits": 1,  "firstWave": 3,  "weight": 5 },
-  "tank":   { "hp": 30,  "damage": 8,  "speed": 25, "radius": 22, "attackInterval": 1.5, "standoff": 0,   "energy": 6,  "bits": 3,  "firstWave": 6,  "weight": 2 },
-  "ranged": { "hp": 5,   "damage": 4,  "speed": 40, "radius": 13, "attackInterval": 2,   "standoff": 240, "energy": 3,  "bits": 2,  "firstWave": 8,  "weight": 3 },
-  "boss":   { "hp": 240, "damage": 30, "speed": 20, "radius": 40, "attackInterval": 2,   "standoff": 0,   "energy": 50, "bits": 25, "firstWave": 10, "weight": 0 }
+  "basic":  { "hp": 6,   "damage": 3,  "speed": 45, "radius": 14, "attackInterval": 1,   "standoff": 0,   "energy": 2,  "bits": 1,  "firstWave": 1,  "weight": 10, "knockback": 1 },
+  "fast":   { "hp": 3,   "damage": 2,  "speed": 90, "radius": 11, "attackInterval": 0.8, "standoff": 0,   "energy": 2,  "bits": 1,  "firstWave": 3,  "weight": 5, "knockback": 1.2 },
+  "tank":   { "hp": 30,  "damage": 8,  "speed": 25, "radius": 22, "attackInterval": 1.5, "standoff": 0,   "energy": 6,  "bits": 3,  "firstWave": 6,  "weight": 2, "knockback": 0.4 },
+  "ranged": { "hp": 5,   "damage": 4,  "speed": 40, "radius": 13, "attackInterval": 2,   "standoff": 240, "energy": 3,  "bits": 2,  "firstWave": 8,  "weight": 3, "knockback": 1 },
+  "boss":   { "hp": 240, "damage": 30, "speed": 20, "radius": 40, "attackInterval": 2,   "standoff": 0,   "energy": 50, "bits": 25, "firstWave": 10, "weight": 0, "knockback": 0.1 }
 }

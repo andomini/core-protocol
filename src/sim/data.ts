@@ -2,6 +2,7 @@ import configJson from '../data/config.json';
 import coreJson from '../data/core.json';
 import directionsJson from '../data/directions.json';
 import enemiesJson from '../data/enemies.json';
+import statsJson from '../data/stats.json';
 import tiersJson from '../data/tiers.json';
 
 export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss';
@@ -27,6 +28,8 @@ export interface EnemyDef {
   firstWave: number;
   /** Relative integer spawn weight among unlocked regular kinds; 0 = never a regular spawn. */
   weight: number;
+  /** Multiplier on the core's Knockback distance (heavy enemies resist). */
+  knockback: number;
 }
 
 export interface TierDef {
@@ -38,18 +41,59 @@ export interface TierDef {
   damageGrowth: number;
 }
 
+/** Fixed core geometry; every upgradable core value lives in `stats.json`. */
 export interface CoreDef {
   radius: number;
-  health: number;
-  /** HP per second. */
-  regen: number;
-  damage: number;
-  /** Shots per second. */
-  attackSpeed: number;
-  range: number;
   /** World px per second. */
   projectileSpeed: number;
 }
+
+/** The 18 in-run stats (spec §2.3), in panel order: ATK, DEF, UTIL. */
+export const STAT_IDS = [
+  'damage', 'attackSpeed', 'critChance', 'critFactor', 'range', 'multishot',
+  'health', 'regen', 'defense', 'thorns', 'lifesteal', 'knockback',
+  'energyBonus', 'energyPerWave', 'interest', 'bitsPerKill', 'bitsPerWave', 'freeUpgrade',
+] as const;
+export type StatId = (typeof STAT_IDS)[number];
+export type TabId = 'atk' | 'def' | 'util';
+export const TAB_IDS: readonly TabId[] = ['atk', 'def', 'util'];
+export type StatFormat = 'num' | 'int' | 'pct' | 'mult' | 'perSec' | 'plus';
+const STAT_FORMATS: readonly StatFormat[] = ['num', 'int', 'pct', 'mult', 'perSec', 'plus'];
+
+export interface StatDef {
+  tab: TabId;
+  name: string;
+  /** Value at level 0. */
+  base: number;
+  /** Per-level effect: 'add' → base + per·L; 'mul' → base·per^L. */
+  per: number;
+  mode: 'add' | 'mul';
+  /** Highest in-run level (labs raise it in M4); absent = unlimited. */
+  maxLevel?: number;
+  /** Upper bound on the effective value (after modifiers). */
+  cap?: number;
+  /** Price of the next level from level L: base × growth^L. */
+  cost: { base: number; growth: number };
+  format: StatFormat;
+  /** Locked until a lab node unlocks it (M4); RunOptions.unlocked overrides. */
+  lockedByDefault: boolean;
+}
+
+export interface EconomyDef {
+  /** Interest paid at wave end is at most interestCap × interestCapGrowth^(wave−1) (× modifiers). */
+  interestCap: number;
+  interestCapGrowth: number;
+}
+
+export interface StatsData {
+  tabs: Record<TabId, StatId[]>;
+  stats: Record<StatId, StatDef>;
+  economy: EconomyDef;
+}
+
+/** Allowed range for the in-run cost growth factor (spec §2.3). */
+export const COST_GROWTH_MIN = 1.07;
+export const COST_GROWTH_MAX = 1.12;
 
 export interface SimConfig {
   tickHz: number;
@@ -64,6 +108,8 @@ export interface SimConfig {
   energyGrowth: number;
   /** Per-wave Bits reward multiplier. */
   bitsGrowth: number;
+  /** Spatial hash cell size, world px. */
+  hashCell: number;
 }
 
 export interface GameData {
@@ -71,6 +117,7 @@ export interface GameData {
   core: CoreDef;
   enemies: Record<EnemyKind, EnemyDef>;
   tiers: TierDef[];
+  stats: StatsData;
   /** 64 unit vectors around the circle (see tools/gen-directions.ts). */
   directions: [number, number][];
 }
@@ -86,6 +133,48 @@ function positive(x: number, where: string): void {
 }
 function wholeNonNeg(x: number, where: string): void {
   check(Number.isInteger(x) && x >= 0, `${where} must be a whole number ≥ 0, got ${x}`);
+}
+
+/** Stats whose value 0 would break the sim (a divisor or a must-have). */
+const POSITIVE_STATS: readonly StatId[] = ['attackSpeed', 'health', 'range'];
+
+function validateStats(s: StatsData): void {
+  check(s !== undefined && s.stats !== undefined && s.tabs !== undefined, 'stats is missing');
+  const seen = new Set<string>();
+  for (const tab of TAB_IDS) {
+    const ids = s.tabs[tab];
+    check(Array.isArray(ids) && ids.length === 6, `stats.tabs.${tab} must list 6 stats`);
+    for (const id of ids) {
+      check((STAT_IDS as readonly string[]).includes(id), `stats.tabs.${tab}: unknown stat "${id}"`);
+      check(!seen.has(id), `stats.tabs: "${id}" is listed twice`);
+      seen.add(id);
+      check(s.stats[id]?.tab === tab, `stats.${id}.tab must be "${tab}"`);
+    }
+  }
+  for (const id of STAT_IDS) {
+    const def = s.stats[id];
+    const at = `stats.${id}`;
+    check(def !== undefined, `${at} is missing`);
+    check(seen.has(id), `${at} is not in any tab`);
+    check(typeof def.name === 'string' && def.name.length > 0, `${at}.name must be a non-empty string`);
+    nonNeg(def.base, `${at}.base`);
+    check(def.mode === 'add' || def.mode === 'mul', `${at}.mode must be "add" or "mul"`);
+    if (def.mode === 'mul') positive(def.per, `${at}.per`);
+    else nonNeg(def.per, `${at}.per`);
+    if (def.maxLevel !== undefined) check(Number.isInteger(def.maxLevel) && def.maxLevel >= 1, `${at}.maxLevel must be a whole number ≥ 1`);
+    if (def.cap !== undefined) positive(def.cap, `${at}.cap`);
+    check(def.cost !== undefined, `${at}.cost is missing`);
+    positive(def.cost.base, `${at}.cost.base`);
+    check(
+      Number.isFinite(def.cost.growth) && def.cost.growth >= COST_GROWTH_MIN && def.cost.growth <= COST_GROWTH_MAX,
+      `${at}.cost.growth must be in [${COST_GROWTH_MIN}, ${COST_GROWTH_MAX}], got ${def.cost.growth}`,
+    );
+    check(STAT_FORMATS.includes(def.format), `${at}.format must be one of ${STAT_FORMATS.join('|')}`);
+    check(typeof def.lockedByDefault === 'boolean', `${at}.lockedByDefault must be a boolean`);
+  }
+  for (const id of POSITIVE_STATS) positive(s.stats[id].base, `stats.${id}.base`);
+  positive(s.economy?.interestCap, 'stats.economy.interestCap');
+  positive(s.economy?.interestCapGrowth, 'stats.economy.interestCapGrowth');
 }
 
 /** Throws `Error('data: …')` naming the first bad field; returns `d` unchanged when valid. */
@@ -106,14 +195,11 @@ export function validateData(d: GameData): GameData {
   positive(c.energyGrowth, 'config.energyGrowth');
   positive(c.bitsGrowth, 'config.bitsGrowth');
 
+  positive(c.hashCell, 'config.hashCell');
   const k = d.core;
   positive(k.radius, 'core.radius');
-  positive(k.health, 'core.health');
-  nonNeg(k.regen, 'core.regen');
-  nonNeg(k.damage, 'core.damage');
-  positive(k.attackSpeed, 'core.attackSpeed');
-  positive(k.range, 'core.range');
   positive(k.projectileSpeed, 'core.projectileSpeed');
+  validateStats(d.stats);
 
   for (const kind of ENEMY_KINDS) {
     const e = d.enemies[kind];
@@ -129,6 +215,7 @@ export function validateData(d: GameData): GameData {
     nonNeg(e.bits, `${at}.bits`);
     check(Number.isInteger(e.firstWave) && e.firstWave >= 1, `${at}.firstWave must be a whole number ≥ 1`);
     wholeNonNeg(e.weight, `${at}.weight`);
+    nonNeg(e.knockback, `${at}.knockback`);
   }
   check(
     d.enemies.basic.firstWave === 1 && d.enemies.basic.weight > 0,
@@ -156,5 +243,6 @@ export const DEFAULT_DATA: GameData = validateData({
   core: coreJson as CoreDef,
   enemies: enemiesJson as Record<EnemyKind, EnemyDef>,
   tiers: tiersJson as TierDef[],
+  stats: statsJson as StatsData,
   directions: directionsJson as [number, number][],
 });

@@ -42,13 +42,13 @@ describe('layout', () => {
 
     it(`${o}: the core's range circle is fully inside the arena`, () => {
       const L = makeLayout(o, DEFAULT_DATA);
-      const r = DEFAULT_DATA.core.range * L.scale;
+      const r = DEFAULT_DATA.stats.stats.range.base * L.scale;
       expect(r).toBeLessThan(Math.min(L.arena.w, L.arena.h) / 2);
     });
 
     it(`${o}: the world is not shrunk to fit the spawn ring (range fills the arena, enemies stay readable)`, () => {
       const L = makeLayout(o, DEFAULT_DATA);
-      expect(DEFAULT_DATA.core.range * L.scale).toBeGreaterThan(0.75 * (Math.min(L.arena.w, L.arena.h) / 2));
+      expect(DEFAULT_DATA.stats.stats.range.base * L.scale).toBeGreaterThan(0.75 * (Math.min(L.arena.w, L.arena.h) / 2));
       expect(DEFAULT_DATA.enemies.basic.radius * L.scale).toBeGreaterThanOrEqual(12);
     });
   }

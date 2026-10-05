@@ -3,6 +3,7 @@ import type { SimEvent } from './events';
 import { clampValue, powInt } from './num';
 import { nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
+import type { CoreStats } from './stats';
 
 /** Regular spawns are spread over this share of the wave, so the last ones still arrive in time. */
 const SPAWN_WINDOW = 0.8;
@@ -73,8 +74,20 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
   return e;
 }
 
-/** Advances the wave/pause timer by one tick, starting waves and spawning due enemies. */
-export function advanceWave(w: World, data: GameData, events: SimEvent[]): void {
+/**
+ * End-of-wave income: Interest on unspent Energy (capped: interestCap × interestCapGrowth^(wave−1)),
+ * then flat Energy/Wave and Bits/Wave.
+ */
+export function payWaveRewards(w: World, data: GameData, st: CoreStats, events: SimEvent[]): void {
+  const cap = clampValue(st.interestCap * powInt(data.stats.economy.interestCapGrowth, Math.max(0, w.wave - 1)));
+  const interest = Math.min(clampValue(w.energy * st.interest), cap);
+  w.energy = clampValue(w.energy + interest + st.energyPerWave);
+  w.bits = clampValue(w.bits + st.bitsPerWave);
+  events.push({ type: 'waveReward', wave: w.wave, energy: st.energyPerWave, interest, bits: st.bitsPerWave });
+}
+
+/** Advances the wave/pause timer by one tick, starting waves, spawning due enemies and paying wave ends. */
+export function advanceWave(w: World, data: GameData, st: CoreStats, events: SimEvent[]): void {
   if (w.phase === 'pause') {
     if (w.phaseTick < pauseTicks(data)) {
       w.phaseTick += 1;
@@ -94,5 +107,6 @@ export function advanceWave(w: World, data: GameData, events: SimEvent[]): void 
     w.phase = 'pause';
     w.phaseTick = 0;
     events.push({ type: 'waveEnd', wave: w.wave });
+    payWaveRewards(w, data, st, events);
   }
 }

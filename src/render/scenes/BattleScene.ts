@@ -160,7 +160,7 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
       case 'coreHit': {
-        const heavy = e.damage >= this.session.world.core.maxHp * 0.1;
+        const heavy = e.damage >= this.session.stats.health * 0.1;
         this.view.coreHit(now, heavy);
         this.hud.coreHit(now);
         this.fx.coreHit(this.view.coreX, this.view.coreY, coreR, heavy);
@@ -170,7 +170,7 @@ export class BattleScene extends Phaser.Scene {
       case 'waveStart':
         if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now);
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);
-        this.fx.waveRing(L.cx, L.cy, this.gd.core.range * L.scale, e.boss ? CRIMSON : undefined);
+        this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, e.boss ? CRIMSON : undefined);
         break;
       case 'death':
         this.fx.coreBreach(L.cx, L.cy, coreR);
@@ -193,7 +193,7 @@ export class BattleScene extends Phaser.Scene {
     const alpha = w.dead ? 1 : this.loop.alpha();
     this.view.draw(alpha, time);
     this.fx.update();
-    this.hud.update(this.session.world, this.speed, this.paused, time, delta);
+    this.hud.update(this.session.world, this.session.stats, this.speed, this.paused, time, delta);
     if (this.bannerUntil > 0) {
       const left = this.bannerUntil - time;
       if (left <= 0) {

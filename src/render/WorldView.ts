@@ -136,7 +136,8 @@ export class WorldView {
 
   private drawRange(): void {
     const g = this.range.clear();
-    const r = this.session().world.core.range * this.L.scale;
+    this.rangeDrawn = this.session().stats.range;
+    const r = this.rangeDrawn * this.L.scale;
     const { cx, cy } = this.L;
     g.fillStyle(CORE, 0.025).fillCircle(cx, cy, r);
     const dash = 10;
@@ -200,6 +201,7 @@ export class WorldView {
   }
 
   private readonly tmp = { x: 0, y: 0 };
+  private rangeDrawn = 0;
 
   draw(alpha: number, now: number): void {
     const dt = this.lastNow === 0 ? 16 : Math.min(100, now - this.lastNow);
@@ -208,7 +210,8 @@ export class WorldView {
     const L = this.L;
     const sess = this.session();
     const w = sess.world;
-    this.drawCore(w.core.hp / w.core.maxHp, now, w.dead);
+    if (sess.stats.range !== this.rangeDrawn) this.drawRange();
+    this.drawCore(w.core.hp / sess.stats.health, now, w.dead);
     this.spine.clear();
     this.drawPulses(dt);
 
@@ -462,7 +465,7 @@ export class WorldView {
       this.coreInner.clearTint();
       this.coreLight.clearTint();
     }
-    const r = this.session().world.core.range * L.scale;
+    const r = this.rangeDrawn * L.scale;
     for (let i = 0; i < this.orbiters.length; i++) {
       const a = now * 0.0005 + i * Math.PI;
       this.orbiters[i]!.setPosition(L.cx + Math.cos(a) * r, L.cy + Math.sin(a) * r);

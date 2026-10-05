@@ -6,7 +6,7 @@ import { hashWorld } from '../src/sim/hash';
 import { createWorld } from '../src/sim/state';
 import { stepN, testData } from './helpers';
 
-const tough = testData({ core: { health: 1e9 } });
+const tough = testData({}, { health: 1e9 });
 
 describe('FixedLoop', () => {
   it('runs tickHz ticks per second of frames at ×1, twice as many at ×2, none when paused', () => {
@@ -72,7 +72,7 @@ describe('RunSession', () => {
         const e = s.lastKnown(ev.enemyId);
         expect(e).toBeDefined();
         expect(s.world.enemies.includes(e!)).toBe(false);
-        expect(Math.hypot(e!.x, e!.y)).toBeLessThan(tough.core.range + e!.radius + 1);
+        expect(Math.hypot(e!.x, e!.y)).toBeLessThan(tough.stats.stats.range.base + e!.radius + 1);
         found = true;
       });
     }
@@ -80,7 +80,7 @@ describe('RunSession', () => {
   });
 
   it('stops advancing once the core is dead', () => {
-    const weak = testData({ core: { health: 1, regen: 0 } });
+    const weak = testData({}, { health: 1, regen: 0 });
     const s = new RunSession(weak, { seed: 1, tier: 1 });
     let deaths = 0;
     const ran = s.advance(100_000, (e) => {

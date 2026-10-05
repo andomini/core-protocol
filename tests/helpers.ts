@@ -1,4 +1,5 @@
-import { DEFAULT_DATA, validateData, type GameData } from '../src/sim/data';
+import type { Command } from '../src/sim/commands';
+import { DEFAULT_DATA, validateData, type GameData, type StatId } from '../src/sim/data';
 import type { SimEvent } from '../src/sim/events';
 import type { World } from '../src/sim/state';
 import { step } from '../src/sim/step';
@@ -17,17 +18,20 @@ function merge(target: Record<string, unknown>, patch: Record<string, unknown>):
   }
 }
 
-/** Deep clone of DEFAULT_DATA with `patch` applied, validated. */
-export function testData(patch: DeepPartial<GameData> = {}): GameData {
+export type StatBases = Partial<Record<StatId, number>>;
+
+/** Deep clone of DEFAULT_DATA with `patch` applied and stat base values overridden, validated. */
+export function testData(patch: DeepPartial<GameData> = {}, bases: StatBases = {}): GameData {
   const d = structuredClone(DEFAULT_DATA);
   merge(d as unknown as Record<string, unknown>, patch as Record<string, unknown>);
+  for (const [id, v] of Object.entries(bases)) d.stats.stats[id as StatId].base = v;
   return validateData(d);
 }
 
-/** Steps `n` ticks and returns every event produced, oldest first. */
-export function stepN(w: World, data: GameData, n: number): SimEvent[] {
+/** Steps `n` ticks (passing `cmds` to the first step) and returns every event produced, oldest first. */
+export function stepN(w: World, data: GameData, n: number, cmds: readonly Command[] = []): SimEvent[] {
   const events: SimEvent[] = [];
-  for (let i = 0; i < n; i++) step(w, data, events);
+  for (let i = 0; i < n; i++) step(w, data, i === 0 ? cmds : [], events);
   return events;
 }
 

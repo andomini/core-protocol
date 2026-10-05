@@ -25,7 +25,11 @@ describe('game data', () => {
   });
 
   it('rejects a zero attack speed (would divide by zero)', () => {
-    expect(() => testData({ core: { attackSpeed: 0 } })).toThrow(/core\.attackSpeed/);
+    expect(() => testData({}, { attackSpeed: 0 })).toThrow(/stats\.attackSpeed\.base/);
+  });
+
+  it('rejects a negative knockback multiplier', () => {
+    expect(() => testData({ enemies: { tank: { knockback: -1 } } })).toThrow(/enemies\.tank\.knockback/);
   });
 
   it('rejects empty tiers', () => {

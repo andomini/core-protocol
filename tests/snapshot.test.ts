@@ -5,7 +5,7 @@ import { restore, snapshot } from '../src/sim/snapshot';
 import { createWorld } from '../src/sim/state';
 import { stepN, testData } from './helpers';
 
-const data = testData({ core: { health: 1e9 } });
+const data = testData({}, { health: 1e9 });
 
 describe('snapshot', () => {
   it('a world restored mid-wave continues exactly like an uninterrupted one', () => {
@@ -42,9 +42,37 @@ describe('snapshot', () => {
   it('rejects garbage with a clear snapshot error', () => {
     expect(() => restore('not json')).toThrow(/snapshot/);
     expect(() => restore('{"v":99,"world":{}}')).toThrow(/snapshot.*version/);
-    expect(() => restore('{"v":1,"world":{"tick":"x"}}')).toThrow(/snapshot/);
+    expect(() => restore('{"v":2,"world":{"tick":"x"}}')).toThrow(/snapshot/);
     const w = createWorld(data, { seed: 1, tier: 1 });
-    const withNull = JSON.stringify({ v: 1, world: { ...w, energy: null } });
+    const withNull = JSON.stringify({ v: 2, world: { ...w, energy: null } });
     expect(() => restore(withNull)).toThrow(/energy/);
+    const noUpgradeStream = JSON.stringify({ v: 2, world: { ...w, rng: { spawn: w.rng.spawn, combat: w.rng.combat } } });
+    expect(() => restore(noUpgradeStream)).toThrow(/snapshot: malformed/);
+  });
+
+  it('rejects a v1 (M1–M2a) snapshot cleanly: derived core stats, no upgrade stream', () => {
+    const w = createWorld(data, { seed: 1, tier: 1 });
+    const { levels: _l, workshop: _w, unlocked: _u, mods: _m, ...rest } = w;
+    const v1World = {
+      ...rest,
+      v: 1,
+      core: { hp: 100, maxHp: 100, regen: 0.5, damage: 5, attackSpeed: 1, range: 300, fireCd: 0 },
+      rng: { spawn: w.rng.spawn, combat: w.rng.combat },
+    };
+    expect(() => restore(JSON.stringify({ v: 1, world: v1World }))).toThrow(/snapshot: unsupported version 1/);
+    // A v1 world smuggled inside a v2 envelope is still refused.
+    expect(() => restore(JSON.stringify({ v: 2, world: v1World }))).toThrow(/snapshot: malformed/);
+  });
+
+  it('a snapshot taken after purchases restores levels and continues identically', () => {
+    const a = createWorld(data, { seed: 5, tier: 1, unlocked: ['freeUpgrade'] });
+    stepN(a, data, 1200);
+    a.energy += 500;
+    stepN(a, data, 1, [{ type: 'buy', stat: 'damage', count: 5 }, { type: 'buy', stat: 'freeUpgrade', count: 3 }]);
+    expect(a.levels.damage).toBe(5);
+    const b = restore(snapshot(a));
+    stepN(a, data, 600, [{ type: 'buy', stat: 'health', count: 'max' }]);
+    stepN(b, data, 600, [{ type: 'buy', stat: 'health', count: 'max' }]);
+    expect(hashWorld(b)).toBe(hashWorld(a));
   });
 });

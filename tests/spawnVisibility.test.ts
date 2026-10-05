@@ -28,7 +28,7 @@ describe('spawn ring vs visible arena', () => {
   it('wave 1 spawns its first enemy on the wave-start tick and it is a basic', () => {
     const w = createWorld(data, { seed: 1, tier: 1 });
     const ev: SimEvent[] = [];
-    step(w, data, ev);
+    step(w, data, [], ev);
     const start = ev.findIndex((e) => e.type === 'waveStart');
     const spawn = ev.find((e) => e.type === 'spawn');
     expect(start).toBeGreaterThanOrEqual(0);
@@ -46,7 +46,7 @@ describe('spawn ring vs visible arena', () => {
       expect(ringPx).toBeGreaterThan(halfLong + data.enemies.basic.radius * L.scale);
       // "Just beyond": no more than ~1 s of walking past the long edge either.
       expect(ringPx - halfLong).toBeLessThan(data.enemies.basic.speed * L.scale);
-      expect(data.config.spawnRadius).toBeGreaterThan(data.core.range);
+      expect(data.config.spawnRadius).toBeGreaterThan(data.stats.stats.range.base);
       expect(data.config.spawnRadius).toBeGreaterThan(data.enemies.ranged.standoff);
     });
 
@@ -65,7 +65,7 @@ describe('spawn ring vs visible arena', () => {
         let startTick = -1;
         let seenTick = -1;
         while (seenTick < 0 && w.tick < 10 * data.config.tickHz) {
-          step(w, data, ev);
+          step(w, data, [], ev);
           if (startTick < 0 && ev.some((e) => e.type === 'waveStart')) startTick = w.tick;
           ev.length = 0;
           for (const e of w.enemies) {

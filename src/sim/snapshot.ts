@@ -1,7 +1,8 @@
 import { assertFiniteDeep } from './num';
-import type { World } from './state';
+import { type World, WORLD_VERSION } from './state';
 
-export const SNAPSHOT_VERSION = 1;
+/** Bumped with the World shape: v1 (M1–M2a) had derived core stats and no upgrade stream. */
+export const SNAPSHOT_VERSION = 2;
 
 /** Serializes the whole world. Throws if any value is non-finite (JSON would turn it into null). */
 export function snapshot(w: World): string {
@@ -25,10 +26,21 @@ export function restore(s: string): World {
   if (
     w === null ||
     typeof w !== 'object' ||
+    w.v !== WORLD_VERSION ||
     typeof w.tick !== 'number' ||
     !Array.isArray(w.enemies) ||
     !Array.isArray(w.projectiles) ||
-    typeof w.core !== 'object'
+    typeof w.core !== 'object' ||
+    w.core === null ||
+    typeof w.levels !== 'object' ||
+    typeof w.workshop !== 'object' ||
+    !Array.isArray(w.unlocked) ||
+    !Array.isArray(w.mods) ||
+    typeof w.rng !== 'object' ||
+    w.rng === null ||
+    !Array.isArray(w.rng.spawn) ||
+    !Array.isArray(w.rng.combat) ||
+    !Array.isArray(w.rng.upgrades)
   ) {
     throw new Error('snapshot: malformed world');
   }

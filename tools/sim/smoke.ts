@@ -13,7 +13,7 @@ const w = createWorld(data, { seed, tier });
 const maxTicks = 60 * 60 * data.config.tickHz;
 const events: SimEvent[] = [];
 while (!w.dead && w.tick < maxTicks) {
-  step(w, data, events);
+  step(w, data, [], events);
   events.length = 0;
 }
 console.log(

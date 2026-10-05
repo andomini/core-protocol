@@ -1,11 +1,14 @@
 // Owns a running World: steps it, routes sim events after every step, and keeps render-only memory
 // outside the World — positions at the start of the last tick (for interpolation) and references to
 // the enemies that existed before the step (so a `kill` can be drawn where the enemy actually died).
+// Player commands are queued here, stamped with the tick they apply on and logged (seed + log = replay).
 // No Phaser here: unit-tested in Node.
 
+import { applyCommands, type Command, type LoggedCommand } from '../sim/commands';
 import type { EnemyKind, GameData } from '../sim/data';
 import type { SimEvent } from '../sim/events';
-import { createWorld, type Enemy, type RunOptions, type World } from '../sim/state';
+import { createWorld, type Enemy, type RunOptions, type World, worldStats } from '../sim/state';
+import type { CoreStats } from '../sim/stats';
 import { step } from '../sim/step';
 import { spawnEnemy } from '../sim/waves';
 
@@ -16,8 +19,16 @@ export interface Vec {
 
 export type EventSink = (e: SimEvent) => void;
 
+const NO_COMMANDS: readonly Command[] = [];
+
 export class RunSession {
   world: World;
+  opts: RunOptions;
+  /** Effective stats as of the last step or command (derived; refreshed by this class). */
+  stats: CoreStats;
+  /** Every command applied this run, stamped with the world tick it was applied at. */
+  log: LoggedCommand[] = [];
+  private pending: Command[] = [];
   private readonly prev = new Map<number, Vec>();
   private readonly free: Vec[] = [];
   /** Enemies alive before the current step, by id (references into the previous World arrays). */
@@ -28,7 +39,18 @@ export class RunSession {
     readonly data: GameData,
     opts: RunOptions,
   ) {
+    this.opts = opts;
     this.world = createWorld(data, opts);
+    this.stats = worldStats(this.world, data);
+  }
+
+  /** Queues a command for the start of the next step. */
+  queue(cmd: Command): void {
+    this.pending.push(cmd);
+  }
+
+  get hasPending(): boolean {
+    return this.pending.length > 0;
   }
 
   /** Runs up to `ticks` sim ticks (fewer once the core is dead); events go to `onEvent` after each tick. */
@@ -36,10 +58,31 @@ export class RunSession {
     let ran = 0;
     for (; ran < ticks && !this.world.dead; ran++) {
       this.capture();
-      step(this.world, this.data, this.events);
+      step(this.world, this.data, this.takePending(), this.events);
       this.flush(onEvent);
     }
+    if (ran > 0) this.stats = worldStats(this.world, this.data);
     return ran;
+  }
+
+  /**
+   * Applies queued commands now, without stepping (used while paused or after death). Because `step`
+   * applies commands before touching anything else, this is identical to passing them to the next step,
+   * so the logged tick stays valid for replay.
+   */
+  applyPendingNow(onEvent: EventSink): void {
+    if (this.pending.length === 0) return;
+    applyCommands(this.world, this.data, this.takePending(), this.events);
+    this.stats = worldStats(this.world, this.data);
+    this.flush(onEvent);
+  }
+
+  private takePending(): readonly Command[] {
+    if (this.pending.length === 0) return NO_COMMANDS;
+    const cmds = this.pending;
+    this.pending = [];
+    for (const cmd of cmds) this.log.push({ tick: this.world.tick, cmd });
+    return cmds;
   }
 
   /** Position at the start of the last tick; undefined for entities created during it. */
@@ -67,7 +110,11 @@ export class RunSession {
 
   /** A fresh run; all render memory is dropped (entity ids restart at 1). */
   restart(opts: RunOptions): void {
+    this.opts = opts;
     this.world = createWorld(this.data, opts);
+    this.stats = worldStats(this.world, this.data);
+    this.log = [];
+    this.pending = [];
     this.releasePrev();
     this.before.clear();
     this.events.length = 0;

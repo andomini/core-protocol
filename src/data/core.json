@@ -1,9 +1,4 @@
 {
   "radius": 32,
-  "health": 100,
-  "regen": 0.5,
-  "damage": 5,
-  "attackSpeed": 1,
-  "range": 300,
   "projectileSpeed": 900
 }
