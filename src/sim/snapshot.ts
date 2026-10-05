@@ -32,6 +32,9 @@ export function restore(s: string): World {
     !Array.isArray(w.projectiles) ||
     typeof w.core !== 'object' ||
     w.core === null ||
+    typeof w.lab !== 'object' ||
+    w.lab === null ||
+    typeof w.revived !== 'boolean' ||
     typeof w.levels !== 'object' ||
     typeof w.workshop !== 'object' ||
     !Array.isArray(w.unlocked) ||

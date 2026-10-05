@@ -71,7 +71,7 @@ describe('snapshot', () => {
     const { perks: _p, cardTags: _c, setTiers: _s, offer: _o, timers: _t, boost: _b, ...rest } = w;
     const v2World = { ...rest, v: 2 };
     expect(() => restore(JSON.stringify({ v: 2, world: v2World }))).toThrow(/snapshot: unsupported version 2/);
-    expect(() => restore(JSON.stringify({ v: 3, world: v2World }))).toThrow(/snapshot: malformed/);
+    expect(() => restore(JSON.stringify({ v: 4, world: v2World }))).toThrow(/snapshot: malformed/);
   });
 
   it('rejects a v3 (M3) snapshot: no lab parameters or revive state', () => {
