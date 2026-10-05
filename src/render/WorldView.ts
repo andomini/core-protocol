@@ -19,6 +19,9 @@ export const DEPTH = {
 
 const TEX: Record<Exclude<EnemyKind, 'boss'>, string> = { basic: 'e_basic', fast: 'e_fast', tank: 'e_tank', ranged: 'e_ranged' };
 const SPAWN_FADE_MS = 260;
+/** Enemies and the core are drawn a bit larger than their sim radius so they read on phones. */
+export const ENEMY_VIS = 1.2;
+const CORE_VIS = 1.15;
 const FLASH_MS = 70;
 const BOSS_SEGMENTS = 6;
 /** Segment size relative to the head, tail last. */
@@ -68,6 +71,7 @@ export class WorldView {
   private readonly coreLight: Phaser.GameObjects.Image;
   private readonly coreOuter: Phaser.GameObjects.Image;
   private readonly coreInner: Phaser.GameObjects.Image;
+  private readonly coreRing: Phaser.GameObjects.Image;
   private readonly orbiters: Phaser.GameObjects.Image[] = [];
   private readonly pulses: Pulse[] = [];
   private readonly range: Phaser.GameObjects.Graphics;
@@ -110,11 +114,13 @@ export class WorldView {
     for (let i = 0; i < 2; i++) {
       this.orbiters.push(scene.add.image(0, 0, 'glow').setScale(ps(0.22)).setTint(CORE).setDepth(DEPTH.range).setBlendMode(Phaser.BlendModes.ADD));
     }
+    this.coreRing = scene.add.image(L.cx, L.cy, 'core_ring').setScale(ps(L.scale * CORE_VIS)).setDepth(DEPTH.core).setBlendMode(Phaser.BlendModes.ADD);
     this.coreOuter = scene.add.image(L.cx, L.cy, 'core_outer').setScale(ps(L.scale)).setDepth(DEPTH.core).setBlendMode(Phaser.BlendModes.ADD);
     this.coreInner = scene.add.image(L.cx, L.cy, 'core_inner').setScale(ps(L.scale)).setDepth(DEPTH.core).setBlendMode(Phaser.BlendModes.ADD);
 
-    this.enemyImgs = new ImagePool(scene, 'e_basic', DEPTH.enemy);
-    this.bossImgs = new ImagePool(scene, 'e_boss_seg', DEPTH.boss);
+    // Viruses use normal blending: their glow is baked in, and ADD would blow dense piles out to white.
+    this.enemyImgs = new ImagePool(scene, 'e_basic', DEPTH.enemy, Phaser.BlendModes.NORMAL);
+    this.bossImgs = new ImagePool(scene, 'e_boss_seg', DEPTH.boss, Phaser.BlendModes.NORMAL);
     this.tracers = new ImagePool(scene, 'tracer', DEPTH.projectile);
     this.bars = scene.add.graphics().setDepth(DEPTH.bars);
     this.bossLabel = scene.add
@@ -214,7 +220,7 @@ export class WorldView {
       const toCore = Math.atan2(L.cy - sy, L.cx - sx);
       const fade = Math.min(1, (now - s.bornAt) / SPAWN_FADE_MS);
       const pop = 1 + (1 - fade) * 0.7;
-      const k = ps(L.scale) * pop;
+      const k = ps(L.scale * ENEMY_VIS) * pop;
       const img = s.img;
       img.setPosition(sx, sy).setAlpha(fade);
       switch (s.kind) {
@@ -240,7 +246,7 @@ export class WorldView {
         if (flashing) img.setTintFill(0xffffff);
         else img.clearTint();
       }
-      const r = e.radius * L.scale;
+      const r = e.radius * L.scale * ENEMY_VIS;
       if (s.kind === 'boss') {
         const bw = Math.max(120, r * 3.2);
         const by = sy - r - 26;
@@ -326,7 +332,7 @@ export class WorldView {
   }
 
   private segSpacing(e: Enemy): number {
-    return e.radius * 1.15;
+    return e.radius * 1.45;
   }
 
   private pushTrail(b: BossBody, x: number, y: number): void {
@@ -394,13 +400,14 @@ export class WorldView {
     this.coreY = y;
     const low = hpFrac < 0.3;
     const pulse = 1 + 0.04 * Math.sin(now / (low ? 90 : 420));
-    this.coreOuter.setPosition(x, y).setRotation(now * 0.00025).setScale(ps(L.scale) * pulse);
-    this.coreInner.setPosition(x, y).setRotation(-now * 0.0006).setScale(ps(L.scale) * (1 + 0.08 * Math.sin(now / 260)));
+    this.coreOuter.setPosition(x, y).setRotation(now * 0.00025).setScale(ps(L.scale * CORE_VIS) * pulse);
+    this.coreRing.setPosition(x, y).setRotation(-now * 0.00012);
+    this.coreInner.setPosition(x, y).setRotation(-now * 0.0006).setScale(ps(L.scale * CORE_VIS) * (1 + 0.08 * Math.sin(now / 260)));
     this.coreLight.setPosition(x, y).setAlpha(0.75 + 0.25 * Math.sin(now / 700));
     const flash = now < this.coreFlashUntil;
     if (flash) {
       this.coreOuter.setTint(CORE_HIT);
-      this.coreInner.setTintFill(0xffffff);
+      this.coreInner.setTint(0xffc0cc);
       this.coreLight.setTint(CORE_HIT);
     } else if (low && Math.sin(now / 90) > 0.6) {
       this.coreOuter.setTint(CORE_HIT);

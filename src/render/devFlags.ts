@@ -35,6 +35,7 @@ export function battleData(base: GameData, f: DevFlags): GameData {
   if (f.weak) {
     d.core.health = devJson.weak.coreHealth;
     d.core.regen = devJson.weak.coreRegen;
+    d.core.attackSpeed = devJson.weak.coreAttackSpeed;
   }
   return validateData(d);
 }

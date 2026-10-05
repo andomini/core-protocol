@@ -12,7 +12,7 @@ import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
 import { CRIMSON } from '../palette';
 import { RunSession } from '../RunSession';
-import { DEPTH, WorldView } from '../WorldView';
+import { DEPTH, ENEMY_VIS, WorldView } from '../WorldView';
 import { RS } from '../resolution';
 
 const MAX_TICKS_PER_FRAME = 4;
@@ -137,7 +137,7 @@ export class BattleScene extends Phaser.Scene {
   private readonly onEvent = (e: SimEvent): void => {
     const now = this.time.now;
     const L = this.L;
-    const coreR = this.gd.core.radius * L.scale;
+    const coreR = this.gd.core.radius * L.scale * 1.15;
     switch (e.type) {
       case 'shot':
         if (this.screenOf(e.targetId)) this.fx.muzzle(L.cx, L.cy, this.tmp.x, this.tmp.y, coreR);
@@ -151,7 +151,7 @@ export class BattleScene extends Phaser.Scene {
         if (!en) break;
         this.view.enemyScreen(en, 1, this.tmp);
         const rot = e.kind === 'fast' || e.kind === 'ranged' || e.kind === 'boss' ? Math.atan2(-en.y, -en.x) : now * 0.0012;
-        this.fx.death(e.kind, ENEMY_TEX[e.kind], this.tmp.x, this.tmp.y, rot, L.scale, e.kind === 'boss');
+        this.fx.death(e.kind, ENEMY_TEX[e.kind], this.tmp.x, this.tmp.y, rot, L.scale * ENEMY_VIS, e.kind === 'boss');
         if (e.kind === 'boss') this.cameras.main.shake(260, 0.006);
         break;
       }

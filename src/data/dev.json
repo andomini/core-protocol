@@ -1,5 +1,15 @@
 {
-  "stress": { "enemies": 200, "speed": 5, "coreHealth": 1e12, "coreAttackSpeed": 10, "enemyHpMul": 4 },
-  "weak": { "coreHealth": 5, "coreRegen": 0 },
+  "stress": {
+    "enemies": 200,
+    "speed": 5,
+    "coreHealth": 1000000000000.0,
+    "coreAttackSpeed": 10,
+    "enemyHpMul": 4
+  },
+  "weak": {
+    "coreHealth": 5,
+    "coreRegen": 0,
+    "coreAttackSpeed": 0.3
+  },
   "maxSpeed": 5
 }

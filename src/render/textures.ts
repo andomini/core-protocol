@@ -13,7 +13,7 @@ type Ctx = CanvasRenderingContext2D;
 type Pt = [number, number];
 
 /** Blur padding around shapes, logical px. */
-const PAD = 14;
+const PAD = 18;
 export const TRACER_LEN = 30;
 export const GRID_TILE = 128;
 const GRID_MINOR = 32;
@@ -46,11 +46,19 @@ function regular(cx: number, cy: number, r: number, n: number, rot: number): Pt[
 }
 
 /** A neon tube: dim fill, glowing stroke, white-hot centre line. */
-function neon(ctx: Ctx, pts: readonly Pt[], color: number, lw: number, fillA = 0.16, blur = 10): void {
+function neon(ctx: Ctx, pts: readonly Pt[], color: number, lw: number, fillA = 0.2, blur = 12): void {
+  ctx.lineJoin = 'round';
+  // Wide soft bloom first, then the tube.
+  ctx.shadowColor = rgba(color, 0.9);
+  ctx.shadowBlur = blur * 1.8 * RS;
+  ctx.strokeStyle = rgba(color, 0.28);
+  ctx.lineWidth = lw * 3.2;
+  poly(ctx, pts);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
   poly(ctx, pts);
   ctx.fillStyle = rgba(color, fillA);
   ctx.fill();
-  ctx.lineJoin = 'round';
   ctx.shadowColor = rgba(color, 1);
   ctx.shadowBlur = blur * RS;
   ctx.strokeStyle = rgba(color, 1);
@@ -90,13 +98,13 @@ function enemies(scene: Phaser.Scene, data: GameData): void {
   const C = ENEMY_COLOR;
   shapeTexture(scene, 'e_basic', r('basic') * 1.25, (ctx, c) => {
     const h = r('basic') * 0.92;
-    neon(ctx, [[c - h, c - h], [c + h, c - h], [c + h, c + h], [c - h, c + h]], C.basic, 2.6);
+    neon(ctx, [[c - h, c - h], [c + h, c - h], [c + h, c + h], [c - h, c + h]], C.basic, 3.2);
     const i = h * 0.42;
     neon(ctx, [[c - i, c - i], [c + i, c - i], [c + i, c + i], [c - i, c + i]], C.basic, 1.6, 0.35, 6);
   });
   shapeTexture(scene, 'e_fast', r('fast') * 1.4, (ctx, c) => {
     const pts = regular(c, c, r('fast') * 1.2, 3, 0);
-    neon(ctx, pts, C.fast, 2.4);
+    neon(ctx, pts, C.fast, 3);
     dot(ctx, c - r('fast') * 0.1, c, 2.2, C.fast, 6);
   });
   shapeTexture(scene, 'e_tank', r('tank') * 1.25, (ctx, c) => {
@@ -108,7 +116,8 @@ function enemies(scene: Phaser.Scene, data: GameData): void {
   });
   shapeTexture(scene, 'e_ranged', r('ranged') * 1.4, (ctx, c) => {
     const rr = r('ranged');
-    neon(ctx, [[c + rr * 1.25, c], [c, c - rr * 0.85], [c - rr * 1.25, c], [c, c + rr * 0.85]], C.ranged, 2.4);
+    neon(ctx, [[c + rr * 1.3, c], [c, c - rr * 0.9], [c - rr * 1.3, c], [c, c + rr * 0.9]], C.ranged, 3);
+    neon(ctx, [[c + rr * 0.6, c], [c, c - rr * 0.42], [c - rr * 0.6, c], [c, c + rr * 0.42]], C.ranged, 1.4, 0.3, 6);
     dot(ctx, c, c, 3, C.ranged, 8);
   });
   const br = r('boss');
@@ -135,6 +144,29 @@ function core(scene: Phaser.Scene, data: GameData): void {
   shapeTexture(scene, 'core_inner', cr * 0.8, (ctx, c) => {
     neon(ctx, regular(c, c, cr * 0.66, 6, 0), CORE, 2.4, 0.35, 12);
     neon(ctx, regular(c, c, cr * 0.32, 6, Math.PI / 6), WHITE, 1.6, 0.6, 8);
+  });
+  const rr = cr * 1.85;
+  shapeTexture(scene, 'core_ring', rr + 4, (ctx, c) => {
+    ctx.shadowColor = rgba(CORE, 1);
+    ctx.shadowBlur = 8 * RS;
+    ctx.strokeStyle = rgba(CORE, 0.75);
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(c, c, rr, a + 0.12, a + Math.PI / 3 - 0.12);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = rgba(CORE, 0.5);
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 36; i++) {
+      const a = (i / 36) * Math.PI * 2;
+      const r0 = rr - (i % 3 === 0 ? 7 : 4);
+      ctx.beginPath();
+      ctx.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0);
+      ctx.lineTo(c + Math.cos(a) * (rr - 1.5), c + Math.sin(a) * (rr - 1.5));
+      ctx.stroke();
+    }
   });
   const L = 512;
   bake(scene, 'core_light', L, L, (ctx) => {
