@@ -143,9 +143,11 @@ describe('MAX buy', () => {
     const t0 = performance.now();
     const n = maxAffordable(d, 0, 1e250);
     const ms = performance.now() - t0;
-    // 5·(1.1^n − 1)/0.1 ≤ 1e250 → n ≈ log(2e248)/log(1.1) ≈ 5999.
-    expect(n).toBeGreaterThan(5900);
-    expect(n).toBeLessThan(6100);
+    // b·(c^n − 1)/(c − 1) ≤ E → n = ⌊log(1 + E(c − 1)/b) / log c⌋ (floats are fine in a test).
+    const { base, growth } = d.cost;
+    const expected = Math.floor(Math.log(1 + (1e250 * (growth - 1)) / base) / Math.log(growth));
+    expect(Math.abs(n - expected)).toBeLessThanOrEqual(1);
+    expect(n).toBeGreaterThan(4000);
     expect(costSum(d, 0, n)).toBeLessThanOrEqual(1e250);
     expect(costSum(d, 0, n + 1)).toBeGreaterThan(1e250);
     expect(ms).toBeLessThan(5);

@@ -5,9 +5,10 @@
   "bossEvery": 10,
   "spawnRadius": 380,
   "baseEnemiesPerWave": 6,
-  "enemiesPerWaveGrowth": 1.5,
+  "enemiesPerWaveGrowth": 1.6,
   "maxEnemiesPerWave": 120,
-  "energyGrowth": 1.03,
+  "bossWaveEnemyMul": 0.5,
+  "energyGrowth": 1.02,
   "bitsGrowth": 1.02,
   "hashCell": 64
 }

@@ -108,6 +108,8 @@ export interface SimConfig {
   energyGrowth: number;
   /** Per-wave Bits reward multiplier. */
   bitsGrowth: number;
+  /** Share of the regular enemies a boss wave still spawns (0..1). */
+  bossWaveEnemyMul: number;
   /** Spatial hash cell size, world px. */
   hashCell: number;
 }
@@ -196,6 +198,7 @@ export function validateData(d: GameData): GameData {
   positive(c.bitsGrowth, 'config.bitsGrowth');
 
   positive(c.hashCell, 'config.hashCell');
+  check(Number.isFinite(c.bossWaveEnemyMul) && c.bossWaveEnemyMul >= 0 && c.bossWaveEnemyMul <= 1, 'config.bossWaveEnemyMul must be in [0, 1]');
   const k = d.core;
   positive(k.radius, 'core.radius');
   positive(k.projectileSpeed, 'core.projectileSpeed');

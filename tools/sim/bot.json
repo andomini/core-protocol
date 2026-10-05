@@ -1,0 +1,12 @@
+{
+  "useful": [
+    "damage", "attackSpeed", "critChance", "critFactor", "range", "multishot",
+    "health", "regen", "defense", "thorns", "lifesteal", "knockback",
+    "energyBonus", "energyPerWave", "interest", "freeUpgrade"
+  ],
+  "tabWeight": {
+    "greedy": { "atk": 1, "def": 1, "util": 1 },
+    "atk-first": { "atk": 4, "def": 1, "util": 1 },
+    "def-first": { "atk": 1, "def": 4, "util": 1 }
+  }
+}

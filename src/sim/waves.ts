@@ -38,7 +38,8 @@ function startWave(w: World, data: GameData, events: SimEvent[]): void {
   const kinds = ENEMY_KINDS.filter((k) => k !== 'boss' && data.enemies[k].weight > 0 && data.enemies[k].firstWave <= w.wave);
   const weights = kinds.map((k) => data.enemies[k].weight);
   const queue: EnemyKind[] = boss ? ['boss'] : [];
-  const n = enemiesPerWave(data, w.wave);
+  // A boss wave brings fewer regular viruses (the boss is the wave's threat, not an extra on top).
+  const n = Math.floor(enemiesPerWave(data, w.wave) * (boss ? data.config.bossWaveEnemyMul : 1));
   for (let i = 0; i < n; i++) queue.push(pickWeighted(w.rng.spawn, kinds, weights));
   w.spawnQueue = queue;
   w.spawnInterval = queue.length > 0 ? Math.max(1, Math.floor((waveTicks(data) * SPAWN_WINDOW) / queue.length)) : 1;
