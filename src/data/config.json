@@ -3,7 +3,7 @@
   "waveSeconds": 26,
   "pauseSeconds": 4,
   "bossEvery": 10,
-  "spawnRadius": 560,
+  "spawnRadius": 380,
   "baseEnemiesPerWave": 6,
   "enemiesPerWaveGrowth": 1.5,
   "maxEnemiesPerWave": 120,
