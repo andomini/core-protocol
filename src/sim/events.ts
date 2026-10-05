@@ -28,6 +28,7 @@ export type SimEvent =
   | { type: 'lightning'; fromId: number; targets: number[] }
   | { type: 'bounce'; projectileId: number; fromId: number; toId: number }
   | { type: 'overdrive'; untilTick: number }
+  | { type: 'revive'; hp: number }
   | { type: 'immunity'; untilTick: number }
   | { type: 'buy'; stat: StatId; levels: number; level: number; cost: number; free: boolean }
   | { type: 'buyRejected'; stat: string; reason: BuyRejectReason }

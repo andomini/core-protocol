@@ -22,8 +22,10 @@ export function enemiesPerWave(data: GameData, wave: number): number {
   return Math.min(c.maxEnemiesPerWave, Math.floor(c.baseEnemiesPerWave + wave * c.enemiesPerWaveGrowth));
 }
 
-export function isBossWave(data: GameData, wave: number): boolean {
-  return wave > 0 && wave % data.config.bossEvery === 0;
+/** Boss waves: every `config.bossEvery` waves, or the tier's own cadence (the "Swarm" condition). */
+export function isBossWave(data: GameData, wave: number, tier = 1): boolean {
+  const every = data.tiers[tier - 1]?.bossEvery ?? data.config.bossEvery;
+  return wave > 0 && wave % every === 0;
 }
 
 /** base × mul × growth^(wave − 1), clamped to MAX_VALUE. */
@@ -35,7 +37,7 @@ function startWave(w: World, data: GameData, events: SimEvent[]): void {
   w.wave += 1;
   w.phase = 'wave';
   w.phaseTick = 0;
-  const boss = isBossWave(data, w.wave);
+  const boss = isBossWave(data, w.wave, w.tier);
   const kinds = ENEMY_KINDS.filter((k) => k !== 'boss' && data.enemies[k].weight > 0 && data.enemies[k].firstWave <= w.wave);
   const weights = kinds.map((k) => data.enemies[k].weight);
   const queue: EnemyKind[] = boss ? ['boss'] : [];
@@ -66,10 +68,10 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
     hp,
     maxHp: hp,
     damage: scaleForWave(def.damage, tier.damageMul, tier.damageGrowth, wave),
-    speed: def.speed,
+    speed: def.speed * (tier.speedMul ?? 1),
     radius: def.radius,
     standoff: def.standoff,
-    attackIntervalTicks: def.attackInterval * c.tickHz,
+    attackIntervalTicks: (def.attackInterval * c.tickHz) / (def.standoff > 0 ? (tier.rangedRateMul ?? 1) : 1),
     attackCd: 0,
     energy: scaleForWave(def.energy, 1, c.energyGrowth, wave),
     bits: scaleForWave(def.bits, tier.bitsMul, c.bitsGrowth, wave),
@@ -120,6 +122,6 @@ export function advanceWave(w: World, data: GameData, st: CoreStats, prof: PerkP
     w.phaseTick = 0;
     events.push({ type: 'waveEnd', wave: w.wave });
     payWaveRewards(w, data, st, events);
-    if (w.protocols && w.wave >= 2 && isPickWave(data, w.wave)) enterPick(w, data, events);
+    if (w.protocols && w.wave >= 2 && isPickWave(data, w.wave, w.lab.pickEvery)) enterPick(w, data, events);
   }
 }

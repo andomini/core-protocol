@@ -21,9 +21,13 @@ export function perkIds(data: GameData): string[] {
   return Object.keys(data.perks.perks);
 }
 
-/** True when a pick opens for wave `wave` (1, 3, 5, 8, 10, then every 5 after the last listed wave). */
-export function isPickWave(data: GameData, wave: number): boolean {
-  const { waves, every } = data.perks.schedule;
+/**
+ * True when a pick opens for wave `wave` (1, 3, 5, 8, 10, then every 5 after the last listed wave).
+ * `every` > 0 overrides the cadence after the listed waves (lab node).
+ */
+export function isPickWave(data: GameData, wave: number, everyOverride = 0): boolean {
+  const { waves } = data.perks.schedule;
+  const every = everyOverride > 0 ? everyOverride : data.perks.schedule.every;
   if (waves.includes(wave)) return true;
   const last = waves[waves.length - 1]!;
   return wave > last && (wave - last) % every === 0;
@@ -89,8 +93,10 @@ export function generateOffer(w: World, data: GameData, rerolls: number): string
   if (w.pity >= pd.offer.pityAfter) slots.push('rare');
   while (slots.length < w.offerSize) slots.push('any');
   slots.length = w.offerSize;
-  const weights = RARITIES.map((r) => pd.offer.rarityWeights[r]);
-  const rareWeights = RARITIES.map((r) => (r === 'common' ? 0 : pd.offer.rarityWeights[r]));
+  // Lab node: × weight on Rare/Epic (integer weights for pickWeighted).
+  const mul = (r: Rarity): number => (r === 'common' ? pd.offer.rarityWeights[r] : Math.round(pd.offer.rarityWeights[r] * w.lab.rareMul));
+  const weights = RARITIES.map(mul);
+  const rareWeights = RARITIES.map((r) => (r === 'common' ? 0 : mul(r)));
   const offer: string[] = [];
   for (const slot of slots) {
     const rarity = pickWeighted(rng, RARITIES, slot === 'rare' ? rareWeights : weights);
@@ -197,7 +203,7 @@ export function grantPerk(w: World, data: GameData, id: string, events: SimEvent
   });
 }
 
-export type ProtocolReject = 'dead' | 'phase' | 'index' | 'noReroll' | 'cooldown';
+export type ProtocolReject = 'dead' | 'phase' | 'index' | 'noReroll' | 'cooldown' | 'used';
 
 /** Takes card `index` of the open offer; the world resumes into the between-waves pause. */
 export function pickPerk(w: World, data: GameData, index: unknown, events: SimEvent[]): ProtocolReject | null {

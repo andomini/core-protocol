@@ -44,6 +44,16 @@ export interface TierDef {
   /** Per-wave HP multiplier: HP = base × hpMul × hpGrowth^(wave−1). */
   hpGrowth: number;
   damageGrowth: number;
+  /** Tier condition (spec §3.2): viruses regenerate this share of max HP per second. */
+  enemyRegen?: number;
+  /** Tier condition: a boss every N waves instead of config.bossEvery ("Swarm"). */
+  bossEvery?: number;
+  /** Tier condition: ranged viruses attack this many times as often. */
+  rangedRateMul?: number;
+  /** Tier condition: every virus moves this much faster. */
+  speedMul?: number;
+  /** Short condition label for the tier picker ('' = none). */
+  condition?: string;
 }
 
 /** Fixed core geometry; every upgradable core value lives in `stats.json`. */
@@ -112,6 +122,9 @@ export interface SimConfig {
   bossWaveEnemyMul: number;
   /** Spatial hash cell size, world px. */
   hashCell: number;
+  /** Rewarded revive: core HP share restored, and viruses within this radius (world px) are purged. */
+  reviveHp: number;
+  reviveClearRadius: number;
 }
 
 export interface GameData {
@@ -200,6 +213,8 @@ export function validateData(d: GameData): GameData {
   positive(c.bitsGrowth, 'config.bitsGrowth');
 
   positive(c.hashCell, 'config.hashCell');
+  check(Number.isFinite(c.reviveHp) && c.reviveHp > 0 && c.reviveHp <= 1, 'config.reviveHp must be in (0, 1]');
+  nonNeg(c.reviveClearRadius, 'config.reviveClearRadius');
   check(Number.isFinite(c.bossWaveEnemyMul) && c.bossWaveEnemyMul >= 0 && c.bossWaveEnemyMul <= 1, 'config.bossWaveEnemyMul must be in [0, 1]');
   const k = d.core;
   positive(k.radius, 'core.radius');
@@ -237,6 +252,10 @@ export function validateData(d: GameData): GameData {
     positive(t.bitsMul, `tiers[${i}].bitsMul`);
     positive(t.hpGrowth, `tiers[${i}].hpGrowth`);
     positive(t.damageGrowth, `tiers[${i}].damageGrowth`);
+    if (t.enemyRegen !== undefined) nonNeg(t.enemyRegen, `tiers[${i}].enemyRegen`);
+    if (t.bossEvery !== undefined) check(Number.isInteger(t.bossEvery) && t.bossEvery > 0, `tiers[${i}].bossEvery must be a positive integer`);
+    if (t.rangedRateMul !== undefined) positive(t.rangedRateMul, `tiers[${i}].rangedRateMul`);
+    if (t.speedMul !== undefined) positive(t.speedMul, `tiers[${i}].speedMul`);
   });
 
   check(d.directions.length === 64, `directions must have 64 entries, got ${d.directions.length}`);

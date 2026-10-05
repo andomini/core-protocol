@@ -47,8 +47,12 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
   const perTick = 1 / data.config.tickHz;
   const coreRadius = data.core.radius;
   const taken = 1 - st.defense;
+  // Tier condition: viruses regenerate a share of max HP per second.
+  const regen = (data.tiers[w.tier - 1]?.enemyRegen ?? 0) * perTick;
   for (const e of w.enemies) {
-    if (e.hp <= 0 || isFrozen(w, e)) continue;
+    if (e.hp <= 0) continue;
+    if (regen > 0 && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * regen);
+    if (isFrozen(w, e)) continue;
     const stopAt = e.standoff > 0 ? e.standoff : coreRadius + e.radius;
     const dist = dsqrt(e.x * e.x + e.y * e.y);
     // Cryo slows both movement and the attack cadence (a slowed virus also hits less often).

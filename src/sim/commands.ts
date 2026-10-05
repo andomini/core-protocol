@@ -18,7 +18,9 @@ export type Command =
   /** A new offer: `free` (lab node) or `ad` (after a watched rewarded ad). */
   | { type: 'reroll'; via: 'free' | 'ad' }
   /** Rewarded boost: × Energy for the next waves (pick screen only, with a cooldown). */
-  | { type: 'boost' };
+  | { type: 'boost' }
+  /** Rewarded revive after death: once per run, part of the HP back, nearby viruses purged. */
+  | { type: 'revive' };
 
 export interface LoggedCommand {
   /** World tick before the step that applies it (applied first thing in that step). */
@@ -40,7 +42,10 @@ function validCount(c: unknown): c is BuyCount {
 
 /** What a buy would do now; the UI uses this same quote for its price and glow. */
 export function quoteFor(w: World, data: GameData, stat: StatId, count: BuyCount): BuyQuote {
-  return quoteBuy(data.stats.stats[stat], w.levels[stat], count, w.energy);
+  const def = data.stats.stats[stat];
+  const bonus = w.lab.maxBonus[stat] ?? 0;
+  const eff = bonus > 0 && def.maxLevel !== undefined ? { ...def, maxLevel: def.maxLevel + bonus } : def;
+  return quoteBuy(eff, w.levels[stat], count, w.energy);
 }
 
 function reject(events: SimEvent[], stat: unknown, reason: Extract<SimEvent, { type: 'buyRejected' }>['reason']): void {
@@ -69,6 +74,23 @@ function buy(w: World, data: GameData, stat: unknown, count: unknown, events: Si
   events.push({ type: 'buy', stat, levels: q.levels, level: w.levels[stat], cost: free ? 0 : q.cost, free });
 }
 
+/** Rewarded revive: once per run; HP back to `reviveHp`, viruses near the core purged (no rewards). */
+function revive(w: World, data: GameData, events: SimEvent[]): ProtocolReject | null {
+  if (!w.dead) return 'phase';
+  if (w.revived) return 'used';
+  w.dead = false;
+  w.revived = true;
+  // The run-end bonus was paid at death; it is paid again (on the new total) at the next death.
+  w.bits = clampValue(Math.max(0, w.bits - w.bitsBonus));
+  w.bitsBonus = 0;
+  const r2 = data.config.reviveClearRadius * data.config.reviveClearRadius;
+  w.enemies = w.enemies.filter((e) => e.x * e.x + e.y * e.y > r2);
+  w.projectiles = [];
+  w.core.hp = clampValue(worldStats(w, data).health * data.config.reviveHp);
+  events.push({ type: 'revive', hp: w.core.hp });
+  return null;
+}
+
 function protocol(events: SimEvent[], cmd: string, r: ProtocolReject | null): void {
   if (r !== null) events.push({ type: 'commandRejected', cmd, reason: r });
 }
@@ -81,6 +103,7 @@ export function applyCommands(w: World, data: GameData, cmds: readonly Command[]
     else if (c.type === 'pickPerk') protocol(events, 'pickPerk', pickPerk(w, data, c.index, events));
     else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
     else if (c.type === 'boost') protocol(events, 'boost', takeBoost(w, data, events));
+    else if (c.type === 'revive') protocol(events, 'revive', revive(w, data, events));
     else if (typeof c.stat === 'string') reject(events, c.stat, 'unknown');
     else events.push({ type: 'commandRejected', cmd: String(c.type), reason: 'unknown' });
   }

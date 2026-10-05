@@ -64,6 +64,7 @@ export function step(w: World, data: GameData, commands: readonly Command[], eve
     w.dead = true;
     const bonusBits = clampValue(w.bits * (prof.rules.runEndBits - 1));
     w.bits = clampValue(w.bits + bonusBits);
+    w.bitsBonus = bonusBits;
     events.push({ type: 'death', wave: w.wave, tick: w.tick, bonusBits });
     return;
   }

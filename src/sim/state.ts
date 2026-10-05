@@ -2,6 +2,7 @@ import { type EnemyKind, type GameData, STAT_IDS, type StatId } from './data';
 import { TAGS, type Tag } from './perkData';
 import { initProtocols, type Timer } from './perks';
 import { createStream, type RngState } from './rng';
+import { clampValue } from './num';
 import { canonicalLevels, type CoreStats, effectiveStats, type Levels, type Modifier } from './stats';
 
 // The World is plain JSON: no classes, Maps or functions, so it can be hashed and snapshotted.
@@ -53,12 +54,12 @@ export interface CoreState {
 }
 
 /** v3 (M3): protocols — perks, set tiers, pick phase, Keys, boost, periodic timers, slow/freeze, bounces. */
-export const WORLD_VERSION = 3;
+export const WORLD_VERSION = 4;
 
 export type Phase = 'wave' | 'pause' | 'pick';
 
 export interface World {
-  v: 3;
+  v: 4;
   seed: number;
   /** 1-based index into GameData.tiers. */
   tier: number;
@@ -112,6 +113,12 @@ export interface World {
   keys: number;
   kills: number;
   dead: boolean;
+  /** The rewarded revive was used this run. */
+  revived: boolean;
+  /** Run-end Bits bonus paid at death (taken back on a revive so it is never paid twice). */
+  bitsBonus: number;
+  /** Lab parameters for this run (M4). */
+  lab: LabParams;
   /** Separate streams so purchases (upgrades) never perturb combat or spawns. */
   rng: { spawn: RngState; combat: RngState; upgrades: RngState };
 }
@@ -130,11 +137,36 @@ export interface RunOptions {
   extraPerkChoice?: boolean;
   /** Lab node: free reroll(s) per run. */
   freeReroll?: boolean;
+  /** Lab node: picks every N waves after the listed ones (default: data schedule). */
+  pickEvery?: number;
+  /** Lab node: × weight of Rare/Epic in offers. */
+  rareMul?: number;
+  /** Lab nodes: extra max levels per stat. */
+  maxLevelBonus?: Partial<Record<StatId, number>>;
+  /** Lab node: Energy at run start. */
+  startEnergy?: number;
 }
 
 /** The effective stats of this world right now (derived; never stored in the World). */
 export function worldStats(w: World, data: GameData): CoreStats {
   return effectiveStats(data, { workshop: w.workshop, run: w.levels, mods: w.mods });
+}
+
+export interface LabParams {
+  /** 0 = the data schedule. */
+  pickEvery: number;
+  rareMul: number;
+  /** Extra max levels per stat (only stats with a bonus are listed, in STAT_IDS order). */
+  maxBonus: Partial<Record<StatId, number>>;
+}
+
+function canonicalBonus(b: Partial<Record<StatId, number>> | undefined): Partial<Record<StatId, number>> {
+  const out: Partial<Record<StatId, number>> = {};
+  for (const id of STAT_IDS) {
+    const v = b?.[id];
+    if (v !== undefined && Number.isInteger(v) && v > 0) out[id] = v;
+  }
+  return out;
 }
 
 export function createWorld(data: GameData, opts: RunOptions): World {
@@ -152,7 +184,7 @@ export function createWorld(data: GameData, opts: RunOptions): World {
   for (const t of TAGS) setTiers[t] = 0;
   const cardTags = (opts.cardTags ?? []).filter((t): t is Tag => (TAGS as readonly string[]).includes(t));
   const w: World = {
-    v: 3,
+    v: 4,
     seed: opts.seed,
     tier: opts.tier,
     tick: 0,
@@ -183,11 +215,18 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     enemies: [],
     projectiles: [],
     nextId: 1,
-    energy: 0,
+    energy: opts.startEnergy !== undefined && Number.isFinite(opts.startEnergy) && opts.startEnergy > 0 ? clampValue(opts.startEnergy) : 0,
     bits: 0,
     keys: 0,
     kills: 0,
     dead: false,
+    revived: false,
+    bitsBonus: 0,
+    lab: {
+      pickEvery: opts.pickEvery !== undefined && Number.isInteger(opts.pickEvery) && opts.pickEvery > 0 ? opts.pickEvery : 0,
+      rareMul: opts.rareMul !== undefined && Number.isFinite(opts.rareMul) && opts.rareMul > 0 ? opts.rareMul : 1,
+      maxBonus: canonicalBonus(opts.maxLevelBonus),
+    },
     rng: { spawn: createStream(opts.seed, 'spawn'), combat: createStream(opts.seed, 'combat'), upgrades: createStream(opts.seed, 'upgrades') },
   };
   // Card tags may already complete a set; then the wave-1 pick opens the run (spec §2.4, B1).

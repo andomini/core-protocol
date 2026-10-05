@@ -10,5 +10,7 @@
   "bossWaveEnemyMul": 0.5,
   "energyGrowth": 1.02,
   "bitsGrowth": 1.02,
-  "hashCell": 64
+  "hashCell": 64,
+  "reviveHp": 0.5,
+  "reviveClearRadius": 200
 }
