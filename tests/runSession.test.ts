@@ -112,4 +112,37 @@ describe('RunSession', () => {
     expect(s.prevOf(id)).toBeUndefined();
     expect(s.lastKnown(id)).toBeUndefined();
   });
+
+  it('queued commands apply at the start of the next step, are logged with that tick, and replay identically', () => {
+    const s = new RunSession(tough, { seed: 3, tier: 1 });
+    s.advance(900, () => {});
+    const e0 = s.world.energy;
+    expect(e0).toBeGreaterThan(tough.stats.stats.damage.cost.base);
+    s.queue({ type: 'buy', stat: 'damage', count: 1 });
+    expect(s.world.levels.damage).toBe(0);
+    const routed: SimEvent[] = [];
+    s.advance(1, (e) => routed.push(e));
+    expect(routed[0]).toMatchObject({ type: 'buy', stat: 'damage', levels: 1 });
+    expect(s.world.levels.damage).toBe(1);
+    const kills = routed.filter((e) => e.type === 'kill').reduce((t, e) => t + (e.type === 'kill' ? e.energy : 0), 0);
+    expect(s.world.energy).toBeCloseTo(e0 - tough.stats.stats.damage.cost.base + kills, 9);
+    expect(s.log).toEqual([{ tick: 900, cmd: { type: 'buy', stat: 'damage', count: 1 } }]);
+    expect(s.stats.damage).toBe(tough.stats.stats.damage.base + tough.stats.stats.damage.per);
+  });
+
+  it('applyPendingNow (paused) is equivalent to applying at the next step', () => {
+    const a = new RunSession(tough, { seed: 8, tier: 1 });
+    const b = new RunSession(tough, { seed: 8, tier: 1 });
+    a.advance(1000, () => {});
+    b.advance(1000, () => {});
+    a.queue({ type: 'buy', stat: 'health', count: 'max' });
+    b.queue({ type: 'buy', stat: 'health', count: 'max' });
+    a.applyPendingNow(() => {});
+    expect(a.world.levels.health).toBeGreaterThan(0);
+    expect(a.stats.health).toBeGreaterThan(tough.stats.stats.health.base);
+    a.advance(500, () => {});
+    b.advance(500, () => {});
+    expect(hashWorld(a.world)).toBe(hashWorld(b.world));
+    expect(a.log).toEqual(b.log);
+  });
 });
