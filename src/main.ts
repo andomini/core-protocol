@@ -10,6 +10,7 @@ import { LETTERBOX } from './render/palette';
 import { initRenderScale } from './render/resolution';
 import { BattleScene } from './render/scenes/BattleScene';
 import { BootScene } from './render/scenes/BootScene';
+import { HomeScene } from './render/scenes/HomeScene';
 import { services } from './services';
 import { DEFAULT_DATA } from './sim/data';
 import { installSessionEvents, Telemetry } from './telemetry/Telemetry';
@@ -74,7 +75,7 @@ async function start(): Promise<void> {
     },
     render: { antialias: true, powerPreference: 'high-performance' },
     input: { activePointers: 2 },
-    scene: [BootScene, BattleScene],
+    scene: [BootScene, HomeScene, BattleScene],
   });
   game.registry.set('layout', layout);
   // The toast sits in the arena (below the core), never across the arena/panel seam.

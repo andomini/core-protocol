@@ -7,6 +7,11 @@ import { DEFAULT_DATA, type EnemyKind, type GameData, STAT_IDS } from '../../sim
 import type { RunOptions } from '../../sim/state';
 import type { SimEvent } from '../../sim/events';
 import { DeathOverlay } from '../../ui/DeathOverlay';
+import { labEffects } from '../../meta/labs';
+import { DEFAULT_META_DATA } from '../../meta/metaData';
+import { buildRunOptions } from '../../meta/runOptions';
+import { type Settlement, settleRun } from '../../meta/runEnd';
+import { Button } from '../../ui/kit';
 import { PickOverlay } from '../../ui/PickOverlay';
 import { ProtocolsPanel } from '../../ui/ProtocolsPanel';
 import { SetChips } from '../../ui/SetChips';
@@ -63,9 +68,29 @@ export class BattleScene extends Phaser.Scene {
   private readonly tmp = { x: 0, y: 0 };
   private deathAt = 0;
   private stressCount = 0;
+  private mode: 'new' | 'continue' = 'new';
+  private tier = 1;
+  private speeds: number[] = SPEEDS;
+  /** The death settlement already paid into the meta save (undone on a revive). */
+  private paid: { s: Settlement; runKeys: number; doubled: boolean } | null = null;
+  private exitBtn!: Button;
+  private readonly saveOnHide = (): void => this.saveRun();
 
   constructor() {
     super('Battle');
+  }
+
+  /** `mode: 'continue'` resumes the saved run; otherwise a new run on `tier`. Resets per-run scene state. */
+  init(data: { mode?: 'new' | 'continue'; tier?: number } = {}): void {
+    this.mode = data.mode === 'continue' ? 'continue' : 'new';
+    this.tier = data.tier ?? services.meta?.meta.tier ?? 1;
+    this.speed = 1;
+    this.paused = false;
+    this.deathAt = 0;
+    this.bannerUntil = 0;
+    this.frameMs = [];
+    this.paid = null;
+    this.pausedBeforePanel = false;
   }
 
   create(): void {
@@ -74,7 +99,15 @@ export class BattleScene extends Phaser.Scene {
     this.gd = battleData(DEFAULT_DATA, this.flags);
     this.life = new RunLifecycle({ guard: services.guard, ads: services.ads, telemetry: services.telemetry, tickHz: this.gd.config.tickHz });
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
-    this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
+    this.speeds = labEffects(services.meta.meta, DEFAULT_META_DATA).speeds;
+    const saved = this.mode === 'continue' ? services.meta.loadRun() : null;
+    if (saved) {
+      this.tier = saved.world.tier;
+      this.session = new RunSession(this.gd, saved.opts);
+      this.session.adopt(saved.world, saved.opts);
+    } else {
+      this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
+    }
     this.loop = new FixedLoop(this.gd.config.tickHz, MAX_TICKS_PER_FRAME);
     this.view = new WorldView(this, this.L, () => this.session);
     this.fx = new Effects(this);
@@ -85,7 +118,12 @@ export class BattleScene extends Phaser.Scene {
       command: (cmd) => this.command(cmd),
       pending: () => this.session.hasPending,
     });
-        this.death = new DeathOverlay(this, this.L, () => void this.life.requestRestart(() => this.restart()));
+    this.death = new DeathOverlay(this, this.L, {
+      revive: () => this.revive(),
+      double: () => this.doubleBits(),
+      home: () => this.goHome(),
+      retry: () => void this.life.requestRestart(() => this.restart()),
+    });
     this.pick = new PickOverlay(this, this.L, this.gd, {
       pick: (index) => this.command({ type: 'pickPerk', index }),
       reroll: () => {
@@ -107,16 +145,106 @@ export class BattleScene extends Phaser.Scene {
       this.speed = stress.speed;
       this.fpsText = text(this, a.x + 16, a.y + a.h - 16, '', this.L.minFont, { color: '#2bffb0', stroke: true }).setOrigin(0, 1).setDepth(DEPTH.overlay - 1);
     }
+    const a2 = this.L.arena;
+    const ew = this.L.o === 'portrait' ? 340 : 260;
+    const eh = this.L.o === 'portrait' ? 90 : 60;
+    this.exitBtn = new Button(this, { x: a2.x + a2.w / 2 - ew / 2, y: a2.y + a2.h * 0.2 + (this.L.o === 'portrait' ? 70 : 50), w: ew, h: eh }, 'SAVE & EXIT', this.L.o === 'portrait' ? 30 : 20, DEPTH.overlay - 1, () => this.saveAndExit(), {
+      font: 'title',
+      fill: 0x062a3a,
+    }).setVisible(false);
+    // Save the run when the tab hides or the page goes away (spec §2.5: no save-scumming by reload).
+    document.addEventListener('visibilitychange', this.saveOnHide);
+    window.addEventListener('pagehide', this.saveOnHide);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      document.removeEventListener('visibilitychange', this.saveOnHide);
+      window.removeEventListener('pagehide', this.saveOnHide);
+      this.game.events.off(Phaser.Core.Events.HIDDEN, this.onHidden);
+    });
     this.input.keyboard?.on('keydown-SPACE', () => this.setPaused(!this.paused));
     this.input.keyboard?.on('keydown-S', () => this.cycleSpeed());
     // Auto-pause when the tab is hidden; the sim must not run in the background.
-    this.game.events.on(Phaser.Core.Events.HIDDEN, () => this.loop.reset());
+    this.game.events.on(Phaser.Core.Events.HIDDEN, this.onHidden);
     this.life.runStarted(this.session.world, this.session.world.phase === 'pick' ? ['perkPick'] : []);
   }
 
-  /** First-run options: nothing unlocked (labs come in M4) unless ?unlockall=1 (dev). */
+  private readonly onHidden = (): void => this.loop.reset();
+
+  /** Options for a new run from the meta save (workshop, labs) on this scene's tier; dev flags on top. */
   private runOptions(seed: number): RunOptions {
-    return { seed, tier: 1, unlocked: this.flags.unlockAll ? [...STAT_IDS] : [], protocols: !this.flags.stress };
+    const o = buildRunOptions(services.meta.meta, this.gd, DEFAULT_META_DATA, this.tier, seed);
+    if (this.flags.unlockAll) o.unlocked = [...STAT_IDS];
+    o.protocols = !this.flags.stress;
+    return o;
+  }
+
+  /** Snapshot of the run in progress (wave starts, tab hidden, pause → exit). Never in stress mode. */
+  saveRun(): void {
+    const w = this.session?.world;
+    if (!w || w.dead || this.flags.stress) return;
+    services.meta.saveRun(w, this.session.opts);
+  }
+
+  private saveAndExit(): void {
+    this.saveRun();
+    this.goHome();
+  }
+
+  goHome(): void {
+    this.life.hold('menu', true);
+    this.scene.start('Home');
+  }
+
+  /** Pays the run into the meta save at death (so closing the tab on the death screen loses nothing). */
+  private settle(): void {
+    const w = this.session.world;
+    services.meta.clearRun();
+    if (this.flags.stress) return;
+    const s = settleRun(services.meta.meta, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false });
+    this.paid = { s, runKeys: Math.floor(w.keys), doubled: false };
+    services.meta.save();
+  }
+
+  private deathNote(s: Settlement): string {
+    const parts: string[] = [];
+    if (s.newBest) parts.push('NEW BEST');
+    if (s.milestones.length) parts.push(`MILESTONE ${s.milestones.map((m) => `W${m}`).join(' ')}`);
+    if (s.tierUnlocked) parts.push(`TIER ${s.tierUnlocked} UNLOCKED`);
+    return parts.join(' · ');
+  }
+
+  private revive(): void {
+    const w = this.session.world;
+    if (!w.dead || w.revived) return;
+    void this.rewarded('revive').then((ok) => {
+      if (!ok || !this.session.world.dead) return;
+      // Undo the payout: the run continues and is paid again (in full) at its next death.
+      const p = this.paid;
+      if (p) {
+        const m = services.meta.meta;
+        m.bits = Math.max(0, m.bits - p.s.bits * (p.doubled ? 2 : 1));
+        m.keys = Math.max(0, m.keys - p.runKeys);
+        m.runs = Math.max(0, m.runs - 1);
+        this.paid = null;
+        services.meta.save();
+      }
+      this.command({ type: 'revive' });
+      this.death.hide();
+      this.deathAt = 0;
+      this.life.runStarted(this.session.world, []);
+      this.saveRun();
+    });
+  }
+
+  private doubleBits(): void {
+    const p = this.paid;
+    if (!p || p.doubled) return;
+    void this.rewarded('doubleBits').then((ok) => {
+      if (!ok || !this.paid || this.paid.doubled) return;
+      services.meta.meta.bits += this.paid.s.bits;
+      this.paid.doubled = true;
+      services.meta.save();
+      this.death.update2({ bits: this.paid.s.bits * 2, canDouble: false });
+    });
   }
 
   /** A player command: queued for the next tick, or applied at once while the sim is not stepping. */
@@ -152,8 +280,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   cycleSpeed(): void {
-    const i = SPEEDS.indexOf(this.speed);
-    this.setSpeed(SPEEDS[(i + 1) % SPEEDS.length]!);
+    const i = this.speeds.indexOf(this.speed);
+    this.setSpeed(this.speeds[(i + 1) % this.speeds.length]!);
   }
 
   setSpeed(n: number): void {
@@ -167,6 +295,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   restart(): void {
+    this.paid = null;
+    services.meta.clearRun();
     this.session.restart(this.runOptions(newSeed()));
     this.view.reset();
     this.fx.reset();
@@ -252,6 +382,7 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
       case 'waveStart':
+        this.saveRun();
         if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now);
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);
         this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, e.boss ? CRIMSON : undefined);
@@ -295,6 +426,7 @@ export class BattleScene extends Phaser.Scene {
         this.fx.pulse(L.cx, L.cy, coreR * 4, ENERGY);
         break;
       case 'death':
+        this.settle();
         this.fx.coreBreach(L.cx, L.cy, coreR);
         this.cameras.main.shake(380, 0.01);
         this.deathAt = now;
@@ -328,7 +460,19 @@ export class BattleScene extends Phaser.Scene {
     }
     if (this.deathAt > 0 && !this.death.visible && time - this.deathAt > 700) {
       const dw = this.session.world;
-      this.death.show({ wave: dw.wave, kills: dw.kills, energy: dw.energy, bits: dw.bits }, time);
+      const p = this.paid;
+      this.death.show(
+        {
+          wave: dw.wave,
+          kills: dw.kills,
+          bits: p ? p.s.bits : Math.floor(dw.bits),
+          keys: p ? p.s.keys : dw.keys,
+          note: p ? this.deathNote(p.s) : '',
+          canRevive: !dw.revived && !this.flags.stress,
+          canDouble: p !== null && !p.doubled,
+        },
+        time,
+      );
     }
     this.chips.update(tagCounts(w, this.gd), w.setTiers);
     if (w.phase === 'pick' && !w.dead) {
@@ -338,6 +482,7 @@ export class BattleScene extends Phaser.Scene {
       this.pick.hide();
       this.life.hold('perkPick', false);
     }
+    this.exitBtn.setVisible(this.paused && !w.dead && !this.protocols.visible && w.phase !== 'pick');
     this.death.update(time);
     this.frameMs.push(delta);
     if (this.frameMs.length > 120) this.frameMs.shift();

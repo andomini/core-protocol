@@ -118,8 +118,13 @@ export class RunSession {
 
   /** A fresh run; all render memory is dropped (entity ids restart at 1). */
   restart(opts: RunOptions): void {
+    this.adopt(createWorld(this.data, opts), opts);
+  }
+
+  /** Continues a saved run: `world` comes from a snapshot, `opts` are the options it was created with. */
+  adopt(world: World, opts: RunOptions): void {
     this.opts = opts;
-    this.world = createWorld(this.data, opts);
+    this.world = world;
     this.stats = worldStats(this.world, this.data);
     this.log = [];
     this.pending = [];

@@ -3,7 +3,7 @@
 import Phaser from 'phaser';
 import { CYAN, FONT_TITLE, FONT_UI, PANEL_FILL, TEXT, WHITE } from '../render/palette';
 import { ps, RS } from '../render/resolution';
-import { bakePanel, type PanelStyle } from '../render/textures';
+import { bakePanelOnce, type PanelStyle } from '../render/textures';
 import type { Rect } from './layout';
 
 export interface TextOpts {
@@ -39,12 +39,10 @@ export function text(scene: Phaser.Scene, x: number, y: number, s: string, size:
   return scene.add.text(x, y, s, textStyle(size, o));
 }
 
-let panelSeq = 0;
-
-/** A baked glowing chamfered frame covering `r` (logical px). */
+/** A baked glowing chamfered frame covering `r` (logical px). One texture per size + style (reused). */
 export function panel(scene: Phaser.Scene, r: Rect, depth: number, st: PanelStyle = {}): Phaser.GameObjects.Image {
-  const key = `panel_${panelSeq++}`;
-  const pad = bakePanel(scene, key, r.w, r.h, st);
+  const key = `panel_${Math.round(r.w)}x${Math.round(r.h)}_${st.edge ?? ''}_${st.fill ?? ''}_${st.fillA ?? ''}_${st.cut ?? ''}_${st.lw ?? ''}_${st.blur ?? ''}`;
+  const pad = bakePanelOnce(scene, key, r.w, r.h, st);
   return scene.add.image(r.x - pad, r.y - pad, key).setOrigin(0).setScale(ps(1)).setDepth(depth);
 }
 
@@ -97,6 +95,13 @@ export class Button {
     if (v) this.zone.setInteractive({ useHandCursor: true });
     else this.zone.disableInteractive();
     return this;
+  }
+
+  destroy(): void {
+    this.bg.destroy();
+    this.label.destroy();
+    this.icon.destroy();
+    this.zone.destroy();
   }
 
   setDepth(d: number): this {

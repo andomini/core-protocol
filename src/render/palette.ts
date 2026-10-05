@@ -62,3 +62,6 @@ export const RARITY_CSS = { common: '#8fa3d6', rare: '#5cb8ff', epic: '#ff6be0' 
 /** Enemy tints: frozen (icy fill) and slowed (cold multiply). */
 export const FROZEN_TINT = 0xbff6ff;
 export const SLOW_TINT = 0x8fd8ff;
+/** 🔑 Keys (card packs). */
+export const KEY = 0xffb84d;
+export const KEY_CSS = '#ffb84d';

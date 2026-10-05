@@ -503,6 +503,69 @@ const scenarios = {
     }
   },
 
+  async meta() {
+    for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
+      const h = await open(browser, srv.base, device, '?weak=1&seed=4');
+      const s0 = await h.state();
+      check(results, `${label} meta: a fresh save starts straight in a run (instant play)`, s0.scene === 'Battle', s0);
+      await h.call('setSpeed', 5);
+      const dead = await h.waitFor((x) => x.overlay, 25000, 100);
+      const m1 = await h.call('meta');
+      check(results, `${label} meta: death pays Bits into the save and marks the first run done`, dead.ok && m1.bits > 0 && m1.firstRunDone && m1.runs === 1, m1);
+      await h.p.waitForTimeout(400);
+      await h.shot(`death-${label}`);
+      const ui = await h.call('ui');
+      // ×2 BITS (local ad grants after ~2 s) doubles the run's Bits.
+      await h.tapLogical(...centre(ui.double));
+      await h.p.waitForFunction((b) => window.__cp.meta().bits >= b * 2 - 1, m1.bits, { timeout: 6000 }).catch(() => {});
+      const m2 = await h.call('meta');
+      check(results, `${label} meta: ×2 BITS (rewarded) doubles the payout`, m2.bits >= m1.bits * 2 - 1, { before: m1.bits, after: m2.bits });
+      await h.tapLogical(...centre(ui.home));
+      await h.p.waitForTimeout(500);
+      const sh = await h.state();
+      check(results, `${label} meta: HOME opens the home screen`, sh.scene !== 'Battle', sh);
+      // Workshop: buy Damage with the Bits we have.
+      await h.call('meta', { bits: 5000 });
+      await h.call('homeTab', 'workshop');
+      await h.p.waitForTimeout(300);
+      const buy = await h.p.evaluate(() => {
+        const scene = window.__cp.game.scene.getScene('Home');
+        const b = scene.buttons.find((x) => x.label.text.startsWith('◆'));
+        return b ? b.r : null;
+      });
+      await h.tapLogical(...centre(buy));
+      await h.p.waitForTimeout(200);
+      const m3 = await h.call('meta');
+      check(results, `${label} meta: a workshop purchase spends Bits and raises the level`, m3.workshop.damage === 1 && m3.bits < 5000, m3.workshop);
+      await h.shot(`workshop-${label}`);
+      // A new run starts with the workshop level; SAVE & EXIT keeps it for CONTINUE.
+      await h.call('goto', 'Battle', { mode: 'new', tier: 1 });
+      await h.p.waitForFunction(() => window.__cp.ready() && window.__cp.state().scene === 'Battle', null, { timeout: 5000 });
+      await h.call('pickPerk', 0);
+      await h.call('setSpeed', 5);
+      const w2 = await h.waitFor((x) => x.wave >= 2, 20000, 100);
+      check(results, `${label} meta: the new run carries the workshop level`, w2.ok && (await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').session.world.workshop.damage)) === 1, w2.s);
+      await h.call('pause', true);
+      await h.p.waitForTimeout(200);
+      const ex = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').exitBtn.r);
+      await h.tapLogical(...centre(ex));
+      await h.p.waitForTimeout(500);
+      const home = await h.state();
+      const saved = await h.p.evaluate(() => localStorage.getItem('core-protocol.run') !== null);
+      check(results, `${label} meta: SAVE & EXIT returns home with a saved run`, home.scene !== 'Battle' && saved, { home, saved });
+      await h.shot(`home-continue-${label}`);
+      await h.call('goto', 'Battle', { mode: 'continue' });
+      await h.p.waitForFunction(() => window.__cp.ready() && window.__cp.state().scene === 'Battle', null, { timeout: 5000 }).catch(async (e) => {
+        console.log('continue failed', h.errors, JSON.stringify(await h.state()).slice(0, 300));
+        throw e;
+      });
+      const c = await h.state();
+      check(results, `${label} meta: CONTINUE resumes the saved run`, c.wave === w2.s.wave || c.wave === w2.s.wave + 1, { saved: w2.s.wave, now: c.wave });
+      check(results, `${label} meta: no console errors`, h.errors.length === 0, h.errors);
+      await h.close();
+    }
+  },
+
   async stress() {
     for (const device of ['desktop', 'phone']) {
       const h = await open(browser, srv.base, device, '?stress=1');

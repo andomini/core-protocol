@@ -24,7 +24,23 @@ export function installDevHooks(game: Phaser.Game): void {
   };
   (window as unknown as { __cp: unknown }).__cp = {
     game,
-    ready: () => battle() !== null && battle()!.session !== undefined,
+    ready: () => (battle() !== null && battle()!.session !== undefined) || game.scene.isActive('Home'),
+    /** Meta save (dev): read, or patch and persist (e.g. { bits: 5000, firstRunDone: true }). */
+    meta: (patch?: Record<string, unknown>) => {
+      const m = services.meta.meta as unknown as Record<string, unknown>;
+      if (patch) {
+        Object.assign(m, patch);
+        services.meta.save();
+        const h = game.scene.getScene('Home') as unknown as { refresh?: () => void };
+        if (game.scene.isActive('Home')) h.refresh?.();
+      }
+      return JSON.parse(JSON.stringify(m));
+    },
+    /** Switches scenes like the UI does. */
+    goto: (scene: 'Home' | 'Battle', data?: Record<string, unknown>) => {
+      for (const s of game.scene.getScenes(true)) if (s.sys.settings.key !== 'Boot') s.scene.start(scene, data);
+    },
+    homeTab: (t: string) => (game.scene.getScene('Home') as unknown as { setTab: (t: string) => void }).setTab(t),
     state: () => {
       const b = battle();
       if (!b) return { scene: game.scene.getScenes(true).map((s) => s.sys.settings.key).join(','), ...portalState() };
@@ -71,6 +87,9 @@ export function installDevHooks(game: Phaser.Game): void {
       return {
         ...b.upgrades.info(),
         restart: b.death.restartRect(),
+        home: b.death.homeRect(),
+        double: b.death.doubleRect(),
+        revive: b.death.reviveRect(),
         pick: { cards, reroll: b.pick.rerollRect(), boost: b.pick.boostRect() },
         layout: { w: b.L.w, h: b.L.h, panel: b.L.panel },
       };

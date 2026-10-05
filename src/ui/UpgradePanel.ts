@@ -11,7 +11,7 @@ import type { World } from '../sim/state';
 import { type CoreStats, effectiveStats, type Levels, zeroLevels } from '../sim/stats';
 import { ENERGY, ENERGY_CSS, LOCKED_CSS, PANEL_FILL, TAB_COLOR, TAB_CSS, TEXT, TEXT_DIM, WHITE } from '../render/palette';
 import { ps } from '../render/resolution';
-import { bakePanel } from '../render/textures';
+import { bakePanelOnce } from '../render/textures';
 import { DEPTH } from '../render/WorldView';
 import { formatPrice, formatStat } from './format';
 import { panel, text } from './kit';
@@ -86,15 +86,15 @@ export class UpgradePanel {
 
     // Baked frames (each size once): tabs on/off, toggle, rows off/on per tab, price boxes, flash.
     const t0 = g.tabs[0]!;
-    for (const tab of TAB_IDS) bakePanel(scene, `up_tab_${tab}`, t0.w, t0.h, { edge: TAB_COLOR[tab], fill: TAB_COLOR[tab], fillA: 0.16, cut: 12, blur: 10, lw: 2.5 });
-    bakePanel(scene, 'up_tab_off', t0.w, t0.h, { edge: 0x2a3f7a, fillA: 0.7, cut: 12, blur: 2, lw: 1.5 });
-    bakePanel(scene, 'up_amount', g.amount.w, g.amount.h, { edge: 0x22e5ff, fillA: 0.9, cut: 12, blur: 8 });
+    for (const tab of TAB_IDS) bakePanelOnce(scene, `up_tab_${tab}`, t0.w, t0.h, { edge: TAB_COLOR[tab], fill: TAB_COLOR[tab], fillA: 0.16, cut: 12, blur: 10, lw: 2.5 });
+    bakePanelOnce(scene, 'up_tab_off', t0.w, t0.h, { edge: 0x2a3f7a, fillA: 0.7, cut: 12, blur: 2, lw: 1.5 });
+    bakePanelOnce(scene, 'up_amount', g.amount.w, g.amount.h, { edge: 0x22e5ff, fillA: 0.9, cut: 12, blur: 8 });
     const r0 = g.rows[0]!;
-    bakePanel(scene, 'up_row_off', r0.rect.w, r0.rect.h, { edge: 0x1d2c5c, fill: PANEL_FILL, fillA: 0.85, cut: 10, blur: 0, lw: 1.5 });
-    for (const tab of TAB_IDS) bakePanel(scene, `up_row_${tab}`, r0.rect.w, r0.rect.h, { edge: TAB_COLOR[tab], fill: PANEL_FILL, fillA: 0.9, cut: 10, blur: 9, lw: 1.5 });
-    bakePanel(scene, 'up_row_flash', r0.rect.w, r0.rect.h, { edge: WHITE, fill: WHITE, fillA: 0.35, cut: 10, blur: 12, lw: 2 });
-    bakePanel(scene, 'up_price_on', r0.price.w, r0.price.h, { edge: ENERGY, fill: ENERGY, fillA: 0.26, cut: 9, blur: 10, lw: 2 });
-    bakePanel(scene, 'up_price_off', r0.price.w, r0.price.h, { edge: 0x34406a, fill: 0x060a1c, fillA: 0.9, cut: 9, blur: 0, lw: 1.5 });
+    bakePanelOnce(scene, 'up_row_off', r0.rect.w, r0.rect.h, { edge: 0x1d2c5c, fill: PANEL_FILL, fillA: 0.85, cut: 10, blur: 0, lw: 1.5 });
+    for (const tab of TAB_IDS) bakePanelOnce(scene, `up_row_${tab}`, r0.rect.w, r0.rect.h, { edge: TAB_COLOR[tab], fill: PANEL_FILL, fillA: 0.9, cut: 10, blur: 9, lw: 1.5 });
+    bakePanelOnce(scene, 'up_row_flash', r0.rect.w, r0.rect.h, { edge: WHITE, fill: WHITE, fillA: 0.35, cut: 10, blur: 12, lw: 2 });
+    bakePanelOnce(scene, 'up_price_on', r0.price.w, r0.price.h, { edge: ENERGY, fill: ENERGY, fillA: 0.26, cut: 9, blur: 10, lw: 2 });
+    bakePanelOnce(scene, 'up_price_off', r0.price.w, r0.price.h, { edge: 0x34406a, fill: 0x060a1c, fillA: 0.9, cut: 9, blur: 0, lw: 1.5 });
 
     TAB_IDS.forEach((tab, i) => {
       const r = g.tabs[i]!;

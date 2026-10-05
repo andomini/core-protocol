@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import { type EnemyKind, type GameData, STAT_IDS, type StatId } from '../sim/data';
 import {
-  BITS, CORE, CYAN, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, LOCKED, PANEL_EDGE, PANEL_FILL, TAB_COLOR, TRACER, WHITE,
+  KEY, BITS, CORE, CYAN, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, LOCKED, PANEL_EDGE, PANEL_FILL, TAB_COLOR, TRACER, WHITE,
 } from './palette';
 import { RS } from './resolution';
 
@@ -290,6 +290,21 @@ function icons(scene: Phaser.Scene): void {
   bake(scene, 'ic_bits', S, S, (ctx) => {
     neon(ctx, [[c, c - 12], [c + 10, c], [c, c + 12], [c - 10, c]], BITS, 2, 0.4, 8);
   });
+  bake(scene, 'ic_key', S, S, (ctx) => {
+    ctx.shadowColor = rgba(KEY, 1);
+    ctx.shadowBlur = 8 * RS;
+    ctx.strokeStyle = rgba(KEY, 1);
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(c - 5, c, 6, 0, Math.PI * 2);
+    ctx.moveTo(c + 1, c);
+    ctx.lineTo(c + 13, c);
+    ctx.moveTo(c + 9, c);
+    ctx.lineTo(c + 9, c + 5);
+    ctx.moveTo(c + 13, c);
+    ctx.lineTo(c + 13, c + 6);
+    ctx.stroke();
+  });
   bake(scene, 'ic_hp', S, S, (ctx) => {
     neon(ctx, regular(c, c, 11, 6, Math.PI / 6), HP_OK, 2, 0.4, 8);
     neon(ctx, [[c - 1, c - 6], [c + 1, c - 6], [c + 1, c - 1], [c + 6, c - 1], [c + 6, c + 1], [c + 1, c + 1], [c + 1, c + 6], [c - 1, c + 6], [c - 1, c + 1], [c - 6, c + 1], [c - 6, c - 1], [c - 1, c - 1]], WHITE, 1, 0.9, 4);
@@ -517,9 +532,20 @@ export interface PanelStyle {
   blur?: number;
 }
 
+/** Padding baked around every panel (glow room), in logical px. */
+export const PANEL_PAD = 12;
+
+/**
+ * Like bakePanel, but keeps an existing texture under `key` (scenes are re-created on every run; replacing a
+ * texture that the renderer still holds a reference to breaks the next draw).
+ */
+export function bakePanelOnce(scene: Phaser.Scene, key: string, w: number, h: number, st: PanelStyle = {}): number {
+  return scene.textures.exists(key) ? PANEL_PAD : bakePanel(scene, key, w, h, st);
+}
+
 /** Bakes a glowing chamfered panel (UI frames, buttons). Returns the key and the padding around the box. */
 export function bakePanel(scene: Phaser.Scene, key: string, w: number, h: number, st: PanelStyle = {}): number {
-  const pad = 12;
+  const pad = PANEL_PAD;
   const edge = st.edge ?? PANEL_EDGE;
   bake(scene, key, w + pad * 2, h + pad * 2, (ctx) => {
     const pts = chamfer(pad, pad, w, h, st.cut ?? 14);

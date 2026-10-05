@@ -1,12 +1,12 @@
 {
-  "date": "2026-10-05T20:22:05.200Z",
+  "date": "2026-10-05T20:50:50.238Z",
   "metrics": {
     "portrait.firstPickMs": 2,
     "portrait.firstVisibleSimS": 0.03,
-    "landscape 1280×720.firstPickMs": 3,
-    "landscape 1280×720.firstVisibleSimS": 0,
+    "landscape 1280×720.firstPickMs": 2,
+    "landscape 1280×720.firstVisibleSimS": 0.03,
     "landscape 907×510.firstPickMs": 1,
-    "landscape 907×510.firstVisibleSimS": 0.03,
+    "landscape 907×510.firstVisibleSimS": 0,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
   },
@@ -244,24 +244,24 @@
         {
           "seed": 3,
           "tier": 1,
-          "deviceId": "xb0jy0jcqtkquibn",
+          "deviceId": "d8t8slrke4pytrm2",
           "runIndex": 1,
-          "t": 1791231546935,
+          "t": 1791233246809,
           "type": "run_start",
-          "runId": "7ijbqutv",
-          "sessionId": "8xbo98r6",
-          "build": "local-202610052019"
+          "runId": "ubwad553",
+          "sessionId": "w355lu3y",
+          "build": "local-202610052047"
         },
         {
-          "seed": 852690280,
+          "seed": 1428829454,
           "tier": 1,
-          "deviceId": "xb0jy0jcqtkquibn",
+          "deviceId": "d8t8slrke4pytrm2",
           "runIndex": 2,
-          "t": 1791231557099,
+          "t": 1791233256991,
           "type": "run_start",
-          "runId": "s7za055c",
-          "sessionId": "8xbo98r6",
-          "build": "local-202610052019"
+          "runId": "jt8xv8t6",
+          "sessionId": "w355lu3y",
+          "build": "local-202610052047"
         }
       ]
     },
@@ -580,7 +580,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1675288072,
+        "seed": 1263445167,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -605,11 +605,11 @@
         "tab": "atk",
         "amount": 1,
         "commands": 0,
-        "pickOpen": false,
+        "pickOpen": true,
         "offer": [
+          "patch",
           "permafrost",
-          "frostShot",
-          "reflect"
+          "bounce"
         ],
         "picks": 0,
         "perks": {},
@@ -637,7 +637,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 8,
+        "tick": 7,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -651,7 +651,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1675288072,
+        "seed": 1263445167,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -680,7 +680,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "permafrost": 1
+          "patch": 1
         },
         "setTiers": {
           "overload": 0,
@@ -719,24 +719,24 @@
         {
           "kind": "midgame",
           "placement": "restart",
-          "t": 1791231561130,
+          "t": 1791233261031,
           "type": "ad_request",
-          "runId": "k6txun3d",
-          "sessionId": "ore3xgm9",
-          "deviceId": "ytmoowy5ybc0se6x",
-          "build": "local-202610052019"
+          "runId": "06c476y0",
+          "sessionId": "gwyf74iy",
+          "deviceId": "uqxtxqjdg3qpu68z",
+          "build": "local-202610052047"
         },
         {
           "kind": "midgame",
           "placement": "restart",
           "result": "completed",
-          "ms": 2304,
-          "t": 1791231563435,
+          "ms": 2306,
+          "t": 1791233263337,
           "type": "ad_result",
-          "runId": "k6txun3d",
-          "sessionId": "ore3xgm9",
-          "deviceId": "ytmoowy5ybc0se6x",
-          "build": "local-202610052019"
+          "runId": "06c476y0",
+          "sessionId": "gwyf74iy",
+          "deviceId": "uqxtxqjdg3qpu68z",
+          "build": "local-202610052047"
         }
       ]
     },
@@ -783,7 +783,7 @@
         "coreHp": 5,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 63,
         "seed": 3,
         "levels": {
           "damage": 0,
@@ -1141,7 +1141,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1381380854,
+        "seed": 859821514,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1168,9 +1168,9 @@
         "commands": 0,
         "pickOpen": true,
         "offer": [
-          "glassCannon",
-          "bounce",
-          "patch"
+          "dataMine",
+          "frostShot",
+          "hardening"
         ],
         "picks": 0,
         "perks": {},
@@ -1201,18 +1201,18 @@
         "tick": 7,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 3.75,
+        "coreHp": 5,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1381380854,
+        "seed": 859821514,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1241,7 +1241,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "glassCannon": 1
+          "dataMine": 1
         },
         "setTiers": {
           "overload": 0,
@@ -1620,7 +1620,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1641269170,
+        "seed": 507761577,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1645,11 +1645,11 @@
         "tab": "atk",
         "amount": 1,
         "commands": 0,
-        "pickOpen": true,
+        "pickOpen": false,
         "offer": [
-          "reflect",
-          "arc",
-          "deepFreeze"
+          "energySiphon",
+          "frostShot",
+          "bounty"
         ],
         "picks": 0,
         "perks": {},
@@ -1677,10 +1677,10 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 7,
+        "tick": 10,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -1691,7 +1691,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1641269170,
+        "seed": 507761577,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1720,7 +1720,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "reflect": 1
+          "energySiphon": 1
         },
         "setTiers": {
           "overload": 0,
@@ -1863,7 +1863,7 @@
           "speed": 5,
           "paused": false,
           "fps": 60,
-          "seed": 1867700382,
+          "seed": 1586589027,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -1888,11 +1888,11 @@
           "tab": "atk",
           "amount": 1,
           "commands": 0,
-          "pickOpen": true,
+          "pickOpen": false,
           "offer": [
-            "bounty",
-            "permafrost",
-            "critSpike"
+            "bunker",
+            "arc",
+            "patch"
           ],
           "picks": 0,
           "perks": {},
@@ -1928,7 +1928,7 @@
       "ok": true,
       "detail": {
         "ok": false,
-        "ms": 154,
+        "ms": 157,
         "toast": {
           "text": "No ad right now",
           "opacity": "1",
@@ -1943,7 +1943,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 20,
+        "tick": 17,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1953,11 +1953,11 @@
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 5,
+        "coreHp": 7,
         "speed": 5,
         "paused": false,
-        "fps": 58,
-        "seed": 1867700382,
+        "fps": 59,
+        "seed": 1586589027,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1986,7 +1986,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "bounty": 1
+          "bunker": 1
         },
         "setTiers": {
           "overload": 0,
@@ -2032,7 +2032,7 @@
           "speed": 1,
           "paused": false,
           "fps": 67,
-          "seed": 888053153,
+          "seed": 1217256239,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2059,9 +2059,9 @@
           "commands": 0,
           "pickOpen": true,
           "offer": [
-            "bounty",
-            "hotBarrel",
-            "critSpike"
+            "energySiphon",
+            "overclockRounds",
+            "reflect"
           ],
           "picks": 0,
           "perks": {},
@@ -2244,11 +2244,11 @@
       }
     },
     {
-      "name": "portrait pick overlay: all 92 texts ≥ 28 px",
+      "name": "portrait pick overlay: all 97 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 92,
+        "count": 97,
         "bad": []
       }
     },
@@ -2258,11 +2258,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pause",
-        "enemies": 0,
-        "visible": 0,
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -2297,7 +2297,7 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 1,
+        "commands": 2,
         "pickOpen": false,
         "offer": [],
         "picks": 1,
@@ -2322,11 +2322,11 @@
       }
     },
     {
-      "name": "portrait: all 92 texts ≥ 28 px",
+      "name": "portrait: all 97 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 92,
+        "count": 97,
         "bad": []
       }
     },
@@ -2375,7 +2375,7 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 1,
+        "commands": 2,
         "pickOpen": false,
         "offer": [],
         "picks": 1,
@@ -2444,7 +2444,7 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 1,
+        "commands": 2,
         "pickOpen": false,
         "offer": [],
         "picks": 1,
@@ -2476,7 +2476,7 @@
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 3,
+          "tick": 2,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -2514,7 +2514,7 @@
           "unlocked": [],
           "tab": "atk",
           "amount": 1,
-          "commands": 1,
+          "commands": 2,
           "pickOpen": false,
           "offer": [],
           "picks": 1,
@@ -2541,7 +2541,7 @@
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 3,
+          "tick": 2,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -2579,7 +2579,7 @@
           "unlocked": [],
           "tab": "atk",
           "amount": 1,
-          "commands": 1,
+          "commands": 2,
           "pickOpen": false,
           "offer": [],
           "picks": 1,
@@ -2611,7 +2611,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 3,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2649,7 +2649,7 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 1,
+        "commands": 2,
         "pickOpen": false,
         "offer": [],
         "picks": 1,
@@ -2680,7 +2680,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 931,
+        "tick": 926,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2718,7 +2718,7 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 1,
+        "commands": 2,
         "pickOpen": false,
         "offer": [],
         "picks": 1,
@@ -2872,9 +2872,27 @@
           }
         ],
         "restart": {
-          "x": 170,
-          "y": 959,
-          "w": 380,
+          "x": 370,
+          "y": 1077,
+          "w": 270,
+          "h": 92
+        },
+        "home": {
+          "x": 80,
+          "y": 1077,
+          "w": 270,
+          "h": 92
+        },
+        "double": {
+          "x": 370,
+          "y": 965,
+          "w": 270,
+          "h": 92
+        },
+        "revive": {
+          "x": 80,
+          "y": 965,
+          "w": 270,
           "h": 92
         },
         "pick": {
@@ -2930,7 +2948,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1129,
+        "tick": 1136,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2968,7 +2986,7 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 1,
+        "commands": 2,
         "pickOpen": false,
         "offer": [],
         "picks": 1,
@@ -3092,11 +3110,11 @@
       }
     },
     {
-      "name": "portrait 360×640: all 86 texts ≥ 28 px",
+      "name": "portrait 360×640: all 91 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 86,
+        "count": 91,
         "bad": []
       }
     },
@@ -3216,9 +3234,27 @@
           }
         ],
         "restart": {
-          "x": 170,
-          "y": 820,
-          "w": 380,
+          "x": 370,
+          "y": 938,
+          "w": 270,
+          "h": 92
+        },
+        "home": {
+          "x": 80,
+          "y": 938,
+          "w": 270,
+          "h": 92
+        },
+        "double": {
+          "x": 370,
+          "y": 826,
+          "w": 270,
+          "h": 92
+        },
+        "revive": {
+          "x": 80,
+          "y": 826,
+          "w": 270,
           "h": 92
         },
         "pick": {
@@ -3274,7 +3310,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1140,
+        "tick": 1143,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3516,7 +3552,7 @@
         "speed": 5,
         "paused": false,
         "fps": 59,
-        "seed": 1499228360,
+        "seed": 1001754152,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -3543,9 +3579,9 @@
         "commands": 0,
         "pickOpen": true,
         "offer": [
-          "bounty",
-          "hardening",
-          "dataMine"
+          "patch",
+          "bounce",
+          "burstFire"
         ],
         "picks": 0,
         "perks": {},
@@ -3714,11 +3750,11 @@
       }
     },
     {
-      "name": "landscape 1280×720 pick overlay: all 92 texts ≥ 16 px",
+      "name": "landscape 1280×720 pick overlay: all 97 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 92,
+        "count": 97,
         "bad": []
       }
     },
@@ -3728,11 +3764,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -3792,11 +3828,11 @@
       }
     },
     {
-      "name": "landscape 1280×720: all 92 texts ≥ 16 px",
+      "name": "landscape 1280×720: all 97 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 92,
+        "count": 97,
         "bad": []
       }
     },
@@ -3807,7 +3843,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3876,7 +3912,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3945,10 +3981,10 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 901,
+        "tick": 928,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -4123,9 +4159,27 @@
           }
         ],
         "restart": {
-          "x": 500,
-          "y": 497,
-          "w": 280,
+          "x": 648,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "home": {
+          "x": 392,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "double": {
+          "x": 648,
+          "y": 500,
+          "w": 240,
+          "h": 62
+        },
+        "revive": {
+          "x": 392,
+          "y": 500,
+          "w": 240,
           "h": 62
         },
         "pick": {
@@ -4181,7 +4235,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 998,
+        "tick": 993,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4348,7 +4402,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 64,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4419,7 +4473,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 64,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4471,11 +4525,11 @@
       }
     },
     {
-      "name": "landscape 907×510 pick overlay: all 92 texts ≥ 16 px",
+      "name": "landscape 907×510 pick overlay: all 97 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 92,
+        "count": 97,
         "bad": []
       }
     },
@@ -4486,7 +4540,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4499,7 +4553,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 61,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4549,11 +4603,11 @@
       }
     },
     {
-      "name": "landscape 907×510: all 92 texts ≥ 16 px",
+      "name": "landscape 907×510: all 97 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 92,
+        "count": 97,
         "bad": []
       }
     },
@@ -4564,7 +4618,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4577,7 +4631,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 61,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4633,7 +4687,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 3,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4646,7 +4700,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 61,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4702,7 +4756,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 923,
+        "tick": 926,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4880,9 +4934,27 @@
           }
         ],
         "restart": {
-          "x": 500,
-          "y": 497,
-          "w": 280,
+          "x": 648,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "home": {
+          "x": 392,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "double": {
+          "x": 648,
+          "y": 500,
+          "w": 240,
+          "h": 62
+        },
+        "revive": {
+          "x": 392,
+          "y": 500,
+          "w": 240,
           "h": 62
         },
         "pick": {
@@ -4938,7 +5010,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1003,
+        "tick": 991,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -5180,15 +5252,15 @@
     },
     {
       "name": "portrait protocols: the second card installs",
-      "ok": false,
+      "ok": true,
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pick",
-        "enemies": 0,
-        "visible": 0,
+        "wave": 1,
+        "tick": 2,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -5223,15 +5295,13 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
-        "pickOpen": true,
-        "offer": [
-          "hardening",
-          "energySiphon",
-          "coldAura"
-        ],
-        "picks": 0,
-        "perks": {},
+        "commands": 3,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
@@ -5244,7 +5314,7 @@
         "adRunning": false,
         "adAudioMuted": false,
         "soundMuted": false,
-        "gameplay": false,
+        "gameplay": true,
         "adsAvailable": true,
         "restarting": false
       }
@@ -5256,8 +5326,8 @@
         "overload": 0,
         "cryo": 0,
         "chain": 0,
-        "mining": 0,
-        "firewall": 2
+        "mining": 2,
+        "firewall": 0
       }
     },
     {
@@ -5274,16 +5344,16 @@
       "name": "portrait protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 2605,
-        "p2": 2605
+        "p1": 2603,
+        "p2": 2603
       }
     },
     {
-      "name": "portrait protocols panel: all 104 texts ≥ 28 px",
+      "name": "portrait protocols panel: all 111 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 104,
+        "count": 111,
         "bad": []
       }
     },
@@ -5323,14 +5393,14 @@
     },
     {
       "name": "landscape protocols: the second card installs",
-      "ok": false,
+      "ok": true,
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pick",
-        "enemies": 0,
+        "wave": 1,
+        "tick": 2,
+        "phase": "wave",
+        "enemies": 1,
         "visible": 0,
         "projectiles": 0,
         "dead": false,
@@ -5366,12 +5436,129 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 3,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0,
+        "portal": "local",
+        "adRunning": false,
+        "adAudioMuted": false,
+        "soundMuted": false,
+        "gameplay": true,
+        "adsAvailable": true,
+        "restarting": false
+      }
+    },
+    {
+      "name": "landscape protocols: a 2-set comes online within the first picks",
+      "ok": true,
+      "detail": {
+        "overload": 0,
+        "cryo": 0,
+        "chain": 0,
+        "mining": 2,
+        "firewall": 0
+      }
+    },
+    {
+      "name": "landscape protocols: set chips are shown",
+      "ok": true,
+      "detail": {
+        "x": 918,
+        "y": 153,
+        "w": 97.08000000000004,
+        "h": 34
+      }
+    },
+    {
+      "name": "landscape protocols: the panel opens and pauses the battle",
+      "ok": true,
+      "detail": {
+        "p1": 2608,
+        "p2": 2608
+      }
+    },
+    {
+      "name": "landscape protocols panel: all 111 texts ≥ 16 px",
+      "ok": true,
+      "detail": {
+        "min": 16,
+        "count": 111,
+        "bad": []
+      }
+    },
+    {
+      "name": "landscape protocols: RESUME restores the previous pause state",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "name": "landscape protocols: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "portrait meta: a fresh save starts straight in a run (instant play)",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "portrait",
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 5,
+        "speed": 1,
+        "paused": false,
+        "fps": 67,
+        "seed": 4,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0,
         "pickOpen": true,
         "offer": [
-          "hardening",
-          "energySiphon",
-          "coldAura"
+          "bounce",
+          "critSpike",
+          "conductive"
         ],
         "picks": 0,
         "perks": {},
@@ -5393,50 +5580,373 @@
       }
     },
     {
-      "name": "landscape protocols: a 2-set comes online within the first picks",
+      "name": "portrait meta: death pays Bits into the save and marks the first run done",
       "ok": true,
       "detail": {
-        "overload": 0,
-        "cryo": 0,
-        "chain": 0,
-        "mining": 0,
-        "firewall": 2
+        "bits": 1,
+        "keys": 0,
+        "workshop": {},
+        "labs": [],
+        "tierUnlocked": 1,
+        "best": {
+          "1": 1
+        },
+        "milestones": [],
+        "runs": 1,
+        "lastSeen": 1791233409842,
+        "firstRunDone": true,
+        "tier": 1,
+        "settings": {
+          "sound": true,
+          "music": true,
+          "reduceMotion": false
+        }
       }
     },
     {
-      "name": "landscape protocols: set chips are shown",
+      "name": "portrait meta: ×2 BITS (rewarded) doubles the payout",
       "ok": true,
       "detail": {
-        "x": 918,
-        "y": 153,
-        "w": 97.08000000000004,
-        "h": 34
+        "before": 1,
+        "after": 1
       }
     },
     {
-      "name": "landscape protocols: the panel opens and pauses the battle",
+      "name": "portrait meta: HOME opens the home screen",
       "ok": true,
       "detail": {
-        "p1": 2605,
-        "p2": 2605
+        "scene": "Home",
+        "portal": "local",
+        "adRunning": true,
+        "adAudioMuted": true,
+        "soundMuted": true,
+        "gameplay": false,
+        "adsAvailable": true
       }
     },
     {
-      "name": "landscape protocols panel: all 104 texts ≥ 16 px",
+      "name": "portrait meta: a workshop purchase spends Bits and raises the level",
       "ok": true,
       "detail": {
-        "min": 16,
-        "count": 104,
-        "bad": []
+        "damage": 1
       }
     },
     {
-      "name": "landscape protocols: RESUME restores the previous pause state",
+      "name": "portrait meta: the new run carries the workshop level",
       "ok": true,
-      "detail": false
+      "detail": {
+        "scene": "Battle",
+        "orientation": "portrait",
+        "wave": 2,
+        "tick": 902,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 0,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 7,
+        "energy": 14,
+        "bits": 7,
+        "coreHp": 5,
+        "speed": 5,
+        "paused": false,
+        "fps": 60,
+        "seed": 4,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "bounce": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0,
+        "portal": "local",
+        "adRunning": false,
+        "adAudioMuted": false,
+        "soundMuted": false,
+        "gameplay": true,
+        "adsAvailable": true,
+        "restarting": false
+      }
     },
     {
-      "name": "landscape protocols: no console errors",
+      "name": "portrait meta: SAVE & EXIT returns home with a saved run",
+      "ok": true,
+      "detail": {
+        "home": {
+          "scene": "Home",
+          "portal": "local",
+          "adRunning": false,
+          "adAudioMuted": false,
+          "soundMuted": false,
+          "gameplay": false,
+          "adsAvailable": true
+        },
+        "saved": true
+      }
+    },
+    {
+      "name": "portrait meta: CONTINUE resumes the saved run",
+      "ok": true,
+      "detail": {
+        "saved": 2,
+        "now": 2
+      }
+    },
+    {
+      "name": "portrait meta: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "landscape meta: a fresh save starts straight in a run (instant play)",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 5,
+        "speed": 1,
+        "paused": false,
+        "fps": 67,
+        "seed": 4,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "bounce",
+          "critSpike",
+          "conductive"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0,
+        "portal": "local",
+        "adRunning": false,
+        "adAudioMuted": false,
+        "soundMuted": false,
+        "gameplay": false,
+        "adsAvailable": true,
+        "restarting": false
+      }
+    },
+    {
+      "name": "landscape meta: death pays Bits into the save and marks the first run done",
+      "ok": true,
+      "detail": {
+        "bits": 1,
+        "keys": 0,
+        "workshop": {},
+        "labs": [],
+        "tierUnlocked": 1,
+        "best": {
+          "1": 1
+        },
+        "milestones": [],
+        "runs": 1,
+        "lastSeen": 1791233423308,
+        "firstRunDone": true,
+        "tier": 1,
+        "settings": {
+          "sound": true,
+          "music": true,
+          "reduceMotion": false
+        }
+      }
+    },
+    {
+      "name": "landscape meta: ×2 BITS (rewarded) doubles the payout",
+      "ok": true,
+      "detail": {
+        "before": 1,
+        "after": 1
+      }
+    },
+    {
+      "name": "landscape meta: HOME opens the home screen",
+      "ok": true,
+      "detail": {
+        "scene": "Home",
+        "portal": "local",
+        "adRunning": true,
+        "adAudioMuted": true,
+        "soundMuted": true,
+        "gameplay": false,
+        "adsAvailable": true
+      }
+    },
+    {
+      "name": "landscape meta: a workshop purchase spends Bits and raises the level",
+      "ok": true,
+      "detail": {
+        "damage": 1
+      }
+    },
+    {
+      "name": "landscape meta: the new run carries the workshop level",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 2,
+        "tick": 902,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 7,
+        "energy": 14,
+        "bits": 7,
+        "coreHp": 5,
+        "speed": 5,
+        "paused": false,
+        "fps": 60,
+        "seed": 4,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "bounce": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0,
+        "portal": "local",
+        "adRunning": false,
+        "adAudioMuted": false,
+        "soundMuted": false,
+        "gameplay": true,
+        "adsAvailable": true,
+        "restarting": false
+      }
+    },
+    {
+      "name": "landscape meta: SAVE & EXIT returns home with a saved run",
+      "ok": true,
+      "detail": {
+        "home": {
+          "scene": "Home",
+          "portal": "local",
+          "adRunning": false,
+          "adAudioMuted": false,
+          "soundMuted": false,
+          "gameplay": false,
+          "adsAvailable": true
+        },
+        "saved": true
+      }
+    },
+    {
+      "name": "landscape meta: CONTINUE resumes the saved run",
+      "ok": true,
+      "detail": {
+        "saved": 2,
+        "now": 2
+      }
+    },
+    {
+      "name": "landscape meta: no console errors",
       "ok": true,
       "detail": []
     },
@@ -5450,18 +5960,18 @@
         "tick": 1132,
         "phase": "wave",
         "enemies": 200,
-        "visible": 199,
+        "visible": 200,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 114,
-        "energy": 228.04,
-        "bits": 114.02,
-        "coreHp": 999999985248.8948,
+        "kills": 115,
+        "energy": 230,
+        "bits": 115,
+        "coreHp": 999999985276.4946,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1759996008,
+        "seed": 938740867,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -5510,7 +6020,7 @@
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00199342170836
+      "detail": 60.00318953831433
     },
     {
       "name": "stress desktop: no console errors",
@@ -5524,21 +6034,21 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1132,
+        "tick": 1134,
         "phase": "wave",
         "enemies": 200,
         "visible": 200,
-        "projectiles": 0,
+        "projectiles": 1,
         "dead": false,
         "overlay": false,
         "kills": 114,
         "energy": 228,
         "bits": 114,
-        "coreHp": 999999985266.1348,
+        "coreHp": 999999985266.1682,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 2102279758,
+        "seed": 252726375,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
