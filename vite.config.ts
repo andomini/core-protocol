@@ -16,7 +16,9 @@ function portalHtml(portal: PortalName): Plugin {
   return {
     name: 'portal-html',
     transformIndexHtml(html) {
-      return html.replace('<!-- PORTAL_SDK -->', SDK_TAGS[portal]);
+      // GitHub Pages dev preview (PAGES=1): keep it out of search engines (it is not the portal release).
+      const noindex = process.env.PAGES === '1' ? '<meta name="robots" content="noindex, nofollow" />' : '';
+      return html.replace('<!-- PORTAL_SDK -->', SDK_TAGS[portal] + noindex);
     },
   };
 }
