@@ -10,6 +10,8 @@ import { DeathOverlay } from '../../ui/DeathOverlay';
 import { labEffects } from '../../meta/labs';
 import { DEFAULT_META_DATA } from '../../meta/metaData';
 import { buildRunOptions } from '../../meta/runOptions';
+import { enterPick } from '../../sim/perks';
+import { worldStats } from '../../sim/state';
 import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleRun } from '../../meta/runEnd';
 import { Button } from '../../ui/kit';
@@ -338,7 +340,71 @@ export class BattleScene extends Phaser.Scene {
   }
 
   setSpeed(n: number): void {
-    this.speed = Math.max(1, Math.min(battleJson.maxSpeed, Math.round(n)));
+    this.speed = Math.max(1, Math.min(this.devMaxSpeed || battleJson.maxSpeed, Math.round(n)));
+  }
+
+  // ---- Dev / admin (src/render/admin.ts, dev builds only) ------------------------------------------------
+  /** Dev: speeds beyond the player's cap (×10…×50). 0 = normal cap. */
+  devMaxSpeed = 0;
+  /** Dev: the core cannot die (a ×1e9 Health modifier inside the World, so it holds at any speed). */
+  get devGod(): boolean {
+    return this.session.world.mods.some((m) => m.source === 'dev:god');
+  }
+
+  set devGod(on: boolean) {
+    const w = this.session.world;
+    w.mods = w.mods.filter((m) => m.source !== 'dev:god');
+    if (on) w.mods.push({ stat: 'health', op: 'mul', value: 1e9, source: 'dev:god' });
+    this.session.stats = worldStats(w, this.gd);
+    w.core.hp = this.session.stats.health;
+  }
+
+  /** Dev: take the first card of every protocol offer automatically. */
+  devAutoPick = false;
+
+  /** Dev: jump to the start of wave `n` (clears the arena; not replayable). */
+  devJumpWave(n: number): void {
+    const w = this.session.world;
+    if (w.dead || !(n >= 1)) return;
+    w.enemies = [];
+    w.projectiles = [];
+    w.spawnQueue = [];
+    w.offer = w.phase === 'pick' ? w.offer : [];
+    w.wave = Math.floor(n) - 1;
+    if (w.phase !== 'pick') {
+      w.phase = 'pause';
+      w.phaseTick = this.gd.config.pauseSeconds * this.gd.config.tickHz;
+    }
+    this.view.reset();
+  }
+
+  /** Dev: removes every enemy (no rewards). */
+  devKillAll(): void {
+    this.session.world.enemies = [];
+    this.session.world.projectiles = [];
+    this.view.reset();
+  }
+
+  /** Dev: opens a protocol pick right now. */
+  devPickNow(): void {
+    const w = this.session.world;
+    if (w.dead || w.phase === 'pick') return;
+    enterPick(w, this.gd, []);
+  }
+
+  /** Dev: raises every unlocked stat by `n` levels (respects the caps). */
+  devLevels(n: number): void {
+    const w = this.session.world;
+    for (const id of STAT_IDS) {
+      const max = this.gd.stats.stats[id].maxLevel;
+      w.levels[id] = max === undefined ? w.levels[id] + n : Math.min(max + (w.lab.maxBonus[id] ?? 0), w.levels[id] + n);
+    }
+    this.session.stats = worldStats(w, this.gd);
+  }
+
+  devDie(): void {
+    this.devGod = false;
+    this.session.world.core.hp = 0;
   }
 
   setPaused(p: boolean): void {
@@ -536,6 +602,7 @@ export class BattleScene extends Phaser.Scene {
       const missing = this.stressCount - w.enemies.length;
       for (let i = 0; i < missing; i++) this.session.spawn(STRESS_KINDS[(w.nextId + i) % STRESS_KINDS.length]!, 1, this.onEvent);
     }
+    if (this.devAutoPick && w.phase === 'pick' && !w.dead && !this.session.hasPending) this.command({ type: 'pickPerk', index: 0 });
     if (this.secondWindPending > 0 && w.dead) {
       this.command({ type: 'revive', hp: this.secondWindPending });
       this.secondWindPending = 0;

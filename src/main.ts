@@ -119,7 +119,10 @@ async function start(): Promise<void> {
   if (import.meta.env.DEV || telemetryFlag) {
     void import('./telemetry/DevOverlay').then((m) => m.installDevOverlay(telemetry, telemetryFlag));
   }
-  if (import.meta.env.DEV) installDevHooks(game);
+  if (import.meta.env.DEV) {
+    installDevHooks(game);
+    void import('./render/admin').then((m) => m.installAdmin(game));
+  }
 }
 
 void start();

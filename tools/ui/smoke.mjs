@@ -506,11 +506,11 @@ const scenarios = {
 
   async meta() {
     for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
-      const h = await open(browser, srv.base, device, '?weak=1&seed=4');
+      const h = await open(browser, srv.base, device, '?seed=4');
       const s0 = await h.state();
       check(results, `${label} meta: a fresh save starts straight in a run (instant play)`, s0.scene === 'Battle', s0);
       await h.call('setSpeed', 5);
-      const dead = await h.waitFor((x) => x.overlay, 25000, 100);
+      const dead = await h.waitFor((x) => x.overlay, 60000, 100);
       const m1 = await h.call('meta');
       check(results, `${label} meta: death pays Bits into the save and marks the first run done`, dead.ok && m1.bits > 0 && m1.firstRunDone && m1.runs === 1, m1);
       await h.p.waitForTimeout(400);
