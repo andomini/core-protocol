@@ -157,7 +157,7 @@ core-protocol/
 - **Copied, not a shared package.** Compare the two existing games and take the more complete version:
   - **from Merge Wall:** `portal/*` including `PortalGuard` (timeouts, first-input gating, ad pause vs ad mute, ads-available flag) and the `?ads=ok|fail|nofill|hang|none` mode, `tests/purity.test.ts`, `portalGuard.test.ts`, the packaging scripts;
   - **from Last Tower:** `rng.ts` (seeded streams), `telemetry/*` + `telemetry-report`, `render/resolution.ts` (HiDPI), the `tools/sim` pattern, `size.ts`, `check-portal-builds.ts`.
-- **Numbers:** `float64`. All sim values are clamped to `MAX_SAFE_VALUE = 1e300` (stacked multipliers never give `Infinity`); any `NaN` in the sim = a bug, caught by an assert in dev and in tests (`JSON.stringify` turns `Infinity/NaN` into `null` and would break the snapshot). In `src/sim` only `+ − × ÷ Math.sqrt Math.floor/ceil/min/max/abs`; no `Math.random/pow/exp/log/sin/cos/atan2`, Phaser, DOM or Date — enforced by an ESLint rule + `tests/purity.test.ts`. Powers via our own `powInt` (exponentiation by squaring); angles for Multishot/lightning via precomputed tables or vectors.
+- **Numbers:** `float64`. All sim values are clamped to `MAX_SAFE_VALUE = 1e300` (stacked multipliers never give `Infinity`); any `NaN` in the sim = a bug, caught by an assert in dev and in tests (`JSON.stringify` turns `Infinity/NaN` into `null` and would break the snapshot). In `src/sim` only `+ − × ÷ Math.floor/ceil/min/max/abs/imul`; no `Math.random/sqrt/pow/exp/log/sin/cos/atan2`, `**`, Phaser, DOM or Date — enforced by `tests/purity.test.ts` (as in Merge Wall; no ESLint). Root via our own `dsqrt` (Newton, basic arithmetic only — the ECMAScript spec doesn't guarantee bit-identical `Math.sqrt`), powers via `powInt` (exponentiation by squaring); directions for spawns/Multishot/lightning via a precomputed table `src/data/directions.json`.
 - **Effects are data-driven:** perks, sets, cards and labs are described in JSON with a limited set of effect types (`statAdd`, `statMul`, `onHit`, `onCrit`, `onKill`, `periodic`, `conditional`, `unlock`, `ruleChange`). No balance numbers in code.
 - **Speed:** the sim runs k ticks per frame (k = speed), render interpolates the latest state. Collisions use a spatial hash. Entity pools.
 - **Save:** meta → after every purchase/claim, versioned with migrations; run → snapshot at the start of a wave. Storage through `portal/storage` (localStorage + CrazyGames data where available).
@@ -187,7 +187,7 @@ core-protocol/
 ## 8. Milestones (6–8 weeks of evenings)
 | | Content | Acceptance |
 |---|---|---|
-| M0 | Scaffold, copied modules, lint, `test/build/size` | sim lint fails on `Math.random`; builds work |
+| M0 | Scaffold, purity test, `test/build/typecheck` | the purity test fails on `Math.random`/`Math.sqrt` in `src/sim`; builds work |
 | M1 | Sim: core, 5 enemies, waves, combat, big numbers, snapshot | determinism + snapshot tests ✅; sim smoke in Node |
 | M2 | 18 stats, battle UI in both orientations, neon render, ×1/×2 | stress 200 enemies; UI smoke for battle |
 | M3 ⛔ | Protocols, tags, sets, boss | sim: B1, B2, B5, B6 ✅ |
