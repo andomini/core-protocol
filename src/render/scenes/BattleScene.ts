@@ -11,12 +11,14 @@ import { PickOverlay } from '../../ui/PickOverlay';
 import { ProtocolsPanel } from '../../ui/ProtocolsPanel';
 import { SetChips } from '../../ui/SetChips';
 import { tagCounts } from '../../sim/perks';
-import { localRewarded, type RewardedAds, type RewardedPlacement } from '../../ui/rewarded';
+import type { RewardedPlacement } from '../../portal/ads';
 import { Hud } from '../../ui/Hud';
 import { text } from '../../ui/kit';
 import { UpgradePanel } from '../../ui/UpgradePanel';
 import { circleInRect, type Layout } from '../../ui/layout';
 import battleJson from '../../data/battle.json';
+import { RunLifecycle } from '../../portal/lifecycle';
+import { services } from '../../services';
 import { battleData, type DevFlags, readFlags, stressTuning } from '../devFlags';
 import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
@@ -50,6 +52,8 @@ export class BattleScene extends Phaser.Scene {
   protocols!: ProtocolsPanel;
   private pausedBeforePanel = false;
   loop!: FixedLoop;
+  /** Portal lifecycle + telemetry hooks (M6). */
+  life!: RunLifecycle;
   speed = 1;
   paused = false;
   private banner!: Phaser.GameObjects.Text;
@@ -68,6 +72,7 @@ export class BattleScene extends Phaser.Scene {
     this.L = this.registry.get('layout') as Layout;
     this.flags = readFlags(location.search);
     this.gd = battleData(DEFAULT_DATA, this.flags);
+    this.life = new RunLifecycle({ guard: services.guard, ads: services.ads, telemetry: services.telemetry, tickHz: this.gd.config.tickHz });
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
     this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
     this.loop = new FixedLoop(this.gd.config.tickHz, MAX_TICKS_PER_FRAME);
@@ -80,7 +85,7 @@ export class BattleScene extends Phaser.Scene {
       command: (cmd) => this.command(cmd),
       pending: () => this.session.hasPending,
     });
-    this.death = new DeathOverlay(this, this.L, () => this.restart());
+        this.death = new DeathOverlay(this, this.L, () => void this.life.requestRestart(() => this.restart()));
     this.pick = new PickOverlay(this, this.L, this.gd, {
       pick: (index) => this.command({ type: 'pickPerk', index }),
       reroll: () => {
@@ -106,6 +111,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-S', () => this.cycleSpeed());
     // Auto-pause when the tab is hidden; the sim must not run in the background.
     this.game.events.on(Phaser.Core.Events.HIDDEN, () => this.loop.reset());
+    this.life.runStarted(this.session.world, this.session.world.phase === 'pick' ? ['perkPick'] : []);
   }
 
   /** First-run options: nothing unlocked (labs come in M4) unless ?unlockall=1 (dev). */
@@ -120,12 +126,11 @@ export class BattleScene extends Phaser.Scene {
     if (this.paused || w.dead || w.phase === 'pick') this.session.applyPendingNow(this.onEvent);
   }
 
-  /** A rewarded ad through the portal service (registered by the portal layer), or the local stub. */
+  /** A rewarded ad through the portal service (pauses/mutes per portal rules; toast on failure). */
   async rewarded(placement: RewardedPlacement): Promise<boolean> {
-    const ads = (this.registry.get('rewarded') as RewardedAds | undefined) ?? localRewarded;
     this.pick.setBusy(true);
     try {
-      return await ads.rewardedAd(placement);
+      return await services.ads.rewarded(placement);
     } finally {
       this.pick.setBusy(false);
     }
@@ -136,11 +141,13 @@ export class BattleScene extends Phaser.Scene {
     if (w.dead || w.phase === 'pick' || this.protocols.visible) return;
     this.pausedBeforePanel = this.paused;
     this.paused = true;
+    this.life.hold('protocols', true);
     this.protocols.show(w);
   }
 
   closeProtocols(): void {
     this.protocols.hide();
+    this.life.hold('protocols', false);
     this.paused = this.pausedBeforePanel;
   }
 
@@ -156,6 +163,7 @@ export class BattleScene extends Phaser.Scene {
   setPaused(p: boolean): void {
     if (this.session.world.dead) return;
     this.paused = p;
+    this.life.hold('paused', p);
   }
 
   restart(): void {
@@ -172,6 +180,7 @@ export class BattleScene extends Phaser.Scene {
     this.paused = false;
     this.deathAt = 0;
     this.bannerUntil = 0;
+    this.life.runStarted(this.session.world, this.session.world.phase === 'pick' ? ['perkPick'] : []);
   }
 
   /** Dev: spawns `n` enemies of a kind on the spawn ring. */
@@ -209,6 +218,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private readonly onEvent = (e: SimEvent): void => {
+    this.life.onEvent(e, this.session.world);
     const now = this.time.now;
     if (e.type === 'buy' || e.type === 'buyRejected') {
       this.upgrades.onEvent(e);
@@ -300,7 +310,7 @@ export class BattleScene extends Phaser.Scene {
       const missing = this.stressCount - w.enemies.length;
       for (let i = 0; i < missing; i++) this.session.spawn(STRESS_KINDS[(w.nextId + i) % STRESS_KINDS.length]!, 1, this.onEvent);
     }
-    const n = this.loop.frame(delta, this.paused || w.dead ? 0 : this.speed);
+    const n = this.loop.frame(delta, this.paused || w.dead || services.ads.running ? 0 : this.speed);
     if (n > 0) this.session.advance(n, this.onEvent);
     const alpha = w.dead ? 1 : this.loop.alpha();
     this.view.draw(alpha, time);
@@ -321,8 +331,13 @@ export class BattleScene extends Phaser.Scene {
       this.death.show({ wave: dw.wave, kills: dw.kills, energy: dw.energy, bits: dw.bits }, time);
     }
     this.chips.update(tagCounts(w, this.gd), w.setTiers);
-    if (w.phase === 'pick' && !w.dead) this.pick.show(w, time);
-    else if (this.pick.visible) this.pick.hide();
+    if (w.phase === 'pick' && !w.dead) {
+      if (!this.pick.visible) this.life.hold('perkPick', true);
+      this.pick.show(w, time);
+    } else if (this.pick.visible) {
+      this.pick.hide();
+      this.life.hold('perkPick', false);
+    }
     this.death.update(time);
     this.frameMs.push(delta);
     if (this.frameMs.length > 120) this.frameMs.shift();

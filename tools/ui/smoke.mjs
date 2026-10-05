@@ -1,5 +1,5 @@
-// UI smoke for the battle view (M2a) and the upgrade panel (M2b). Starts its own Vite dev server (or uses UI_BASE) and drives the
-// dev-only window.__cp hooks. Usage: npm run ui [-- --only portrait|landscape|stress]
+// UI smoke for the battle view (M2a), the upgrade panel (M2b) and the portal layer (M6). Starts its own Vite dev server (or uses UI_BASE) and drives the
+// dev-only window.__cp hooks. Usage: npm run ui [-- --only portrait|landscape|stress|portal]
 // Screenshots: reports/screens/*.jpg (committed), full PNGs in .superpowers/screens/ (for review).
 import { writeFileSync } from 'node:fs';
 import { check, launch, open, startServer } from './harness.mjs';
@@ -87,6 +87,59 @@ async function bootChecks(h, label, orientation) {
   return vis;
 }
 
+
+/** A neutral first input: a tap in the arena, away from the core and every button. */
+async function arenaTap(h) {
+  const a = await h.p.evaluate(() => window.__cp.game.registry.get('layout').arena);
+  await h.tapLogical(a.x + a.w * 0.15, a.y + a.h * 0.85);
+}
+
+/** The first input of a run is the wave-1 protocol pick: a real tap on card 0 (gameplay starts after it). */
+async function firstInput(h) {
+  await h.p.waitForTimeout(400);
+  const cards = (await h.call('ui')).pick.cards;
+  await h.tapLogical(cards[0].x + cards[0].w / 2, cards[0].y + cards[0].h / 2);
+  await h.p.waitForTimeout(100);
+}
+
+const count = (xs, name) => xs.filter((x) => x === name).length;
+
+/** Kills the (?weak=1) core at ×5 and waits for the death overlay. */
+async function dieNow(h, label) {
+  await h.call('setSpeed', 5);
+  const dead = await h.waitFor((x) => x.overlay, 20000, 100);
+  check(results, `${label}: the weak core dies, overlay shown`, dead.ok && dead.s.dead, dead.s);
+  return dead.s;
+}
+
+/**
+ * RESTART tapped from its rect with a midgame ad expected. Samples the state while the ad loads (paused,
+ * not muted), after the portal's adStarted (muted), and after it ends (unmuted, new run, gameplay on).
+ */
+async function midgameRestartChecks(h, label, sdkLog, shotName) {
+  const before = await h.state();
+  await h.tapLogical(...centre((await h.call('ui')).restart));
+  await h.p.waitForTimeout(120);
+  const loading = await h.state();
+  check(results, `${label}: RESTART requests a midgame ad; sim halted, gameplay stopped, audio NOT muted before adStarted`,
+    loading.adRunning && loading.restarting && !loading.soundMuted && !loading.gameplay && loading.dead && loading.seed === before.seed, loading);
+  const started = await h.waitFor((x) => x.soundMuted, 2000, 40);
+  check(results, `${label}: audio muted once the ad really starts`, started.ok && started.s.adRunning && started.s.dead, started.s);
+  if (shotName) await h.shot(shotName);
+  const t0 = started.s.tick;
+  await h.p.waitForTimeout(400);
+  const mid = await h.state();
+  check(results, `${label}: the sim does not tick during the ad`, mid.tick === t0 && mid.adRunning, mid);
+  const done = await h.waitFor((x) => !x.adRunning && !x.dead, 4000, 50);
+  check(results, `${label}: after the ad: unmuted, a new run with a new seed`, done.ok && !done.s.soundMuted && !done.s.overlay && done.s.seed !== before.seed, done.s);
+  const g = await h.waitFor((x) => x.gameplay, 1000, 50);
+  check(results, `${label}: gameplay restarts after the ad`, g.ok, g.s);
+  if (sdkLog) {
+    const log = await sdkLog();
+    const iAd = log.lastIndexOf('adFinished');
+    check(results, `${label}: SDK order stop → ad → start`, iAd > 0 && log.slice(iAd).includes('gameplayStart') && log.lastIndexOf('gameplayStop') < log.lastIndexOf('adStarted'), log);
+  }
+}
 
 /**
  * The upgrade panel through real taps: earn Energy at ×5, then tap the Damage row while paused
@@ -192,6 +245,131 @@ async function panelFitCheck(h, label, shotName) {
 }
 
 const scenarios = {
+  async portal() {
+    // 1. Local portal, no flags: lifecycle, telemetry, and no midgame at the first death.
+    const h = await open(browser, srv.base, 'phone', '?weak=1&seed=3');
+    await h.p.waitForTimeout(400);
+    let s = await h.state();
+    check(results, 'portal local: loadingFinished exactly once', count(h.portal, 'loadingFinished') === 1, h.portal);
+    check(results, 'portal local: no gameplayStart before the first input', count(h.portal, 'gameplayStart') === 0 && !s.gameplay, { portal: h.portal, s });
+    await firstInput(h);
+    await h.p.waitForTimeout(100);
+    s = await h.state();
+    check(results, 'portal local: gameplayStart on the first input', count(h.portal, 'gameplayStart') === 1 && s.gameplay, h.portal);
+    await h.tapLogical(658, 44); // pause
+    await h.p.waitForTimeout(100);
+    check(results, 'portal local: pause → gameplayStop', h.portal.at(-1) === 'gameplayStop' && !(await h.state()).gameplay, h.portal);
+    await h.tapLogical(658, 44); // resume
+    await h.p.waitForTimeout(100);
+    check(results, 'portal local: resume → gameplayStart', h.portal.at(-1) === 'gameplayStart', h.portal);
+    await h.call('give', 500);
+    await h.call('buy', 'damage', 1);
+    const dead = await dieNow(h, 'portal local');
+    check(results, 'portal local: death → gameplayStop', h.portal.at(-1) === 'gameplayStop' && !(await h.state()).gameplay, h.portal);
+    await h.tapLogical(...centre((await h.call('ui')).restart));
+    const r = await h.waitFor((x) => !x.dead, 1500, 50);
+    check(results, 'portal local: first death → RESTART without a midgame ad', r.ok && r.s.seed !== dead.seed && !h.portal.some((x) => x.startsWith('midgameAd')), h.portal);
+    check(results, 'portal local: loadingFinished still exactly once', count(h.portal, 'loadingFinished') === 1, h.portal);
+    const tm = await h.call('telemetry');
+    const types = tm.map((e) => e.type);
+    const runs = tm.filter((e) => e.type === 'run_start');
+    const death = tm.find((e) => e.type === 'death');
+    check(results, 'portal local: telemetry run_start ×2 (seed, tier, deviceId, runIndex +1)',
+      runs.length === 2 && runs[0].seed === 3 && runs[0].tier === 1 && !!runs[0].deviceId && runs[1].runIndex === runs[0].runIndex + 1, runs);
+    check(results, 'portal local: telemetry wave_reached, purchase, death (wave, time, energy), session_start',
+      types.includes('wave_reached') && types.includes('purchase') && types.includes('session_start') && death && death.wave >= 1 && death.time > 0 && typeof death.energy === 'number', types);
+    check(results, 'portal local: no console errors', h.errors.length === 0, h.errors);
+    await h.close();
+
+    // 2. Local portal, midgame forced: the fake ad pauses at request and mutes at its start (portrait).
+    const m = await open(browser, srv.base, 'phone', '?weak=1&seed=3&midgame=always');
+    await firstInput(m);
+    await dieNow(m, 'portal local midgame');
+    await midgameRestartChecks(m, 'portal local midgame', null, 'portal-midgame-portrait');
+    check(results, 'portal local midgame: the portal saw request → started → finished',
+      ['midgameAd requested (mode=ok)', 'midgameAd started', 'midgameAd finished'].every((x) => m.portal.includes(x)), m.portal);
+    const tm2 = await m.call('telemetry');
+    check(results, 'portal local midgame: telemetry ad_request + ad_result completed',
+      tm2.some((e) => e.type === 'ad_request' && e.kind === 'midgame') && tm2.some((e) => e.type === 'ad_result' && e.kind === 'midgame' && e.result === 'completed'), tm2.filter((e) => e.type.startsWith('ad_')));
+    check(results, 'portal local midgame: no console errors', m.errors.length === 0, m.errors);
+    await m.close();
+
+    // 3. CrazyGames adapter against the fake SDK (landscape 907×510, the CrazyGames iframe size).
+    const c = await open(browser, srv.base, 'crazy', '?portal=crazygames&weak=1&seed=3&midgame=always', { sdk: 'crazygames' });
+    await c.p.waitForTimeout(300);
+    let log = await c.sdkLog();
+    check(results, 'portal crazygames: loadingStart then loadingStop exactly once',
+      count(log, 'loadingStart') === 1 && count(log, 'loadingStop') === 1 && log.indexOf('loadingStart') < log.indexOf('loadingStop'), log);
+    check(results, 'portal crazygames: no gameplayStart before the first input', count(log, 'gameplayStart') === 0, log);
+    check(results, 'portal crazygames: ads available', (await c.state()).adsAvailable && (await c.state()).portal === 'crazygames', await c.state());
+    await firstInput(c);
+    await c.p.waitForTimeout(100);
+    log = await c.sdkLog();
+    check(results, 'portal crazygames: gameplayStart after the first input', count(log, 'gameplayStart') === 1, log);
+    await dieNow(c, 'portal crazygames');
+    await midgameRestartChecks(c, 'portal crazygames', c.sdkLog, 'portal-midgame-landscape');
+    log = await c.sdkLog();
+    check(results, 'portal crazygames: one requestAd:midgame, loadingStop still once', count(log, 'requestAd:midgame') === 1 && count(log, 'loadingStop') === 1, log);
+    check(results, 'portal crazygames: rewarded through the SDK resolves true', (await c.call('rewarded', 'revive')) === true, await c.sdkLog());
+    check(results, 'portal crazygames: no console errors', c.errors.length === 0, c.errors);
+    await c.close();
+
+    // 4. Poki adapter against the fake SDK (phone).
+    const k = await open(browser, srv.base, 'phone', '?portal=poki&weak=1&seed=3&midgame=always', { sdk: 'poki' });
+    await k.p.waitForTimeout(300);
+    log = await k.sdkLog();
+    check(results, 'portal poki: gameLoadingFinished exactly once, no gameplayStart before input',
+      count(log, 'gameLoadingFinished') === 1 && count(log, 'gameplayStart') === 0, log);
+    await firstInput(k);
+    await dieNow(k, 'portal poki');
+    await midgameRestartChecks(k, 'portal poki', k.sdkLog, null);
+    check(results, 'portal poki: one commercialBreak', count(await k.sdkLog(), 'commercialBreak') === 1, await k.sdkLog());
+    check(results, 'portal poki: no console errors', k.errors.length === 0, k.errors);
+    await k.close();
+
+    // 5. ?ads=fail: a failed midgame is silent and the restart still happens; a failed rewarded shows the toast.
+    const f = await open(browser, srv.base, 'phone', '?ads=fail&weak=1&seed=3&midgame=always');
+    await firstInput(f);
+    const fd = await dieNow(f, 'portal ads=fail');
+    await f.tapLogical(...centre((await f.call('ui')).restart));
+    const fr = await f.waitFor((x) => !x.dead && !x.adRunning, 3000, 50);
+    const toast0 = await f.p.evaluate(() => document.getElementById('cp-toast')?.dataset.shown ?? null);
+    check(results, 'portal ads=fail: failed midgame → the run still restarts within 3 s, no toast', fr.ok && fr.s.seed !== fd.seed && toast0 === null && !fr.s.soundMuted, { s: fr.s, toast0, portal: f.portal });
+    const t0 = Date.now();
+    const ok = await f.call('rewarded', 'doubleBits');
+    const ms = Date.now() - t0;
+    await f.p.waitForTimeout(150);
+    const toast = await f.p.evaluate(() => {
+      const el = document.getElementById('cp-toast');
+      return el ? { text: el.textContent, opacity: getComputedStyle(el).opacity, shown: el.dataset.shown } : null;
+    });
+    check(results, 'portal ads=fail: rewarded resolves false quickly with the "No ad right now" toast', ok === false && ms < 2000 && toast?.text === 'No ad right now' && toast.opacity === '1', { ok, ms, toast });
+    await f.shot('portal-ad-fail-toast');
+    await f.call('pickPerk', 0); // the restarted run opens on its wave-1 pick
+    await f.p.waitForTimeout(100);
+    const after = await f.state();
+    check(results, 'portal ads=fail: nothing stuck (no ad running, not muted, gameplay on)', !after.adRunning && !after.soundMuted && after.gameplay, after);
+    check(results, 'portal ads=fail: no console errors', f.errors.length === 0, f.errors);
+    await f.close();
+
+    // 6. ?ads=none: ads unavailable → rewarded refuses at once without touching the SDK.
+    const n = await open(browser, srv.base, 'desktop', '?ads=none');
+    const ns = await n.state();
+    const nok = await n.call('rewarded', 'reroll');
+    check(results, 'portal ads=none: adsAvailable false; rewarded false, no ad requested', !ns.adsAvailable && nok === false && !n.portal.some((x) => x.startsWith('rewardedAd')), { ns, portal: n.portal });
+    await n.p.waitForTimeout(150);
+    const nt = await n.p.evaluate(() => getComputedStyle(document.getElementById('cp-toast')).opacity);
+    check(results, 'portal ads=none: the toast shows in landscape too', nt === '1', nt);
+    await n.shot('portal-toast-landscape');
+    // Telemetry overlay toggles with ~ in DEV.
+    await n.p.keyboard.press('Backquote');
+    const overlay = await n.p.evaluate(() => !!document.getElementById('cp-telemetry'));
+    await n.p.keyboard.press('Backquote');
+    check(results, 'portal: the telemetry overlay toggles with ~ (DEV)', overlay && !(await n.p.evaluate(() => !!document.getElementById('cp-telemetry'))), overlay);
+    check(results, 'portal ads=none: no console errors', n.errors.length === 0, n.errors);
+    await n.close();
+  },
+
   async portrait() {
     const h = await open(browser, srv.base, 'phone', '?seed=7');
     await bootChecks(h, 'portrait', 'portrait');
@@ -287,14 +465,15 @@ const scenarios = {
       const ui = (await h.call('ui')).pick;
       // REROLL: local rewarded stub grants → a new offer for the same pick.
       await h.tapLogical(...centre(ui.reroll));
-      const r = await h.waitFor((s) => s.offer.join() !== s0.offer.join(), 2000, 50);
+      const r = await h.waitFor((s) => s.offer.join() !== s0.offer.join(), 5000, 50);
       check(results, `${label} protocols: REROLL (rewarded) gives a new offer`, r.ok && r.s.pickOpen && r.s.picks === 0, { before: s0.offer, after: r.s.offer });
       await h.p.waitForTimeout(200);
       // BOOST: taken once, then the button is spent.
       await h.tapLogical(...centre(ui.boost));
-      await h.p.waitForTimeout(300);
+      await h.p.waitForFunction(() => window.__cp.game.scene.getScene('Battle').session.world.boost.from > 0, null, { timeout: 5000 }).catch(() => {});
       const b = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').session.world.boost);
       check(results, `${label} protocols: BOOST (rewarded) arms ×Energy for the next waves`, b.from === 1 && b.until > b.from, b);
+      await h.p.waitForTimeout(400); // the refreshed overlay ignores taps for 150 ms (double-tap guard)
       await h.tapLogical(...centre(ui.cards[1]));
       const t = await h.waitFor((s) => !s.pickOpen && s.picks === 1, 1500, 50);
       check(results, `${label} protocols: the second card installs`, t.ok, t.s);

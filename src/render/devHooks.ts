@@ -2,11 +2,22 @@
 // import.meta.env.DEV is true, so production builds contain none of it (checked by grepping dist/).
 
 import type Phaser from 'phaser';
+import type { RewardedPlacement } from '../portal/ads';
+import { services } from '../services';
 import type { BuyCount } from '../sim/commands';
 import type { EnemyKind, StatId, TabId } from '../sim/data';
 import type { BattleScene } from './scenes/BattleScene';
 
 export function installDevHooks(game: Phaser.Game): void {
+  const portalState = () => ({
+    portal: services.portal.name,
+    adRunning: services.ads.running,
+    adAudioMuted: services.guard.isAdAudioMuted,
+    // Effective mute as applied to game.sound.mute (Phaser's own getter lags while the AudioContext is locked).
+    soundMuted: services.isMuted(),
+    gameplay: services.guard.isPlaying,
+    adsAvailable: services.ads.available,
+  });
   const battle = (): BattleScene | null => {
     const s = game.scene.getScene('Battle') as unknown as BattleScene | null;
     return s && s.sys.isActive() ? s : null;
@@ -16,7 +27,7 @@ export function installDevHooks(game: Phaser.Game): void {
     ready: () => battle() !== null && battle()!.session !== undefined,
     state: () => {
       const b = battle();
-      if (!b) return { scene: game.scene.getScenes(true).map((s) => s.sys.settings.key).join(',') };
+      if (!b) return { scene: game.scene.getScenes(true).map((s) => s.sys.settings.key).join(','), ...portalState() };
       const w = b.session.world;
       return {
         scene: 'Battle',
@@ -48,6 +59,8 @@ export function installDevHooks(game: Phaser.Game): void {
         perks: Object.fromEntries(Object.entries(w.perks).filter(([, n]) => n > 0)),
         setTiers: { ...w.setTiers },
         keys: w.keys,
+        ...portalState(),
+        restarting: b.life.isRestarting,
       };
     },
     /** Upgrade panel and overlay geometry (logical px) for real taps in the smoke. */
@@ -78,5 +91,13 @@ export function installDevHooks(game: Phaser.Game): void {
     pickPerk: (i = 0) => battle()?.command({ type: 'pickPerk', index: i }),
     openProtocols: () => battle()?.openProtocols(),
     closeProtocols: () => battle()?.closeProtocols(),
+    /** The RESTART button path (midgame ad offer first). */
+    requestRestart: () => {
+      const b = battle();
+      if (b) void b.life.requestRestart(() => b.restart());
+    },
+    /** A rewarded ad through the real service (toast on failure); resolves true if it completed. */
+    rewarded: (placement: RewardedPlacement) => services.ads.rewarded(placement),
+    telemetry: () => services.telemetry.all(),
   };
 }
