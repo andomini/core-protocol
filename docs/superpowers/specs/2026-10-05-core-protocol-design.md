@@ -10,6 +10,7 @@ Context: `../../research/08-the-tower.md` (The Tower research, gap analysis agai
 | Run length | Like The Tower: an endless run until death, with save, pause and speed |
 | Meta in v1 | Workshop + tiers, cards, labs. Ultimate weapons and modules come later |
 | Main hook ("more interesting") | Perk synergies in the run: tags, sets, trade-off perks, connected to cards |
+| First run must show a set | Picks at waves 1/3/5/8/10 then every 5; one offer always carries a held tag; a free starter pack after the 1st run |
 | Cards | Keys from play → packs (random with pity); duplicates level cards up |
 | Labs | **No timers**: a research tree bought with currency |
 | Look | Neon minimalism + theme: **core vs viruses** (cyberspace) |
@@ -51,7 +52,8 @@ Elites come in v1.1.
 `*` = locked until the matching lab node. Cost is `base × c^level` with `c` ∈ [1.07, 1.12] per stat. Buying ×1 / ×10 / MAX. Some stats have a max level (Attack Speed, Range, Crit Chance, Defense %, Multishot), raised through the labs.
 
 ### 2.4 Protocols (perks) and sets — the main hook
-- At wave 1 and then every 5 waves: an overlay with 3 cards (4 with the lab node), choose 1. Reroll: once free with the lab node, plus a rewarded ad. The same screen has a **Boost** button (rewarded): ×2 ⚡ Energy for 5 waves; no more often than once every 10 waves.
+- Picks at waves **1, 3, 5, 8, 10**, then every 5 (15, 20, …): an overlay with 3 cards (4 with the lab node), choose 1. A first run that dies at waves 12–20 gets ≈5–6 perks.
+- **Weighting toward held tags:** if the run already has a tag, at least one of the offered cards carries one of the held tags (the remaining cards are random). The goal is to get to a 2-set in the first run. Reroll: once free with the lab node, plus a rewarded ad. The same screen has a **Boost** button (rewarded): ×2 ⚡ Energy for 5 waves; no more often than once every 10 waves.
 - Perks stack within the run (max stacks in `data/perks.json`). Rarity Common 70 / Rare 25 / Epic 5, with pity: if no Rare+ in 3 picks, the 4th has one guaranteed.
 - Perks that depend on a locked stat (Split → Multishot, Leech → Lifesteal, Compound → Interest) don't enter the pool until the matching lab node is unlocked.
 - **Tags:** ⚡ Overload, 🧊 Cryo, 🔗 Chain, 💰 Mining, 🛡 Firewall. Each perk and each tagged card in the loadout counts 1 toward its tag. The HUD shows active sets.
@@ -106,6 +108,7 @@ The same 18 stats, with permanent levels that set the **starting value** of each
 Some nodes require previous ones (a tree, `data/labs.json`).
 
 ### 3.4 Cards (20)
+- **Starter pack:** after the first death, a free pack with 2 tagged Common cards of different tags. Until then the Loadout screen and the 🃏 tab are hidden (the first run starts instantly).
 - A pack = 3 cards for 🔑 (price in `data/cards.json`). Rarity Common 10 / Rare 7 / Epic 3 card types; a guaranteed Epic every 10 packs (pity). Free pack: rewarded, once every 4 h.
 - Duplicate → card level ★1→★5 (the effect grows). Slots: 2 at the start, up to 6 through labs. The loadout is chosen before the run and fixed for the run.
 - A tagged card counts 1 toward its tag's set.
@@ -176,7 +179,7 @@ core-protocol/
 | B2 | First run: death at waves 12–20 (≈6–10 min at ×1, 30 s per wave including the pause) |
 | B3 | Every return session (≤ 5 min) → at least one noticeable purchase in Workshop/Labs |
 | B4 | Tier 2 opens after ≈1.5–3 h of total play (greedy bot + meta) |
-| B5 | Average run: 2-set by wave 15, 4-set by wave 40 |
+| B5 | ≥ 80% of first runs (no cards) reach a 2-set; average run with meta — 2-set by wave 10, 4-set by wave 40 |
 | B6 | No dominant tag: median wave of tag bots within ±20% of each other |
 | B7 | At the end of v1 content, a run lasts ≈30–60 min of real time at ×5 |
 | B8 | Initial download ≤ 1 MB; time to first input ≤ 5 s on Slow 4G |
