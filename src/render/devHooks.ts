@@ -42,13 +42,25 @@ export function installDevHooks(game: Phaser.Game): void {
         tab: b.upgrades.tab,
         amount: b.upgrades.amount,
         commands: b.session.log.length,
+        pickOpen: b.pick.visible,
+        offer: [...w.offer],
+        picks: w.picks,
+        perks: Object.fromEntries(Object.entries(w.perks).filter(([, n]) => n > 0)),
+        setTiers: { ...w.setTiers },
+        keys: w.keys,
       };
     },
     /** Upgrade panel and overlay geometry (logical px) for real taps in the smoke. */
     ui: () => {
       const b = battle();
       if (!b) return null;
-      return { ...b.upgrades.info(), restart: b.death.restartRect(), layout: { w: b.L.w, h: b.L.h, panel: b.L.panel } };
+      const cards = [0, 1, 2, 3].map((i) => b.pick.cardRect(i)).filter((r) => r !== null);
+      return {
+        ...b.upgrades.info(),
+        restart: b.death.restartRect(),
+        pick: { cards, reroll: b.pick.rerollRect(), boost: b.pick.boostRect() },
+        layout: { w: b.L.w, h: b.L.h, panel: b.L.panel },
+      };
     },
     setTab: (t: TabId) => battle()?.upgrades.setTab(t),
     /** Issues a buy command exactly like a row tap would. */
@@ -62,5 +74,9 @@ export function installDevHooks(game: Phaser.Game): void {
     pause: (on = true) => battle()?.setPaused(on),
     spawn: (kind: EnemyKind, n = 1, dir?: number) => battle()?.spawn(kind, n, dir),
     restart: () => battle()?.restart(),
+    /** Takes card `i` of the open protocol offer (as a card tap would). */
+    pickPerk: (i = 0) => battle()?.command({ type: 'pickPerk', index: i }),
+    openProtocols: () => battle()?.openProtocols(),
+    closeProtocols: () => battle()?.closeProtocols(),
   };
 }

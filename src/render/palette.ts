@@ -59,3 +59,6 @@ export const TAG_CSS = { overload: '#ffd23f', cryo: '#7fe3ff', chain: '#b18cff',
 /** Card frame accents by rarity. */
 export const RARITY_COLOR = { common: 0x6f86c0, rare: 0x3fa8ff, epic: 0xff4dd8 } as const;
 export const RARITY_CSS = { common: '#8fa3d6', rare: '#5cb8ff', epic: '#ff6be0' } as const;
+/** Enemy tints: frozen (icy fill) and slowed (cold multiply). */
+export const FROZEN_TINT = 0xbff6ff;
+export const SLOW_TINT = 0x8fd8ff;

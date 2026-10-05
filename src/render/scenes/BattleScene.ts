@@ -7,6 +7,11 @@ import { DEFAULT_DATA, type EnemyKind, type GameData, STAT_IDS } from '../../sim
 import type { RunOptions } from '../../sim/state';
 import type { SimEvent } from '../../sim/events';
 import { DeathOverlay } from '../../ui/DeathOverlay';
+import { PickOverlay } from '../../ui/PickOverlay';
+import { ProtocolsPanel } from '../../ui/ProtocolsPanel';
+import { SetChips } from '../../ui/SetChips';
+import { tagCounts } from '../../sim/perks';
+import { localRewarded, type RewardedAds, type RewardedPlacement } from '../../ui/rewarded';
 import { Hud } from '../../ui/Hud';
 import { text } from '../../ui/kit';
 import { UpgradePanel } from '../../ui/UpgradePanel';
@@ -15,7 +20,7 @@ import battleJson from '../../data/battle.json';
 import { battleData, type DevFlags, readFlags, stressTuning } from '../devFlags';
 import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
-import { CRIMSON } from '../palette';
+import { CRIMSON, ENERGY, TAG_COLOR, TAG_CSS } from '../palette';
 import { RunSession } from '../RunSession';
 import { DEPTH, ENEMY_VIS, WorldView } from '../WorldView';
 import { RS } from '../resolution';
@@ -40,6 +45,10 @@ export class BattleScene extends Phaser.Scene {
   hud!: Hud;
   upgrades!: UpgradePanel;
   death!: DeathOverlay;
+  pick!: PickOverlay;
+  chips!: SetChips;
+  protocols!: ProtocolsPanel;
+  private pausedBeforePanel = false;
   loop!: FixedLoop;
   speed = 1;
   paused = false;
@@ -72,6 +81,16 @@ export class BattleScene extends Phaser.Scene {
       pending: () => this.session.hasPending,
     });
     this.death = new DeathOverlay(this, this.L, () => this.restart());
+    this.pick = new PickOverlay(this, this.L, this.gd, {
+      pick: (index) => this.command({ type: 'pickPerk', index }),
+      reroll: () => {
+        if (this.session.world.freeRerolls > 0) this.command({ type: 'reroll', via: 'free' });
+        else void this.rewarded('reroll').then((ok) => ok && this.command({ type: 'reroll', via: 'ad' }));
+      },
+      boost: () => void this.rewarded('boost').then((ok) => ok && this.command({ type: 'boost' })),
+    });
+    this.chips = new SetChips(this, this.L, () => this.openProtocols());
+    this.protocols = new ProtocolsPanel(this, this.L, this.gd, () => this.closeProtocols());
     const a = this.L.arena;
     this.banner = text(this, a.x + a.w / 2, a.y + a.h * 0.18, '', this.L.o === 'portrait' ? 44 : 34, { font: 'title', weight: '900', glow: '#22e5ff', blur: 16 })
       .setOrigin(0.5)
@@ -91,13 +110,38 @@ export class BattleScene extends Phaser.Scene {
 
   /** First-run options: nothing unlocked (labs come in M4) unless ?unlockall=1 (dev). */
   private runOptions(seed: number): RunOptions {
-    return { seed, tier: 1, unlocked: this.flags.unlockAll ? [...STAT_IDS] : [] };
+    return { seed, tier: 1, unlocked: this.flags.unlockAll ? [...STAT_IDS] : [], protocols: !this.flags.stress };
   }
 
   /** A player command: queued for the next tick, or applied at once while the sim is not stepping. */
   command(cmd: Command): void {
     this.session.queue(cmd);
-    if (this.paused || this.session.world.dead) this.session.applyPendingNow(this.onEvent);
+    const w = this.session.world;
+    if (this.paused || w.dead || w.phase === 'pick') this.session.applyPendingNow(this.onEvent);
+  }
+
+  /** A rewarded ad through the portal service (registered by the portal layer), or the local stub. */
+  async rewarded(placement: RewardedPlacement): Promise<boolean> {
+    const ads = (this.registry.get('rewarded') as RewardedAds | undefined) ?? localRewarded;
+    this.pick.setBusy(true);
+    try {
+      return await ads.rewardedAd(placement);
+    } finally {
+      this.pick.setBusy(false);
+    }
+  }
+
+  openProtocols(): void {
+    const w = this.session.world;
+    if (w.dead || w.phase === 'pick' || this.protocols.visible) return;
+    this.pausedBeforePanel = this.paused;
+    this.paused = true;
+    this.protocols.show(w);
+  }
+
+  closeProtocols(): void {
+    this.protocols.hide();
+    this.paused = this.pausedBeforePanel;
   }
 
   cycleSpeed(): void {
@@ -122,6 +166,9 @@ export class BattleScene extends Phaser.Scene {
     this.upgrades.reset();
     this.loop.reset();
     this.death.hide();
+    this.pick.hide();
+    this.protocols.hide();
+    this.chips.reset();
     this.paused = false;
     this.deathAt = 0;
     this.bannerUntil = 0;
@@ -199,6 +246,44 @@ export class BattleScene extends Phaser.Scene {
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);
         this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, e.boss ? CRIMSON : undefined);
         break;
+      case 'setTier': {
+        const name = this.gd.sets.tags[e.tag].name.toUpperCase();
+        this.showBanner(`${name} SET ×${e.tier} ONLINE`, TAG_CSS[e.tag], now);
+        this.fx.pulse(L.cx, L.cy, this.session.stats.range * L.scale, TAG_COLOR[e.tag]);
+        break;
+      }
+      case 'lightning': {
+        const from = this.session.lastKnown(e.fromId);
+        if (!from) break;
+        this.view.enemyScreen(from, 1, this.tmp);
+        const fx0 = this.tmp.x;
+        const fy0 = this.tmp.y;
+        for (const id of e.targets) if (this.screenOf(id)) this.fx.arc(fx0, fy0, this.tmp.x, this.tmp.y, TAG_COLOR.chain);
+        break;
+      }
+      case 'bounce': {
+        const from = this.session.lastKnown(e.fromId);
+        if (!from || !this.screenOf(e.toId)) break;
+        const tx = this.tmp.x;
+        const ty = this.tmp.y;
+        this.view.enemyScreen(from, 1, this.tmp);
+        this.fx.bounce(this.tmp.x, this.tmp.y, tx, ty, TAG_COLOR.chain);
+        break;
+      }
+      case 'freezeAll':
+        this.fx.pulse(L.cx, L.cy, Math.max(L.arena.w, L.arena.h) * 0.6, TAG_COLOR.cryo);
+        break;
+      case 'overdrive':
+        this.fx.pulse(L.cx, L.cy, coreR * 4, TAG_COLOR.overload);
+        this.showBanner('OVERDRIVE', TAG_CSS.overload, now);
+        break;
+      case 'immunity':
+        this.fx.pulse(L.cx, L.cy, coreR * 3, TAG_COLOR.firewall);
+        break;
+      case 'boost':
+        this.showBanner(`ENERGY ×${this.gd.perks.boost.energyMul}`, '#ffd23f', now);
+        this.fx.pulse(L.cx, L.cy, coreR * 4, ENERGY);
+        break;
       case 'death':
         this.fx.coreBreach(L.cx, L.cy, coreR);
         this.cameras.main.shake(380, 0.01);
@@ -235,6 +320,9 @@ export class BattleScene extends Phaser.Scene {
       const dw = this.session.world;
       this.death.show({ wave: dw.wave, kills: dw.kills, energy: dw.energy, bits: dw.bits }, time);
     }
+    this.chips.update(tagCounts(w, this.gd), w.setTiers);
+    if (w.phase === 'pick' && !w.dead) this.pick.show(w, time);
+    else if (this.pick.visible) this.pick.hide();
     this.death.update(time);
     this.frameMs.push(delta);
     if (this.frameMs.length > 120) this.frameMs.shift();

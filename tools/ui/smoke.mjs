@@ -64,9 +64,21 @@ async function minTextCheck(h, label) {
   check(results, `${label}: all ${r.count} texts ≥ ${r.min} px`, r.count > 10 && r.bad.length === 0, r);
 }
 
+const centre = (r) => [r.x + r.w / 2, r.y + r.h / 2];
+
 async function bootChecks(h, label, orientation) {
   const s0 = await h.state();
   check(results, `${label}: boots into Battle (${orientation})`, s0.scene === 'Battle' && s0.orientation === orientation, s0);
+  // B1: the run opens on the wave-1 protocol pick (tick 0); a real tap on the first card installs it.
+  const open0 = await h.waitFor((s) => s.pickOpen, 3000, 50);
+  metrics[`${label}.firstPickMs`] = open0.ms;
+  check(results, `${label}: the wave-1 protocol pick is open at start`, open0.ok && open0.s.tick === 0 && open0.s.offer.length === 3, open0.s);
+  await minTextCheck(h, `${label} pick overlay`);
+  await h.p.waitForTimeout(400);
+  const cards = (await h.call('ui')).pick.cards;
+  await h.tapLogical(...centre(cards[0]));
+  const took = await h.waitFor((s) => !s.pickOpen, 1500, 50);
+  check(results, `${label}: tapping a card installs it and resumes`, took.ok && took.s.picks === 1 && Object.keys(took.s.perks).length === 1, took.s);
   await minTextCheck(h, label);
   const vis = await h.waitFor((s) => s.visible > 0, 2500, 50);
   // Sim seconds since the wave-1 start (tick 1) when the first enemy was on screen.
@@ -75,7 +87,6 @@ async function bootChecks(h, label, orientation) {
   return vis;
 }
 
-const centre = (r) => [r.x + r.w / 2, r.y + r.h / 2];
 
 /**
  * The upgrade panel through real taps: earn Energy at ×5, then tap the Damage row while paused
@@ -264,6 +275,53 @@ const scenarios = {
     await d.p.waitForTimeout(500);
     await d.shot('landscape-death');
     await d.close();
+  },
+
+  async protocols() {
+    for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
+      const h = await open(browser, srv.base, device, '?seed=21');
+      h.autoPick = false;
+      const s0 = (await h.waitFor((s) => s.pickOpen, 3000, 50)).s;
+      await h.p.waitForTimeout(450);
+      await h.shot(`pick-${label}`);
+      const ui = (await h.call('ui')).pick;
+      // REROLL: local rewarded stub grants → a new offer for the same pick.
+      await h.tapLogical(...centre(ui.reroll));
+      const r = await h.waitFor((s) => s.offer.join() !== s0.offer.join(), 2000, 50);
+      check(results, `${label} protocols: REROLL (rewarded) gives a new offer`, r.ok && r.s.pickOpen && r.s.picks === 0, { before: s0.offer, after: r.s.offer });
+      await h.p.waitForTimeout(200);
+      // BOOST: taken once, then the button is spent.
+      await h.tapLogical(...centre(ui.boost));
+      await h.p.waitForTimeout(300);
+      const b = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').session.world.boost);
+      check(results, `${label} protocols: BOOST (rewarded) arms ×Energy for the next waves`, b.from === 1 && b.until > b.from, b);
+      await h.tapLogical(...centre(ui.cards[1]));
+      const t = await h.waitFor((s) => !s.pickOpen && s.picks === 1, 1500, 50);
+      check(results, `${label} protocols: the second card installs`, t.ok, t.s);
+      // Chips + panel: grant a full Overload set through picks until a tier is on, then open the panel.
+      await h.call('give', 1e6);
+      await h.call('buy', 'damage', 'max');
+      await h.call('buy', 'health', 'max');
+      h.autoPick = true;
+      await h.call('setSpeed', 5);
+      const set = await h.waitFor((s) => Object.values(s.setTiers).some((v) => v >= 2), 40000, 150);
+      check(results, `${label} protocols: a 2-set comes online within the first picks`, set.ok, set.s.setTiers);
+      const chips = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').chips.rect);
+      check(results, `${label} protocols: set chips are shown`, chips.w > 0 && chips.h > 0, chips);
+      await h.tapLogical(...centre(chips));
+      await h.p.waitForTimeout(300);
+      const p1 = await h.state();
+      await h.p.waitForTimeout(500);
+      const p2 = await h.state();
+      check(results, `${label} protocols: the panel opens and pauses the battle`, p1.paused && p2.tick === p1.tick, { p1: p1.tick, p2: p2.tick });
+      await minTextCheck(h, `${label} protocols panel`);
+      await h.shot(`protocols-${label}`);
+      await h.call('closeProtocols');
+      const p3 = await h.state();
+      check(results, `${label} protocols: RESUME restores the previous pause state`, !p3.paused, p3.paused);
+      check(results, `${label} protocols: no console errors`, h.errors.length === 0, h.errors);
+      await h.close();
+    }
   },
 
   async stress() {

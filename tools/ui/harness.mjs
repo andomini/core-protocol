@@ -60,10 +60,12 @@ export async function open(browser, base, device, query = '') {
   p.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   await p.goto(base + query);
   await p.waitForFunction(() => window.__cp?.ready(), null, { timeout: 15000 });
-  return {
+  const h = {
     p,
     ctx,
     errors,
+    /** While true, waitFor takes card 0 of any open protocol offer (picks at waves 1, 3, 5, …). */
+    autoPick: true,
     state: () => p.evaluate(() => window.__cp.state()),
     call: (name, ...args) => p.evaluate(([n, a]) => window.__cp[n](...a), [name, args]),
     /** Polls the hook state until `pred` holds or the timeout passes; returns the last state. */
@@ -72,6 +74,7 @@ export async function open(browser, base, device, query = '') {
       for (;;) {
         const s = await p.evaluate(() => window.__cp.state());
         if (pred(s)) return { ok: true, s, ms: Date.now() - t0 };
+        if (h.autoPick && s.pickOpen) await p.evaluate(() => window.__cp.pickPerk(0));
         if (Date.now() - t0 > timeoutMs) return { ok: false, s, ms: Date.now() - t0 };
         await p.waitForTimeout(stepMs);
       }
@@ -94,6 +97,7 @@ export async function open(browser, base, device, query = '') {
     },
     close: () => ctx.close(),
   };
+  return h;
 }
 
 export function check(results, name, cond, detail) {

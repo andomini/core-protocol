@@ -1,9 +1,12 @@
 {
-  "date": "2026-10-05T18:49:25.474Z",
+  "date": "2026-10-05T20:13:21.579Z",
   "metrics": {
+    "portrait.firstPickMs": 5,
     "portrait.firstVisibleSimS": 0,
-    "landscape 1280×720.firstVisibleSimS": 0,
-    "landscape 907×510.firstVisibleSimS": 0,
+    "landscape 1280×720.firstPickMs": 2,
+    "landscape 1280×720.firstVisibleSimS": 0.03,
+    "landscape 907×510.firstPickMs": 4,
+    "landscape 907×510.firstVisibleSimS": 0.03,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
   },
@@ -14,11 +17,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -53,15 +56,166 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "dataMine",
+          "burstFire",
+          "frostShot"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
-      "name": "portrait: all 56 texts ≥ 28 px",
+      "name": "portrait: the wave-1 protocol pick is open at start",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "portrait",
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 100,
+        "speed": 1,
+        "paused": false,
+        "fps": 67,
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "dataMine",
+          "burstFire",
+          "frostShot"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
+      }
+    },
+    {
+      "name": "portrait pick overlay: all 92 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 56,
+        "count": 92,
+        "bad": []
+      }
+    },
+    {
+      "name": "portrait: tapping a card installs it and resumes",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "portrait",
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 100,
+        "speed": 1,
+        "paused": false,
+        "fps": 62,
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
+      }
+    },
+    {
+      "name": "portrait: all 92 texts ≥ 28 px",
+      "ok": true,
+      "detail": {
+        "min": 28,
+        "count": 92,
         "bad": []
       }
     },
@@ -85,7 +239,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 62,
         "seed": 7,
         "levels": {
           "damage": 0,
@@ -110,7 +264,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -133,7 +301,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 67,
+        "fps": 62,
         "seed": 7,
         "levels": {
           "damage": 0,
@@ -158,7 +326,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -169,7 +351,7 @@
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 2,
+          "tick": 1,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -182,7 +364,7 @@
           "coreHp": 100,
           "speed": 2,
           "paused": true,
-          "fps": 67,
+          "fps": 62,
           "seed": 7,
           "levels": {
             "damage": 0,
@@ -207,13 +389,27 @@
           "unlocked": [],
           "tab": "atk",
           "amount": 1,
-          "commands": 0
+          "commands": 1,
+          "pickOpen": false,
+          "offer": [],
+          "picks": 1,
+          "perks": {
+            "dataMine": 1
+          },
+          "setTiers": {
+            "overload": 0,
+            "cryo": 0,
+            "chain": 0,
+            "mining": 0,
+            "firewall": 0
+          },
+          "keys": 0
         },
         "p1": {
           "scene": "Battle",
           "orientation": "portrait",
           "wave": 1,
-          "tick": 2,
+          "tick": 1,
           "phase": "wave",
           "enemies": 1,
           "visible": 1,
@@ -251,7 +447,21 @@
           "unlocked": [],
           "tab": "atk",
           "amount": 1,
-          "commands": 0
+          "commands": 1,
+          "pickOpen": false,
+          "offer": [],
+          "picks": 1,
+          "perks": {
+            "dataMine": 1
+          },
+          "setTiers": {
+            "overload": 0,
+            "cryo": 0,
+            "chain": 0,
+            "mining": 0,
+            "firewall": 0
+          },
+          "keys": 0
         }
       }
     },
@@ -262,7 +472,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -300,7 +510,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -310,7 +534,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 917,
+        "tick": 928,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -318,8 +542,8 @@
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 14,
-        "bits": 7,
+        "energy": 14.7,
+        "bits": 8.05,
         "coreHp": 100,
         "speed": 5,
         "paused": false,
@@ -348,7 +572,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -486,6 +724,40 @@
           "w": 380,
           "h": 92
         },
+        "pick": {
+          "cards": [
+            {
+              "x": 30,
+              "y": 416,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 664,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 912,
+              "w": 660,
+              "h": 224
+            }
+          ],
+          "reroll": {
+            "x": 30,
+            "y": 1192,
+            "w": 318,
+            "h": 96
+          },
+          "boost": {
+            "x": 372,
+            "y": 1192,
+            "w": 318,
+            "h": 96
+          }
+        },
         "layout": {
           "w": 720,
           "h": 1558,
@@ -505,7 +777,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1140,
+        "tick": 1136,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -513,8 +785,8 @@
         "dead": false,
         "overlay": false,
         "kills": 10,
-        "energy": 20.119999999999997,
-        "bits": 10.059999999999999,
+        "energy": 21.125999999999998,
+        "bits": 11.569,
         "coreHp": 100,
         "speed": 5,
         "paused": false,
@@ -543,15 +815,29 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
       "name": "portrait upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 20.119999999999997,
-        "s1": 15.119999999999997,
+        "s0": 21.125999999999998,
+        "s1": 16.125999999999998,
         "l0": 0,
         "l1": 1
       }
@@ -563,8 +849,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 15.119999999999997,
-        "e1": 9.119999999999997
+        "e0": 16.125999999999998,
+        "e1": 10.125999999999998
       }
     },
     {
@@ -646,11 +932,11 @@
       }
     },
     {
-      "name": "portrait 360×640: all 50 texts ≥ 28 px",
+      "name": "portrait 360×640: all 86 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 50,
+        "count": 86,
         "bad": []
       }
     },
@@ -775,6 +1061,40 @@
           "w": 380,
           "h": 92
         },
+        "pick": {
+          "cards": [
+            {
+              "x": 30,
+              "y": 277,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 525,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 773,
+              "w": 660,
+              "h": 224
+            }
+          ],
+          "reroll": {
+            "x": 30,
+            "y": 1053,
+            "w": 318,
+            "h": 96
+          },
+          "boost": {
+            "x": 372,
+            "y": 1053,
+            "w": 318,
+            "h": 96
+          }
+        },
         "layout": {
           "w": 720,
           "h": 1280,
@@ -794,7 +1114,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1136,
+        "tick": 1143,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -802,8 +1122,8 @@
         "dead": false,
         "overlay": false,
         "kills": 10,
-        "energy": 20.119999999999997,
-        "bits": 10.059999999999999,
+        "energy": 21.125999999999998,
+        "bits": 11.569,
         "coreHp": 100,
         "speed": 5,
         "paused": false,
@@ -832,15 +1152,29 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
       "name": "portrait 360×640 upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 20.119999999999997,
-        "s1": 15.119999999999997,
+        "s0": 21.125999999999998,
+        "s1": 16.125999999999998,
         "l0": 0,
         "l1": 1
       }
@@ -852,8 +1186,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 15.119999999999997,
-        "e1": 9.119999999999997
+        "e0": 16.125999999999998,
+        "e1": 10.125999999999998
       }
     },
     {
@@ -970,7 +1304,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "permafrost": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -979,11 +1327,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 1,
-        "tick": 47,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -994,7 +1342,7 @@
         "speed": 5,
         "paused": false,
         "fps": 59,
-        "seed": 48388594,
+        "seed": 1323248015,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1018,7 +1366,23 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "permafrost",
+          "energySiphon",
+          "bounty"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -1032,11 +1396,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -1046,7 +1410,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 66,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1071,15 +1435,166 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "energySiphon",
+          "permafrost",
+          "reflect"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
-      "name": "landscape 1280×720: all 56 texts ≥ 16 px",
+      "name": "landscape 1280×720: the wave-1 protocol pick is open at start",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 100,
+        "speed": 1,
+        "paused": false,
+        "fps": 66,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "energySiphon",
+          "permafrost",
+          "reflect"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
+      }
+    },
+    {
+      "name": "landscape 1280×720 pick overlay: all 92 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 56,
+        "count": 92,
+        "bad": []
+      }
+    },
+    {
+      "name": "landscape 1280×720: tapping a card installs it and resumes",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 1,
+        "tick": 2,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 100,
+        "speed": 1,
+        "paused": false,
+        "fps": 62,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
+      }
+    },
+    {
+      "name": "landscape 1280×720: all 92 texts ≥ 16 px",
+      "ok": true,
+      "detail": {
+        "min": 16,
+        "count": 92,
         "bad": []
       }
     },
@@ -1090,7 +1605,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1103,7 +1618,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1128,7 +1643,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -1151,7 +1680,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 67,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1176,7 +1705,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -1186,7 +1729,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 928,
+        "tick": 924,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1194,7 +1737,7 @@
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 14,
+        "energy": 17.5,
         "bits": 7,
         "coreHp": 100,
         "speed": 5,
@@ -1224,7 +1767,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -1348,6 +1905,40 @@
           "w": 280,
           "h": 62
         },
+        "pick": {
+          "cards": [
+            {
+              "x": 108,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 470,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 832,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            }
+          ],
+          "reroll": {
+            "x": 328,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          },
+          "boost": {
+            "x": 652,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          }
+        },
         "layout": {
           "w": 1280,
           "h": 720,
@@ -1367,16 +1958,16 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1138,
+        "tick": 992,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 10,
-        "energy": 20.119999999999997,
-        "bits": 10.059999999999999,
+        "kills": 8,
+        "energy": 20.05,
+        "bits": 8.02,
         "coreHp": 100,
         "speed": 5,
         "paused": false,
@@ -1405,15 +1996,29 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
       "name": "landscape 1280×720 upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 20.119999999999997,
-        "s1": 15.119999999999997,
+        "s0": 20.05,
+        "s1": 15.05,
         "l0": 0,
         "l1": 1
       }
@@ -1425,8 +2030,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 15.119999999999997,
-        "e1": 9.119999999999997
+        "e0": 15.05,
+        "e1": 9.05
       }
     },
     {
@@ -1499,11 +2104,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -1538,15 +2143,166 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "energySiphon",
+          "permafrost",
+          "reflect"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
-      "name": "landscape 907×510: all 56 texts ≥ 16 px",
+      "name": "landscape 907×510: the wave-1 protocol pick is open at start",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 0,
+        "tick": 0,
+        "phase": "pick",
+        "enemies": 0,
+        "visible": 0,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 100,
+        "speed": 1,
+        "paused": false,
+        "fps": 67,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 0,
+        "pickOpen": true,
+        "offer": [
+          "energySiphon",
+          "permafrost",
+          "reflect"
+        ],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
+      }
+    },
+    {
+      "name": "landscape 907×510 pick overlay: all 92 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 56,
+        "count": 92,
+        "bad": []
+      }
+    },
+    {
+      "name": "landscape 907×510: tapping a card installs it and resumes",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "landscape",
+        "wave": 1,
+        "tick": 2,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 100,
+        "speed": 1,
+        "paused": false,
+        "fps": 62,
+        "seed": 5,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
+      }
+    },
+    {
+      "name": "landscape 907×510: all 92 texts ≥ 16 px",
+      "ok": true,
+      "detail": {
+        "min": 16,
+        "count": 92,
         "bad": []
       }
     },
@@ -1557,7 +2313,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1570,7 +2326,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1595,7 +2351,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -1605,7 +2375,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1618,7 +2388,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 67,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -1643,7 +2413,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -1653,7 +2437,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 926,
+        "tick": 928,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1661,7 +2445,7 @@
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 14,
+        "energy": 17.5,
         "bits": 7,
         "coreHp": 100,
         "speed": 5,
@@ -1691,7 +2475,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -1815,6 +2613,40 @@
           "w": 280,
           "h": 62
         },
+        "pick": {
+          "cards": [
+            {
+              "x": 108,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 470,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 832,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            }
+          ],
+          "reroll": {
+            "x": 328,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          },
+          "boost": {
+            "x": 652,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          }
+        },
         "layout": {
           "w": 1280,
           "h": 720,
@@ -1834,16 +2666,16 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1134,
+        "tick": 995,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 10,
-        "energy": 20.119999999999997,
-        "bits": 10.059999999999999,
+        "kills": 8,
+        "energy": 20.05,
+        "bits": 8.02,
         "coreHp": 100,
         "speed": 5,
         "paused": false,
@@ -1872,15 +2704,29 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 2,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "energySiphon": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
       "name": "landscape 907×510 upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 20.119999999999997,
-        "s1": 15.119999999999997,
+        "s0": 20.05,
+        "s1": 15.05,
         "l0": 0,
         "l1": 1
       }
@@ -1892,8 +2738,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 15.119999999999997,
-        "e1": 9.119999999999997
+        "e0": 15.05,
+        "e1": 9.05
       }
     },
     {
@@ -2005,7 +2851,21 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 1,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "permafrost": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
@@ -2018,18 +2878,18 @@
         "tick": 1132,
         "phase": "wave",
         "enemies": 200,
-        "visible": 200,
+        "visible": 199,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
         "kills": 114,
-        "energy": 228,
-        "bits": 114,
-        "coreHp": 999999985241.9,
+        "energy": 228.04,
+        "bits": 114.02,
+        "coreHp": 999999985260.8948,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 148878600,
+        "seed": 41933560,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2053,13 +2913,25 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 0,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00318953831433
+      "detail": 60.00199342170836
     },
     {
       "name": "stress desktop: no console errors",
@@ -2073,21 +2945,21 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1135,
+        "tick": 1132,
         "phase": "wave",
-        "enemies": 199,
-        "visible": 199,
+        "enemies": 200,
+        "visible": 200,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 115,
-        "energy": 230.04,
-        "bits": 115.02,
-        "coreHp": 999999985223.8102,
+        "kills": 114,
+        "energy": 228,
+        "bits": 114,
+        "coreHp": 999999985266.1348,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1715020853,
+        "seed": 1022421349,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2111,7 +2983,19 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 0
+        "commands": 0,
+        "pickOpen": false,
+        "offer": [],
+        "picks": 0,
+        "perks": {},
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "keys": 0
       }
     },
     {

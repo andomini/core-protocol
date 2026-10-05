@@ -6,7 +6,7 @@ import Phaser from 'phaser';
 import type { EnemyKind } from '../sim/data';
 import type { Enemy } from '../sim/state';
 import type { Layout } from '../ui/layout';
-import { CORE, CORE_HIT, CRIMSON, ENEMY_COLOR, GRID_MAJOR, TRACER } from './palette';
+import { CORE, CORE_HIT, CRIMSON, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, SLOW_TINT, TRACER } from './palette';
 import { ImagePool } from './pools';
 import { ps, RS } from './resolution';
 import type { RunSession } from './RunSession';
@@ -44,7 +44,8 @@ interface Sprite {
   kind: EnemyKind;
   bornAt: number;
   flashUntil: number;
-  flashing: boolean;
+  /** 0 none, 1 hit flash, 2 frozen, 3 slowed. */
+  look: number;
   stamp: number;
   spin: number;
   boss: BossBody | null;
@@ -248,10 +249,13 @@ export class WorldView {
           this.drawBoss(s, e, sx, sy, toCore, dt, k, fade);
           break;
       }
-      const flashing = now < s.flashUntil;
-      if (flashing !== s.flashing) {
-        s.flashing = flashing;
-        if (flashing) img.setTintFill(0xffffff);
+      // Tint state: hit flash > frozen (icy fill) > slowed (cold tint) > none.
+      const look = now < s.flashUntil ? 1 : e.frozenUntil > w.tick ? 2 : e.slowUntil > w.tick && e.slow > 0 ? 3 : 0;
+      if (look !== s.look) {
+        s.look = look;
+        if (look === 1) img.setTintFill(0xffffff);
+        else if (look === 2) img.setTintFill(FROZEN_TINT);
+        else if (look === 3) img.setTint(SLOW_TINT);
         else img.clearTint();
       }
       const r = e.radius * L.scale * ENEMY_VIS;
@@ -298,11 +302,11 @@ export class WorldView {
   }
 
   private add(e: Enemy, now: number): Sprite {
-    const s = this.spritePool.pop() ?? { img: null!, kind: e.kind, bornAt: 0, flashUntil: 0, flashing: false, stamp: 0, spin: 1, boss: null };
+    const s = this.spritePool.pop() ?? { img: null!, kind: e.kind, bornAt: 0, flashUntil: 0, look: 0, stamp: 0, spin: 1, boss: null };
     s.kind = e.kind;
     s.bornAt = now;
     s.flashUntil = 0;
-    s.flashing = false;
+    s.look = 0;
     s.spin = e.id % 2 === 0 ? 1 : -1;
     if (e.kind === 'boss') {
       s.img = this.bossImgs.get('e_boss_head');

@@ -12,6 +12,7 @@ import { DEPTH } from './WorldView';
 const enum T {
   Beam,
   Ring,
+  Arc,
 }
 
 interface Transient {
@@ -152,6 +153,24 @@ export class Effects {
     this.push(T.Ring, x, y, 0, 0, coreR * 3.5, CORE_HIT, 500);
   }
 
+  /** 🔗 lightning: a jagged white-violet bolt between two points (redrawn with fresh jitter each frame). */
+  arc(x: number, y: number, x2: number, y2: number, color: number): void {
+    this.push(T.Arc, x, y, x2, y2, 0, color, 170);
+    this.sparkEmitter.explode(2, x2, y2);
+  }
+
+  /** 🔗 bounce: a short tracer streak from the hit enemy to the next target. */
+  bounce(x: number, y: number, x2: number, y2: number, color: number): void {
+    this.push(T.Beam, x, y, x2, y2, 0, color, 110);
+  }
+
+  /** A filled flash ring (set activation, Overdrive): `r` is the final radius. */
+  pulse(x: number, y: number, r: number, color: number): void {
+    this.push(T.Ring, x, y, 0, 0, r, color, 900);
+    this.push(T.Ring, x, y, 0, 0, r * 0.6, WHITE, 500);
+    this.emitter(color).explode(40, x, y);
+  }
+
   waveRing(x: number, y: number, r: number, color = CYAN): void {
     this.push(T.Ring, x, y, 0, 0, r, color, 700);
   }
@@ -200,6 +219,28 @@ export class Effects {
           g.lineStyle(6, it.color, 0.35 * (1 - k)).lineBetween(it.x, it.y, it.x2, it.y2);
           g.lineStyle(2, WHITE, 0.9 * (1 - k)).lineBetween(it.x, it.y, it.x2, it.y2);
           break;
+        case T.Arc: {
+          // Jagged polyline with 6 segments; jitter perpendicular to the bolt.
+          const dx = it.x2 - it.x;
+          const dy = it.y2 - it.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = -dy / len;
+          const ny = dx / len;
+          const amp = Math.min(18, len * 0.12);
+          for (const [lw, col, a] of [[7, it.color, 0.35], [2.5, WHITE, 0.95]] as const) {
+            g.lineStyle(lw, col, a * (1 - k));
+            g.beginPath();
+            g.moveTo(it.x, it.y);
+            for (let s2 = 1; s2 < 6; s2++) {
+              const f = s2 / 6;
+              const j = (Math.random() - 0.5) * 2 * amp;
+              g.lineTo(it.x + dx * f + nx * j, it.y + dy * f + ny * j);
+            }
+            g.lineTo(it.x2, it.y2);
+            g.strokePath();
+          }
+          break;
+        }
         case T.Ring: {
           const e = 1 - (1 - k) * (1 - k);
           g.lineStyle(3 * (1 - k) + 0.5, it.color, 0.9 * (1 - k)).strokeCircle(it.x, it.y, it.r * (0.35 + 0.65 * e));
