@@ -52,3 +52,10 @@ export const FONT_TITLE = '"Orbitron", "Chakra Petch", monospace';
 export const FONT_UI = '"Chakra Petch", "Orbitron", monospace';
 
 export const css = (c: number): string => `#${c.toString(16).padStart(6, '0')}`;
+
+/** Protocol tag accents (spec §2.4): ⚡ Overload, 🧊 Cryo, 🔗 Chain, 💰 Mining, 🛡 Firewall. */
+export const TAG_COLOR = { overload: 0xffd23f, cryo: 0x7fe3ff, chain: 0xb18cff, mining: 0x4dff9a, firewall: 0xff7a45 } as const;
+export const TAG_CSS = { overload: '#ffd23f', cryo: '#7fe3ff', chain: '#b18cff', mining: '#4dff9a', firewall: '#ff7a45' } as const;
+/** Card frame accents by rarity. */
+export const RARITY_COLOR = { common: 0x6f86c0, rare: 0x3fa8ff, epic: 0xff4dd8 } as const;
+export const RARITY_CSS = { common: '#8fa3d6', rare: '#5cb8ff', epic: '#ff6be0' } as const;
