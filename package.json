@@ -10,7 +10,8 @@
     "build:poki": "VITE_PORTAL=poki npm run build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:directions": "tsx tools/gen-directions.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"
