@@ -20,7 +20,7 @@ export type Command =
   /** Rewarded boost: × Energy for the next waves (pick screen only, with a cooldown). */
   | { type: 'boost' }
   /** Rewarded revive after death: once per run, part of the HP back, nearby viruses purged. */
-  | { type: 'revive' };
+  | { type: 'revive'; hp?: number };
 
 export interface LoggedCommand {
   /** World tick before the step that applies it (applied first thing in that step). */
@@ -75,7 +75,7 @@ function buy(w: World, data: GameData, stat: unknown, count: unknown, events: Si
 }
 
 /** Rewarded revive: once per run; HP back to `reviveHp`, viruses near the core purged (no rewards). */
-function revive(w: World, data: GameData, events: SimEvent[]): ProtocolReject | null {
+function revive(w: World, data: GameData, hp: unknown, events: SimEvent[]): ProtocolReject | null {
   if (!w.dead) return 'phase';
   if (w.revived) return 'used';
   w.dead = false;
@@ -86,7 +86,9 @@ function revive(w: World, data: GameData, events: SimEvent[]): ProtocolReject | 
   const r2 = data.config.reviveClearRadius * data.config.reviveClearRadius;
   w.enemies = w.enemies.filter((e) => e.x * e.x + e.y * e.y > r2);
   w.projectiles = [];
-  w.core.hp = clampValue(worldStats(w, data).health * data.config.reviveHp);
+  // Second Wind (card) revives with its own HP share; the rewarded revive uses config.reviveHp.
+  const share = typeof hp === 'number' && hp > 0 && hp <= 1 ? hp : data.config.reviveHp;
+  w.core.hp = clampValue(worldStats(w, data).health * share);
   events.push({ type: 'revive', hp: w.core.hp });
   return null;
 }
@@ -103,7 +105,7 @@ export function applyCommands(w: World, data: GameData, cmds: readonly Command[]
     else if (c.type === 'pickPerk') protocol(events, 'pickPerk', pickPerk(w, data, c.index, events));
     else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
     else if (c.type === 'boost') protocol(events, 'boost', takeBoost(w, data, events));
-    else if (c.type === 'revive') protocol(events, 'revive', revive(w, data, events));
+    else if (c.type === 'revive') protocol(events, 'revive', revive(w, data, (cmd as { hp?: unknown }).hp, events));
     else if (typeof c.stat === 'string') reject(events, c.stat, 'unknown');
     else events.push({ type: 'commandRejected', cmd: String(c.type), reason: 'unknown' });
   }

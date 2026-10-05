@@ -10,6 +10,7 @@ import { DeathOverlay } from '../../ui/DeathOverlay';
 import { labEffects } from '../../meta/labs';
 import { DEFAULT_META_DATA } from '../../meta/metaData';
 import { buildRunOptions } from '../../meta/runOptions';
+import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleRun } from '../../meta/runEnd';
 import { Button } from '../../ui/kit';
 import { PickOverlay } from '../../ui/PickOverlay';
@@ -73,6 +74,11 @@ export class BattleScene extends Phaser.Scene {
   private speeds: number[] = SPEEDS;
   /** The death settlement already paid into the meta save (undone on a revive). */
   private paid: { s: Settlement; runKeys: number; doubled: boolean } | null = null;
+  private starter: PackCard[] | null = null;
+  /** Fast Boot (card): waves played at ×4 unless the player picks another speed. */
+  private fastBoot = 0;
+  private speedChosen = false;
+  private secondWindPending = 0;
   private exitBtn!: Button;
   private readonly saveOnHide = (): void => this.saveRun();
 
@@ -90,6 +96,9 @@ export class BattleScene extends Phaser.Scene {
     this.bannerUntil = 0;
     this.frameMs = [];
     this.paid = null;
+    this.starter = null;
+    this.speedChosen = false;
+    this.secondWindPending = 0;
     this.pausedBeforePanel = false;
   }
 
@@ -100,6 +109,7 @@ export class BattleScene extends Phaser.Scene {
     this.life = new RunLifecycle({ guard: services.guard, ads: services.ads, telemetry: services.telemetry, tickHz: this.gd.config.tickHz });
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
     this.speeds = labEffects(services.meta.meta, DEFAULT_META_DATA).speeds;
+    this.fastBoot = 0;
     const saved = this.mode === 'continue' ? services.meta.loadRun() : null;
     if (saved) {
       this.tier = saved.world.tier;
@@ -108,6 +118,7 @@ export class BattleScene extends Phaser.Scene {
     } else {
       this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
     }
+    this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.loop = new FixedLoop(this.gd.config.tickHz, MAX_TICKS_PER_FRAME);
     this.view = new WorldView(this, this.L, () => this.session);
     this.fx = new Effects(this);
@@ -199,8 +210,12 @@ export class BattleScene extends Phaser.Scene {
     const w = this.session.world;
     services.meta.clearRun();
     if (this.flags.stress) return;
-    const s = settleRun(services.meta.meta, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false });
+    const m = services.meta.meta;
+    const s = settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul });
     this.paid = { s, runKeys: Math.floor(w.keys), doubled: false };
+    // After the first run: the starter cards (spec §3.4) and the Cards tab.
+    this.starter = m.starterGiven ? null : grantStarter(m);
+    if (this.starter) this.registry.set('starterReveal', this.starter);
     services.meta.save();
   }
 
@@ -209,6 +224,7 @@ export class BattleScene extends Phaser.Scene {
     if (s.newBest) parts.push('NEW BEST');
     if (s.milestones.length) parts.push(`MILESTONE ${s.milestones.map((m) => `W${m}`).join(' ')}`);
     if (s.tierUnlocked) parts.push(`TIER ${s.tierUnlocked} UNLOCKED`);
+    if (this.starter) parts.push('STARTER CARDS UNLOCKED');
     return parts.join(' · ');
   }
 
@@ -280,6 +296,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   cycleSpeed(): void {
+    this.speedChosen = true;
     const i = this.speeds.indexOf(this.speed);
     this.setSpeed(this.speeds[(i + 1) % this.speeds.length]!);
   }
@@ -296,8 +313,12 @@ export class BattleScene extends Phaser.Scene {
 
   restart(): void {
     this.paid = null;
+    this.starter = null;
+    this.speedChosen = false;
+    this.secondWindPending = 0;
     services.meta.clearRun();
     this.session.restart(this.runOptions(newSeed()));
+    this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.view.reset();
     this.fx.reset();
     this.hud.reset();
@@ -383,6 +404,7 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'waveStart':
         this.saveRun();
+        if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? 4 : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
         if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now);
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);
         this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, e.boss ? CRIMSON : undefined);
@@ -425,12 +447,21 @@ export class BattleScene extends Phaser.Scene {
         this.showBanner(`ENERGY ×${this.gd.perks.boost.energyMul}`, '#ffd23f', now);
         this.fx.pulse(L.cx, L.cy, coreR * 4, ENERGY);
         break;
-      case 'death':
+      case 'death': {
+        const sw = this.session.opts.metaBonus?.secondWind ?? 0;
+        if (sw > 0 && !this.session.world.revived && !this.flags.stress) {
+          // Second Wind (card): a free revive, no payout in between (applied next frame, outside this flush).
+          this.secondWindPending = sw;
+          this.showBanner('SECOND WIND', '#2bffb0', now);
+          this.fx.pulse(L.cx, L.cy, coreR * 5, 0x2bffb0);
+          break;
+        }
         this.settle();
         this.fx.coreBreach(L.cx, L.cy, coreR);
         this.cameras.main.shake(380, 0.01);
         this.deathAt = now;
         break;
+      }
       default:
         break;
     }
@@ -441,6 +472,11 @@ export class BattleScene extends Phaser.Scene {
     if (this.stressCount > 0 && !w.dead) {
       const missing = this.stressCount - w.enemies.length;
       for (let i = 0; i < missing; i++) this.session.spawn(STRESS_KINDS[(w.nextId + i) % STRESS_KINDS.length]!, 1, this.onEvent);
+    }
+    if (this.secondWindPending > 0 && w.dead) {
+      this.command({ type: 'revive', hp: this.secondWindPending });
+      this.secondWindPending = 0;
+      this.life.runStarted(w, []);
     }
     const n = this.loop.frame(delta, this.paused || w.dead || services.ads.running ? 0 : this.speed);
     if (n > 0) this.session.advance(n, this.onEvent);

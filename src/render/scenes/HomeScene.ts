@@ -4,6 +4,9 @@
 import Phaser from 'phaser';
 import { DEFAULT_META_DATA, type MetaData } from '../../meta/metaData';
 import { buyLab, labEffects, labState } from '../../meta/labs';
+import { CARDS, canFreePack, cardDef, cardSlots, claimFreePack, equip, openPack, type PackCard, starsFor, unequip } from '../../meta/cards';
+import { cardEffectText } from '../../ui/cardText';
+import { drawTagIcon } from '../../ui/tagIcon';
 import { offlineReward } from '../../meta/offline';
 import { settleRun } from '../../meta/runEnd';
 import { buyWorkshop, workshopCost, workshopMax, workshopUnlocked } from '../../meta/workshop';
@@ -15,16 +18,19 @@ import { homeGeometry, type HomeGeometry } from '../../ui/home/homeLayout';
 import { Button, panel, text } from '../../ui/kit';
 import { labEffectText } from '../../ui/labText';
 import type { Layout, Rect } from '../../ui/layout';
-import { BITS_CSS, CYAN, ENERGY, KEY_CSS, LOCKED, LOCKED_CSS, PANEL_FILL, TAB_COLOR, TAB_CSS, TEXT, TEXT_DIM } from '../palette';
+import { BITS_CSS, CYAN, ENERGY, KEY_CSS, LOCKED, LOCKED_CSS, PANEL_FILL, RARITY_COLOR, TAB_COLOR, TAB_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM } from '../palette';
 import { ps, RS } from '../resolution';
 
-type HomeTab = 'battle' | 'workshop' | 'labs' | 'settings';
-const TABS: { id: HomeTab; label: string }[] = [
+type HomeTab = 'battle' | 'workshop' | 'labs' | 'cards' | 'settings';
+const ALL_TABS: { id: HomeTab; label: string }[] = [
   { id: 'battle', label: 'BATTLE' },
   { id: 'workshop', label: 'WORKSHOP' },
   { id: 'labs', label: 'LABS' },
+  { id: 'cards', label: 'CARDS' },
   { id: 'settings', label: 'SETTINGS' },
 ];
+/** The Cards tab appears after the first run (spec §3.4). */
+let TABS = ALL_TABS.filter((t) => t.id !== 'cards');
 
 export interface HomeInit {
   tab?: HomeTab;
@@ -62,6 +68,8 @@ export class HomeScene extends Phaser.Scene {
     this.modal = [];
     this.modalButtons = [];
     this.L = this.registry.get('layout') as Layout;
+    TABS = ALL_TABS.filter((t) => t.id !== 'cards' || services.meta.meta.firstRunDone);
+    if (!TABS.some((t) => t.id === this.tab)) this.tab = 'battle';
     this.G = homeGeometry(this.L, TABS.length);
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
     this.drawBackdrop();
@@ -72,7 +80,11 @@ export class HomeScene extends Phaser.Scene {
     });
     this.refresh();
     services.guard.gameplayStop?.();
-    this.maybeOffline();
+    const starter = this.registry.get('starterReveal') as PackCard[] | undefined;
+    if (starter) {
+      this.registry.remove('starterReveal');
+      this.showPack(starter);
+    } else this.maybeOffline();
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -139,6 +151,7 @@ export class HomeScene extends Phaser.Scene {
     if (this.tab === 'battle') this.battleView();
     else if (this.tab === 'workshop') this.workshopView();
     else if (this.tab === 'labs') this.labsView();
+    else if (this.tab === 'cards') this.cardsView();
     else this.settingsView();
   }
 
@@ -352,6 +365,184 @@ export class HomeScene extends Phaser.Scene {
         }
       }, { enabled: ok, color: st === 'owned' ? '#2bffb0' : BITS_CSS, edge: st === 'owned' ? 0x2bffb0 : ok ? 0x5cf2ff : LOCKED });
     });
+  }
+
+  // ---- 🃏 Cards ------------------------------------------------------------------------------------------
+  selectedCard: string | null = null;
+
+  private cardsView(): void {
+    const m = services.meta.meta;
+    const c = this.G.content;
+    const f = this.G.font;
+    const portrait = this.L.o === 'portrait';
+    const slots = cardSlots(m, this.md);
+    this.t(c.x, c.y, `CARDS · ${m.loadout.length}/${slots} equipped`, f, TEXT_DIM);
+    // Pack buttons.
+    const bh = portrait ? 84 : 56;
+    const by = c.y + f + 16;
+    const bw = (c.w - 16) / 2;
+    const price = CARDS.pack.price;
+    this.btn({ x: c.x, y: by, w: bw, h: bh }, portrait ? `PACK · ${price} KEYS` : `OPEN PACK · ${price} KEYS`, () => this.openPackFlow(false), {
+      enabled: m.keys >= price,
+      color: KEY_CSS,
+      edge: m.keys >= price ? 0xffb84d : LOCKED,
+      fill: 0x2a1a06,
+    });
+    const now = Date.now();
+    const free = canFreePack(m, now);
+    const left = Math.max(0, CARDS.pack.freeEveryHours * 3600_000 - (now - m.freePackAt));
+    this.btn({ x: c.x + bw + 16, y: by, w: bw, h: bh }, free ? 'FREE PACK ▶AD' : `FREE IN ${Math.floor(left / 3600_000)}h ${Math.ceil((left % 3600_000) / 60000)}m`, () => this.openPackFlow(true), {
+      enabled: free,
+      color: '#ffd23f',
+      edge: free ? ENERGY : LOCKED,
+      fill: 0x2a2306,
+    });
+    // Loadout slots (up to 6; locked ones say LAB).
+    const sy = by + bh + (portrait ? 20 : 12);
+    const sh = portrait ? 96 : 60;
+    const sw = (c.w - 5 * 10) / 6;
+    for (let i = 0; i < 6; i++) {
+      const r: Rect = { x: c.x + i * (sw + 10), y: sy, w: sw, h: sh };
+      const id = m.loadout[i];
+      const def = id ? cardDef(id) : undefined;
+      const open = i < slots;
+      this.card(r, def ? (def.tag ? TAG_COLOR[def.tag] : RARITY_COLOR[def.rarity]) : open ? 0x1f6bff : LOCKED, open ? 0.85 : 0.4);
+      const label = def ? def.name : open ? 'EMPTY' : 'LAB';
+      this.t(r.x + r.w / 2, r.y + r.h / 2, label, f, def ? TEXT : LOCKED_CSS).setOrigin(0.5).setAlign('center').setWordWrapWidth(r.w - 10);
+      if (def) this.hit(r, () => this.selectCard(def.id));
+    }
+    let gy = sy + sh + (portrait ? 18 : 10);
+    if (labEffects(m, this.md).presets) {
+      const pw = (c.w - 20) / 3;
+      const ph = portrait ? 70 : 44;
+      m.presets.forEach((p, i) => {
+        this.btn({ x: c.x + i * (pw + 10), y: gy, w: pw, h: ph }, portrait ? `P${i + 1} · ${p.length ? 'LOAD' : 'SAVE'}` : `PRESET ${i + 1} · ${p.length ? 'LOAD' : 'SAVE'}`, () => {
+          if (p.length) m.loadout = p.filter((id) => (m.cards[id] ?? 0) > 0).slice(0, slots);
+          else m.presets[i] = [...m.loadout];
+          this.save();
+          this.refresh();
+        }, { size: f - (portrait ? 4 : 2) >= this.L.minFont ? f - (portrait ? 4 : 2) : f, color: TEXT_DIM });
+      });
+      gy += ph + (portrait ? 16 : 10);
+    }
+    // Collection grid.
+    const detailH = portrait ? 150 : 84;
+    const cols = portrait ? 4 : 5;
+    const rows = Math.ceil(CARDS.cards.length / cols);
+    const gh = c.y + c.h - detailH - 12 - gy;
+    const tw = (c.w - (cols - 1) * 10) / cols;
+    const th = Math.floor((gh - (rows - 1) * 10) / rows);
+    const g = this.add.graphics().setDepth(3);
+    this.view.push(g);
+    CARDS.cards.forEach((def, i) => {
+      const r: Rect = { x: c.x + (i % cols) * (tw + 10), y: gy + Math.floor(i / cols) * (th + 10), w: tw, h: th };
+      const n = m.cards[def.id] ?? 0;
+      const stars = starsFor(n);
+      const owned = n > 0;
+      const on = m.loadout.includes(def.id);
+      const col = def.tag ? TAG_COLOR[def.tag] : RARITY_COLOR[def.rarity];
+      g.fillStyle(owned ? col : 0x0a1230, owned ? (on ? 0.3 : 0.1) : 0.6).fillRoundedRect(r.x, r.y, r.w, r.h, 10);
+      g.lineStyle(on ? 3 : def.rarity === 'common' ? 1.5 : 2.5, owned ? RARITY_COLOR[def.rarity] : LOCKED, owned ? 1 : 0.5).strokeRoundedRect(r.x, r.y, r.w, r.h, 10);
+      if (this.selectedCard === def.id) g.lineStyle(3, 0xffffff, 0.9).strokeRoundedRect(r.x - 3, r.y - 3, r.w + 6, r.h + 6, 12);
+      if (owned && def.tag) drawTagIcon(g, def.tag, r.x + 18, r.y + 18, 20, TAG_COLOR[def.tag]);
+      this.t(r.x + r.w / 2, r.y + (portrait ? 30 : 8), owned ? def.name : '???', f, owned ? TEXT : LOCKED_CSS).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(r.w - 12);
+      this.t(r.x + r.w / 2, r.y + r.h - (portrait ? 8 : 6), owned ? '★'.repeat(stars) + '☆'.repeat(5 - stars) : def.rarity.toUpperCase(), f, owned ? '#ffd23f' : LOCKED_CSS).setOrigin(0.5, 1);
+      if (owned) this.hit(r, () => this.selectCard(def.id));
+    });
+    // Detail of the selected card.
+    const dr: Rect = { x: c.x, y: c.y + c.h - detailH, w: c.w, h: detailH };
+    this.card(dr, 0x22e5ff, 0.9);
+    const sel = this.selectedCard ? cardDef(this.selectedCard) : undefined;
+    if (!sel || !(m.cards[sel.id]! > 0)) {
+      this.t(dr.x + 20, dr.y + dr.h / 2, Object.keys(m.cards).length ? 'Tap a card to see it and equip it' : 'Open packs with Keys from bosses and milestones', f, TEXT_DIM).setOrigin(0, 0.5);
+      return;
+    }
+    const n = m.cards[sel.id]!;
+    const st = starsFor(n);
+    const next = CARDS.stars[st];
+    this.t(dr.x + 20, dr.y + 10, `${sel.name} ${'★'.repeat(st)}  ·  ${sel.tag ? this.gd.sets.tags[sel.tag].name.toUpperCase() : 'NO TAG'}`, f, sel.tag ? TAG_CSS[sel.tag] : TEXT);
+    this.t(dr.x + 20, dr.y + 14 + f, `${cardEffectText(this.gd, sel, st)}${next ? `  ·  ${n}/${next} copies for ★${st + 1}` : '  ·  max ★'}`, f, TEXT_DIM).setWordWrapWidth(dr.w - 260);
+    const on = m.loadout.includes(sel.id);
+    const canEquip = on || m.loadout.length < slots;
+    this.btn({ x: dr.x + dr.w - 220, y: dr.y + 14, w: 200, h: dr.h - 28 }, on ? 'UNEQUIP' : 'EQUIP', () => {
+      if (on) unequip(m, sel.id);
+      else equip(m, this.md, sel.id);
+      this.save();
+      this.refresh();
+    }, { enabled: canEquip, color: on ? '#ff8a9b' : '#2bffb0', edge: on ? 0xff3b5c : 0x2bffb0 });
+  }
+
+  private selectCard(id: string): void {
+    this.selectedCard = id;
+    this.refresh();
+  }
+
+  /** An invisible tap target over `r` (cleared with the view). */
+  private hit(r: Rect, f: () => void): void {
+    const z = this.add.zone(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h).setDepth(4).setInteractive({ useHandCursor: true });
+    z.on('pointerdown', f);
+    this.view.push(z);
+  }
+
+  private openPackFlow(free: boolean): void {
+    const m = services.meta.meta;
+    const done = (cards: PackCard[] | null) => {
+      if (!cards) return;
+      this.save();
+      this.refresh();
+      this.showPack(cards);
+    };
+    if (free) {
+      void services.ads.rewarded('freePack').then((ok) => done(ok ? claimFreePack(m, Math.random, Date.now()) : null));
+    } else done(openPack(m));
+  }
+
+  /** Pack reveal: the cards side by side with NEW / ★ UP badges. */
+  showPack(cards: PackCard[]): void {
+    const L = this.L;
+    const portrait = L.o === 'portrait';
+    const D = 20;
+    const dim = this.add.graphics().setDepth(D);
+    dim.fillStyle(0x02040c, 0.88).fillRect(0, 0, L.w, L.h);
+    const blocker = this.add.zone(L.w / 2, L.h / 2, L.w, L.h).setDepth(D).setInteractive();
+    const title = text(this, L.w / 2, portrait ? 180 : 70, cards.length === 2 ? 'STARTER CARDS' : 'PACK OPENED', portrait ? 44 : 32, { font: 'title', weight: '900', glow: '#ffb84d', blur: 14, color: '#ffe0b0' }).setOrigin(0.5).setDepth(D + 0.2);
+    this.modal.push(dim, blocker, title);
+    const n = cards.length;
+    const cw = portrait ? 620 : 300;
+    const ch = portrait ? 220 : 340;
+    cards.forEach((pc, i) => {
+      const def = cardDef(pc.id)!;
+      const r: Rect = portrait ? { x: (L.w - cw) / 2, y: 260 + i * (ch + 24), w: cw, h: ch } : { x: L.w / 2 - (n * cw + (n - 1) * 24) / 2 + i * (cw + 24), y: 130, w: cw, h: ch };
+      const col = def.tag ? TAG_COLOR[def.tag] : RARITY_COLOR[def.rarity];
+      const fr = panel(this, r, D + 0.1, { edge: RARITY_COLOR[def.rarity], fill: PANEL_FILL, fillA: 0.97, cut: 16, blur: def.rarity === 'common' ? 6 : 18, lw: def.rarity === 'epic' ? 3.5 : 2.5 });
+      const g = this.add.graphics().setDepth(D + 0.2);
+      g.fillStyle(col, 0.12).fillCircle(r.x + (portrait ? 80 : r.w / 2), r.y + (portrait ? r.h / 2 : 70), 44);
+      if (def.tag) drawTagIcon(g, def.tag, r.x + (portrait ? 80 : r.w / 2), r.y + (portrait ? r.h / 2 : 70), 46, col);
+      const tx = portrait ? r.x + 150 : r.x + r.w / 2;
+      const ox = portrait ? 0 : 0.5;
+      const stars = starsFor(services.meta.meta.cards[pc.id] ?? 0);
+      const objs = [
+        fr,
+        g,
+        text(this, tx, r.y + (portrait ? 24 : 130), def.name, portrait ? 36 : 24, { font: 'title', weight: '800' }).setOrigin(ox, 0).setDepth(D + 0.3),
+        text(this, tx, r.y + (portrait ? 70 : 168), `${def.rarity.toUpperCase()} · ${'★'.repeat(stars)}`, L.minFont, { color: '#ffd23f' }).setOrigin(ox, 0).setDepth(D + 0.3),
+        text(this, tx, r.y + (portrait ? 110 : 206), cardEffectText(this.gd, def, stars), L.minFont, { color: TEXT }).setOrigin(ox, 0).setDepth(D + 0.3).setWordWrapWidth(portrait ? r.w - 170 : r.w - 30).setAlign(portrait ? 'left' : 'center'),
+        text(this, portrait ? r.x + r.w - 20 : tx, portrait ? r.y + 24 : r.y + r.h - 40, pc.isNew ? 'NEW' : pc.starUp ? '★ UP' : 'COPY', L.minFont, { color: pc.isNew ? '#2bffb0' : pc.starUp ? '#ffd23f' : TEXT_DIM, glow: pc.isNew ? '#2bffb0' : undefined, blur: 8 }).setOrigin(portrait ? 1 : 0.5, 0).setDepth(D + 0.3),
+      ];
+      this.modal.push(...objs);
+      this.tweens.add({ targets: objs, alpha: { from: 0, to: 1 }, duration: 300, delay: 180 * i });
+    });
+    const bw = portrait ? 300 : 220;
+    const bh = portrait ? 96 : 64;
+    const by = portrait ? 260 + n * (ch + 24) + 20 : 130 + ch + 40;
+    this.modalButtons.push(
+      new Button(this, { x: L.w / 2 - bw / 2, y: by, w: bw, h: bh }, 'OK', portrait ? 36 : 26, D + 0.3, () => {
+        for (const o of this.modal) o.destroy();
+        for (const b of this.modalButtons) b.destroy();
+        this.modal = [];
+        this.modalButtons = [];
+      }, { font: 'title', fill: 0x062a3a }),
+    );
   }
 
   // ---- ⚙ Settings ----------------------------------------------------------------------------------------
