@@ -153,6 +153,8 @@ export interface RunOptions {
   startEnergy?: number;
   /** Equipped cards (M5), effects already resolved for their star level by the meta layer. */
   cards?: readonly CardInRun[];
+  /** Carried with the run for the meta layer (Bits multiplier, Fast Boot, Second Wind); the sim ignores it. */
+  metaBonus?: { bitsMul: number; fastBootWaves: number; secondWind: number };
 }
 
 /** The effective stats of this world right now (derived; never stored in the World). */

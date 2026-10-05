@@ -1,5 +1,6 @@
 // The persistent player state (meta save). Plain JSON; validated on load.
 import { type GameData, STAT_IDS, type StatId } from '../sim/data';
+import { cardDef } from './cards';
 import { labNode, type MetaData } from './metaData';
 
 export interface Settings {
@@ -28,6 +29,17 @@ export interface MetaState {
   firstRunDone: boolean;
   /** Tier the player last chose. */
   tier: number;
+  /** Card copies owned (id → count). */
+  cards: Record<string, number>;
+  /** Equipped card ids (≤ slots). */
+  loadout: string[];
+  /** Loadout presets (lab node). */
+  presets: string[][];
+  packs: number;
+  packsSinceEpic: number;
+  /** Epoch ms of the last free (rewarded) pack. */
+  freePackAt: number;
+  starterGiven: boolean;
   settings: Settings;
 }
 
@@ -44,6 +56,13 @@ export function defaultMeta(): MetaState {
     lastSeen: 0,
     firstRunDone: false,
     tier: 1,
+    cards: {},
+    loadout: [],
+    presets: [[], [], []],
+    packs: 0,
+    packsSinceEpic: 0,
+    freePackAt: 0,
+    starterGiven: false,
     settings: { sound: true, music: true, reduceMotion: false },
   };
 }
@@ -72,6 +91,19 @@ export function validateMeta(raw: unknown, data: GameData, md: MetaData): MetaSt
   m.runs = int(raw.runs, 0);
   m.lastSeen = num(raw.lastSeen, 0);
   m.firstRunDone = raw.firstRunDone === true;
+  if (isObj(raw.cards)) for (const [k, v] of Object.entries(raw.cards)) if (cardDef(k)) m.cards[k] = int(v, 0);
+  if (Array.isArray(raw.loadout)) m.loadout = [...new Set(raw.loadout.filter((x): x is string => typeof x === 'string' && (m.cards[x] ?? 0) > 0))];
+  const presets = raw.presets;
+  if (Array.isArray(presets)) {
+    m.presets = [0, 1, 2].map((i) => {
+      const p: unknown = presets[i];
+      return Array.isArray(p) ? p.filter((x): x is string => typeof x === 'string' && cardDef(x) !== undefined) : [];
+    });
+  }
+  m.packs = int(raw.packs, 0);
+  m.packsSinceEpic = int(raw.packsSinceEpic, 0);
+  m.freePackAt = num(raw.freePackAt, 0);
+  m.starterGiven = raw.starterGiven === true;
   if (isObj(raw.settings)) {
     m.settings.sound = raw.settings.sound !== false;
     m.settings.music = raw.settings.music !== false;

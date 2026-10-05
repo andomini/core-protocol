@@ -1,0 +1,29 @@
+{
+  "pack": { "price": 10, "size": 3, "rarityWeights": { "common": 70, "rare": 25, "epic": 5 }, "pityEvery": 10, "freeEveryHours": 4 },
+  "stars": [1, 3, 6, 10, 15],
+  "baseSlots": 2,
+  "cards": [
+    { "id": "damage", "name": "Damage", "tag": null, "rarity": "common", "effect": { "type": "statMul", "stat": "damage" }, "param": "value", "values": [1.05, 1.08, 1.11, 1.15, 1.2] },
+    { "id": "attackSpeed", "name": "Attack Speed", "tag": null, "rarity": "common", "effect": { "type": "statMul", "stat": "attackSpeed" }, "param": "value", "values": [1.04, 1.06, 1.08, 1.11, 1.15] },
+    { "id": "health", "name": "Health", "tag": null, "rarity": "common", "effect": { "type": "statMul", "stat": "health" }, "param": "value", "values": [1.08, 1.12, 1.16, 1.22, 1.3] },
+    { "id": "regen", "name": "Regen", "tag": null, "rarity": "common", "effect": { "type": "statAdd", "stat": "regen" }, "param": "value", "values": [0.5, 0.8, 1.2, 1.7, 2.5] },
+    { "id": "energyStart", "name": "Energy Start", "tag": null, "rarity": "common", "effect": { "type": "meta", "kind": "startEnergy" }, "param": "value", "values": [20, 35, 50, 70, 100] },
+    { "id": "criticalMass", "name": "Critical Mass", "tag": "overload", "rarity": "common", "effect": { "type": "statAdd", "stat": "critFactor" }, "param": "value", "values": [0.2, 0.3, 0.4, 0.55, 0.75] },
+    { "id": "cryoField", "name": "Cryo Field", "tag": "cryo", "rarity": "common", "effect": { "type": "conditional", "when": "innerRange", "frac": 0.4 }, "param": "slow", "values": [0.1, 0.13, 0.16, 0.2, 0.25] },
+    { "id": "ricochet", "name": "Ricochet", "tag": "chain", "rarity": "common", "effect": { "type": "ruleChange", "rule": "bounceDamage", "op": "mul" }, "param": "value", "values": [1.1, 1.15, 1.2, 1.27, 1.35] },
+    { "id": "compound", "name": "Compound", "tag": "mining", "rarity": "common", "effect": { "type": "statMul", "stat": "interestCap" }, "param": "value", "values": [1.2, 1.3, 1.45, 1.6, 1.8] },
+    { "id": "spikes", "name": "Spikes", "tag": "firewall", "rarity": "common", "effect": { "type": "statAdd", "stat": "thorns" }, "param": "value", "values": [0.1, 0.15, 0.2, 0.26, 0.35] },
+
+    { "id": "fastBoot", "name": "Fast Boot", "tag": null, "rarity": "rare", "effect": { "type": "meta", "kind": "fastBoot" }, "param": "value", "values": [10, 13, 16, 20, 25] },
+    { "id": "bitsPlus", "name": "Bits Plus", "tag": null, "rarity": "rare", "effect": { "type": "meta", "kind": "bitsMul" }, "param": "value", "values": [1.08, 1.12, 1.16, 1.2, 1.3] },
+    { "id": "waveSkip", "name": "Wave Skip", "tag": null, "rarity": "rare", "effect": { "type": "waveSkip" }, "param": "chance", "values": [0.03, 0.04, 0.05, 0.06, 0.08] },
+    { "id": "timeDilation", "name": "Time Dilation", "tag": "cryo", "rarity": "rare", "effect": { "type": "ruleChange", "rule": "enemySpeed", "op": "mul" }, "param": "value", "values": [0.95, 0.93, 0.91, 0.89, 0.86] },
+    { "id": "teslaCoil", "name": "Tesla Coil", "tag": "chain", "rarity": "rare", "effect": { "type": "periodic", "action": "tesla", "everySec": 3, "seconds": 1 }, "param": "value", "values": [0.6, 0.8, 1, 1.3, 1.7] },
+    { "id": "cryptoMiner", "name": "Crypto Miner", "tag": "mining", "rarity": "rare", "effect": { "type": "onKill", "kind": "boss" }, "param": "bitsMul", "values": [2, 2.3, 2.6, 3, 3.5] },
+    { "id": "barrier", "name": "Barrier", "tag": "firewall", "rarity": "rare", "effect": { "type": "shield" }, "param": "frac", "values": [0.1, 0.13, 0.16, 0.2, 0.25] },
+
+    { "id": "overclock", "name": "Overclock", "tag": "overload", "rarity": "epic", "effect": { "type": "periodic", "action": "damageBoost", "everySec": 120, "seconds": 15 }, "param": "value", "values": [2, 2.25, 2.5, 2.75, 3] },
+    { "id": "kernelPanic", "name": "Kernel Panic", "tag": "overload", "rarity": "epic", "effect": { "type": "conditional", "when": "coreHpBelow", "frac": 0.1 }, "param": "damageMul", "values": [1.6, 1.8, 2, 2.25, 2.5] },
+    { "id": "secondWind", "name": "Second Wind", "tag": null, "rarity": "epic", "effect": { "type": "meta", "kind": "secondWind" }, "param": "value", "values": [0.3, 0.35, 0.4, 0.45, 0.5] }
+  ]
+}

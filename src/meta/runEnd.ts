@@ -13,6 +13,8 @@ export interface RunResult {
   keys: number;
   /** The ×2 Bits rewarded ad was watched. */
   doubled: boolean;
+  /** Card multiplier (Bits Plus) carried with the run. */
+  bitsMul?: number;
 }
 
 export interface Settlement {
@@ -26,7 +28,7 @@ export interface Settlement {
 
 export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResult): Settlement {
   const e = labEffects(m, md);
-  const bits = Math.floor(r.bits * e.bitsMul * (r.doubled ? md.ads.doubleBits : 1));
+  const bits = Math.floor(r.bits * e.bitsMul * (r.bitsMul ?? 1) * (r.doubled ? md.ads.doubleBits : 1));
   let keys = Math.floor(r.keys);
   const milestones: number[] = [];
   md.milestones.waves.forEach((w, i) => {
