@@ -130,10 +130,15 @@ const scenarios = {
   async stress() {
     for (const device of ['desktop', 'phone']) {
       const h = await open(browser, srv.base, device, '?stress=1');
+      if (device === 'phone') {
+        // Rough mid-range phone: 4× CPU slowdown (the GPU is still the host's).
+        const cdp = await h.ctx.newCDPSession(h.p);
+        await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+      }
       await h.p.waitForTimeout(2500);
       const fps = await measureFps(h, 5000);
       const s = await h.state();
-      metrics[`stress.${device}.fps`] = Math.round(fps * 10) / 10;
+      metrics[`stress.${device}${device === 'phone' ? '.cpu4x' : ''}.fps`] = Math.round(fps * 10) / 10;
       console.log(`      stress ${device}: ${fps.toFixed(1)} FPS avg over 5 s, ${s.enemies} enemies, ×${s.speed}`);
       check(results, `stress ${device}: 200 enemies at ×5, core alive`, s.enemies >= 195 && s.speed === 5 && !s.dead, s);
       if (device === 'desktop') {
