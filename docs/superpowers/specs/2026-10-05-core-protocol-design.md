@@ -15,7 +15,7 @@ Context: `../../research/08-the-tower.md` (The Tower research, gap analysis agai
 | Look | Neon minimalism + theme: **core vs viruses** (cyberspace) |
 | Orientation | Both, adaptive (portrait on phones, landscape in desktop iframes) |
 | Leaving mid-run | Snapshot at the start of a wave + Continue; small offline Bits income with a cap |
-| Rewarded ads | ×2 Bits per run, perk reroll, free card pack, revive / temporary boost |
+| Rewarded ads | ×2 Bits per run, perk reroll, free card pack, revive, temporary boost (×2 Energy for 5 waves, on the protocol-pick screen) |
 | Technical approach | New project; proven modules copied from Last Tower; new sim/economy built for big numbers |
 
 **Assumed (not discussed separately):** the portals are CrazyGames and Poki; no login, no IAP; the stack is Phaser 3 + TS, the same as Last Tower; 6–8 weeks of evenings.
@@ -51,7 +51,7 @@ Elites come in v1.1.
 `*` = locked until the matching lab node. Cost is `base × c^level` with `c` ∈ [1.07, 1.12] per stat. Buying ×1 / ×10 / MAX. Some stats have a max level (Attack Speed, Range, Crit Chance, Defense %, Multishot), raised through the labs.
 
 ### 2.4 Protocols (perks) and sets — the main hook
-- At wave 1 and then every 5 waves: an overlay with 3 cards (4 with the lab node), choose 1. Reroll: once free with the lab node, plus a rewarded ad.
+- At wave 1 and then every 5 waves: an overlay with 3 cards (4 with the lab node), choose 1. Reroll: once free with the lab node, plus a rewarded ad. The same screen has a **Boost** button (rewarded): ×2 ⚡ Energy for 5 waves; no more often than once every 10 waves.
 - Perks stack within the run (max stacks in `data/perks.json`). Rarity Common 70 / Rare 25 / Epic 5, with pity: if no Rare+ in 3 picks, the 4th has one guaranteed.
 - Perks that depend on a locked stat (Split → Multishot, Leech → Lifesteal, Compound → Interest) don't enter the pool until the matching lab node is unlocked.
 - **Tags:** ⚡ Overload, 🧊 Cryo, 🔗 Chain, 💰 Mining, 🛡 Firewall. Each perk and each tagged card in the loadout counts 1 toward its tag. The HUD shows active sets.
@@ -79,6 +79,7 @@ All numbers are starting points in `data/`, and the sim decides the final values
 ### 2.5 Speed, pause, saving the run
 - Speed ×1 / ×2 from the start; ×3 / ×4 / ×5 through the labs. Pause is always available.
 - **Snapshot** of the world at the start of every wave → localStorage (+ portal storage where available). On return: Continue / Abandon (Abandon = the run ends with the reward for the waves reached). While the tab is closed, the run stands still.
+- **Against save-scumming:** in addition to the wave-start snapshot, the state is also saved on `visibilitychange: hidden` / `pagehide` (the current tick, not the wave start). On load, if the latest snapshot is mid-wave, the run continues from it, not from the wave start. A reload doesn't bring back the chance to buy differently or to avoid death. If the save on close didn't make it (the browser killed the tab), we accept the rollback to the wave start as a rare case.
 
 ### 2.6 Death screen
 Wave, best wave on the tier, ◆ Bits earned, 🔑 earned. Buttons: **Revive** (rewarded, once per run, 50% HP), **×2 Bits** (rewarded), **Workshop**, **New run**.
@@ -111,8 +112,8 @@ Some nodes require previous ones (a tree, `data/labs.json`).
 
 | Tag | Cards |
 |---|---|
-| — | Damage · Attack Speed · Health · Regen · Energy Start · Intro Sprint (first 20 waves at ×4) · Second Wind (free revive) · Wave Skip (5% chance to skip a wave with the reward) · Bits Plus |
-| ⚡ | Overclock (×3 damage for 15 s every 2 min) · Demon Core (below 10% HP: ×2 damage) · Critical Mass (+crit factor) |
+| — | Damage · Attack Speed · Health · Regen · Energy Start · Fast Boot (first 20 waves at ×4) · Second Wind (free revive) · Wave Skip (5% chance to skip a wave with the reward) · Bits Plus |
+| ⚡ | Overclock (×3 damage for 15 s every 2 min) · Kernel Panic (below 10% HP: ×2 damage) · Critical Mass (+crit factor) |
 | 🧊 | Cryo Field (slow near the core) · Time Dilation (enemies −10% speed) |
 | 🔗 | Tesla Coil (lightning on the nearest enemy every 3 s) · Ricochet (+1 bounce) |
 | 💰 | Crypto Miner (boss ×3 Bits) · Compound Card (+Interest cap) |
@@ -145,21 +146,23 @@ core-protocol/
   src/meta/     workshop, labs, cards/packs/pity, wallet, offline, save, migrations
   src/render/   Phaser: baked neon textures, entity pools, particles, glitch, interpolation
   src/ui/       layout (portrait/landscape), panels, overlays, number format
-  src/portal/   copy from Last Tower: Portal, Local/Crazy/Poki adapters, adPolicy, storage
+  src/portal/   copy from Merge Wall: Portal, PortalGuard, Local/Crazy/Poki adapters, storage
   src/telemetry/ copy from Last Tower
   tools/sim/    bots + balance reports; tools/size.ts; portal build check
   tests/
 ```
-- **Copied from Last Tower** (adapted to the new code, not a shared package): `portal/*`, `rng.ts` (seeded streams), `telemetry/*`, `render/resolution.ts`, the `tools/sim` pattern, `size.ts`, `check-portal-builds.ts`.
-- **Numbers:** `float64`. In `src/sim` only `+ − × ÷ Math.sqrt Math.floor/ceil/min/max/abs`; no `Math.random/pow/exp/log/sin/cos/atan2`, Phaser, DOM or Date — enforced by an ESLint rule + `tests/purity.test.ts`. Powers via our own `powInt` (exponentiation by squaring); angles for Multishot/lightning via precomputed tables or vectors.
+- **Copied, not a shared package.** Compare the two existing games and take the more complete version:
+  - **from Merge Wall:** `portal/*` including `PortalGuard` (timeouts, first-input gating, ad pause vs ad mute, ads-available flag) and the `?ads=ok|fail|nofill|hang|none` mode, `tests/purity.test.ts`, `portalGuard.test.ts`, the packaging scripts;
+  - **from Last Tower:** `rng.ts` (seeded streams), `telemetry/*` + `telemetry-report`, `render/resolution.ts` (HiDPI), the `tools/sim` pattern, `size.ts`, `check-portal-builds.ts`.
+- **Numbers:** `float64`. All sim values are clamped to `MAX_SAFE_VALUE = 1e300` (stacked multipliers never give `Infinity`); any `NaN` in the sim = a bug, caught by an assert in dev and in tests (`JSON.stringify` turns `Infinity/NaN` into `null` and would break the snapshot). In `src/sim` only `+ − × ÷ Math.sqrt Math.floor/ceil/min/max/abs`; no `Math.random/pow/exp/log/sin/cos/atan2`, Phaser, DOM or Date — enforced by an ESLint rule + `tests/purity.test.ts`. Powers via our own `powInt` (exponentiation by squaring); angles for Multishot/lightning via precomputed tables or vectors.
 - **Effects are data-driven:** perks, sets, cards and labs are described in JSON with a limited set of effect types (`statAdd`, `statMul`, `onHit`, `onCrit`, `onKill`, `periodic`, `conditional`, `unlock`, `ruleChange`). No balance numbers in code.
 - **Speed:** the sim runs k ticks per frame (k = speed), render interpolates the latest state. Collisions use a spatial hash. Entity pools.
 - **Save:** meta → after every purchase/claim, versioned with migrations; run → snapshot at the start of a wave. Storage through `portal/storage` (localStorage + CrazyGames data where available).
-- **Ads:** only through the copied `adPolicy` (pause on request, mute on `adStarted`, "No ad right now" toast on failure).
+- **Ads:** only through the copied `PortalGuard` (pause on request, mute on `adStarted`, timeouts, "No ad right now" toast on failure).
 
 ## 6. Tests
 - **Determinism:** same seed + command log → same state hash every 100 ticks (10 min of play); golden replay in `tests/replays/`.
-- **Snapshot:** save at wave N → restore → continue = the same hash as a run without interruption.
+- **Snapshot:** save at wave N (and mid-wave) → restore → continue = the same hash as a run without interruption; a separate case with values near 1e300 — the round-trip loses nothing, no `null`.
 - **Purity:** `src/sim` has no forbidden APIs (lint + test).
 - **Unit:** cost/value formulas, `powInt`, number format, workshop, labs (tree dependencies), packs + pity, set counting (perks + cards), offline income with cap, save migrations.
 - **Sim:** bot policies `greedy`, `atk-first`, `def-first`, one per tag (`tag:chain` …), `random` → `reports/*.md|csv`.
