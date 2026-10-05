@@ -1,0 +1,37 @@
+{
+  "tags": {
+    "overload": { "name": "Overload" },
+    "cryo": { "name": "Cryo" },
+    "chain": { "name": "Chain" },
+    "mining": { "name": "Mining" },
+    "firewall": { "name": "Firewall" }
+  },
+  "tiers": [2, 4, 6],
+  "sets": {
+    "overload": {
+      "2": [{ "type": "statMul", "stat": "damage", "value": 1.1 }],
+      "4": [{ "type": "statMul", "stat": "critFactor", "value": 1.5 }],
+      "6": [{ "type": "periodic", "action": "overdrive", "everySec": 30, "seconds": 8, "value": 2 }]
+    },
+    "cryo": {
+      "2": [{ "type": "ruleChange", "rule": "slowBonus", "op": "add", "value": 0.1 }],
+      "4": [{ "type": "conditional", "when": "targetFrozen", "damageMul": 1.5 }],
+      "6": [{ "type": "periodic", "action": "freezeAll", "everySec": 20, "seconds": 2 }]
+    },
+    "chain": {
+      "2": [{ "type": "ruleChange", "rule": "bounces", "op": "add", "value": 1 }],
+      "4": [{ "type": "onCrit", "action": "lightning" }],
+      "6": [{ "type": "ruleChange", "rule": "lightningTargets", "op": "mul", "value": 2 }, { "type": "ruleChange", "rule": "bossLightning", "op": "add", "value": 1 }]
+    },
+    "mining": {
+      "2": [{ "type": "statAdd", "stat": "energyBonus", "value": 0.1 }],
+      "4": [{ "type": "ruleChange", "rule": "runEndBits", "op": "mul", "value": 1.25 }],
+      "6": [{ "type": "statMul", "stat": "interestCap", "value": 2 }, { "type": "onKill", "kind": "boss", "keys": 1 }]
+    },
+    "firewall": {
+      "2": [{ "type": "statMul", "stat": "health", "value": 1.1 }],
+      "4": [{ "type": "ruleChange", "rule": "thornsRanged", "op": "add", "value": 1 }],
+      "6": [{ "type": "periodic", "action": "immunity", "everyWaves": 3, "seconds": 3, "hpBelow": 0.5 }]
+    }
+  }
+}

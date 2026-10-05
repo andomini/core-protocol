@@ -2,7 +2,10 @@ import configJson from '../data/config.json';
 import coreJson from '../data/core.json';
 import directionsJson from '../data/directions.json';
 import enemiesJson from '../data/enemies.json';
+import perksJson from '../data/perks.json';
+import setsJson from '../data/sets.json';
 import statsJson from '../data/stats.json';
+import { type PerksData, type SetsData, validatePerks, validateSets } from './perkData';
 import tiersJson from '../data/tiers.json';
 
 export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss';
@@ -30,6 +33,8 @@ export interface EnemyDef {
   weight: number;
   /** Multiplier on the core's Knockback distance (heavy enemies resist). */
   knockback: number;
+  /** 🔑 Keys dropped on death (the boss). */
+  keys: number;
 }
 
 export interface TierDef {
@@ -48,13 +53,8 @@ export interface CoreDef {
   projectileSpeed: number;
 }
 
-/** The 18 in-run stats (spec §2.3), in panel order: ATK, DEF, UTIL. */
-export const STAT_IDS = [
-  'damage', 'attackSpeed', 'critChance', 'critFactor', 'range', 'multishot',
-  'health', 'regen', 'defense', 'thorns', 'lifesteal', 'knockback',
-  'energyBonus', 'energyPerWave', 'interest', 'bitsPerKill', 'bitsPerWave', 'freeUpgrade',
-] as const;
-export type StatId = (typeof STAT_IDS)[number];
+export { STAT_IDS, type StatId } from './statIds';
+import { STAT_IDS, type StatId } from './statIds';
 export type TabId = 'atk' | 'def' | 'util';
 export const TAB_IDS: readonly TabId[] = ['atk', 'def', 'util'];
 export type StatFormat = 'num' | 'int' | 'pct' | 'mult' | 'perSec' | 'plus';
@@ -120,6 +120,8 @@ export interface GameData {
   enemies: Record<EnemyKind, EnemyDef>;
   tiers: TierDef[];
   stats: StatsData;
+  perks: PerksData;
+  sets: SetsData;
   /** 64 unit vectors around the circle (see tools/gen-directions.ts). */
   directions: [number, number][];
 }
@@ -203,6 +205,8 @@ export function validateData(d: GameData): GameData {
   positive(k.radius, 'core.radius');
   positive(k.projectileSpeed, 'core.projectileSpeed');
   validateStats(d.stats);
+  validatePerks(d.perks);
+  validateSets(d.sets);
 
   for (const kind of ENEMY_KINDS) {
     const e = d.enemies[kind];
@@ -219,6 +223,7 @@ export function validateData(d: GameData): GameData {
     check(Number.isInteger(e.firstWave) && e.firstWave >= 1, `${at}.firstWave must be a whole number ≥ 1`);
     wholeNonNeg(e.weight, `${at}.weight`);
     nonNeg(e.knockback, `${at}.knockback`);
+    wholeNonNeg(e.keys, `${at}.keys`);
   }
   check(
     d.enemies.basic.firstWave === 1 && d.enemies.basic.weight > 0,
@@ -247,5 +252,7 @@ export const DEFAULT_DATA: GameData = validateData({
   enemies: enemiesJson as Record<EnemyKind, EnemyDef>,
   tiers: tiersJson as TierDef[],
   stats: statsJson as StatsData,
+  perks: perksJson as unknown as PerksData,
+  sets: setsJson as unknown as SetsData,
   directions: directionsJson as [number, number][],
 });
