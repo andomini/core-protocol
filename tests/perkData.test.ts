@@ -42,7 +42,7 @@ describe('protocol data (spec §2.4)', () => {
   it('rarity split and pity are data', () => {
     expect(DEFAULT_DATA.perks.offer.rarityWeights).toEqual({ common: 70, rare: 25, epic: 5 });
     expect(DEFAULT_DATA.perks.offer.pityAfter).toBe(3);
-    expect(DEFAULT_DATA.perks.schedule).toEqual({ waves: [1, 3, 5, 8, 10], every: 5 });
+    expect(DEFAULT_DATA.perks.schedule).toEqual({ waves: [1, 2, 3, 5, 8, 10], every: 5 });
   });
 
   it('only the boss drops Keys', () => {

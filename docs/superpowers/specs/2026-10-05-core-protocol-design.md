@@ -52,7 +52,7 @@ Elites come in v1.1.
 `*` = locked until the matching lab node. Cost is `base × c^level` with `c` ∈ [1.07, 1.12] per stat. Buying ×1 / ×10 / MAX. Some stats have a max level (Attack Speed, Range, Crit Chance, Defense %, Multishot), raised through the labs.
 
 ### 2.4 Protocols (perks) and sets — the main hook
-- Picks at waves **1, 3, 5, 8, 10**, then every 5 (15, 20, …): an overlay with 3 cards (4 with the lab node), choose 1. A first run that dies at waves 12–20 gets ≈5–6 perks.
+- Picks at waves **1, 2, 3, 5, 8, 10**, then every 5 (15, 20, …; wave 2 added 2026-10-06 with the harder start): an overlay with 3 cards (4 with the lab node), choose 1. A first run (no workshop) that dies at waves 4–6 gets 3–4 perks.
 - **Weighting toward held tags:** if the run already has a tag, at least one of the offered cards carries one of the held tags (the remaining cards are random). The goal is to get to a 2-set in the first run. Reroll: once free with the lab node, plus a rewarded ad. The same screen has a **Boost** button (rewarded): ×2 ⚡ Energy for 5 waves; no more often than once every 10 waves.
 - Perks stack within the run (max stacks in `data/perks.json`). Rarity Common 70 / Rare 25 / Epic 5, with pity: if no Rare+ in 3 picks, the 4th has one guaranteed.
 - Perks that depend on a locked stat (Split → Multishot, Leech → Lifesteal, Compound → Interest) don't enter the pool until the matching lab node is unlocked.
@@ -91,7 +91,7 @@ Wave, best wave on the tier, ◆ Bits earned, 🔑 earned. Buttons: **Revive** (
 The same 18 stats, with permanent levels that set the **starting value** of each stat in the run. Cost is `base × w^level`, `w` ∈ [1.10, 1.20]. Locked stats open through labs.
 
 ### 3.2 Tiers (6)
-- The next tier unlocks at **wave 50** on the current one.
+- The next tier unlocks at **wave 60** on the current one (was 50; raised 2026-10-06 together with the harder start).
 - `tierMul` (enemy HP and damage) and `bitsMul` grow with each tier (`data/tiers.json`).
 - From tier 3, each tier adds one condition: T3 viruses regenerate 1%/s; T4 "Swarm" (boss every 5 waves); T5 Ranged shoot ×2 as often; T6 all enemies +25% speed.
 - **Milestones** for waves 10 / 25 / 50 / 75 / 100 on each tier → 🔑 (the main free source of cards).
@@ -176,7 +176,7 @@ core-protocol/
 | # | Target |
 |---|---|
 | B1 | First protocol pick ≤ 30 s after loading |
-| B2 | First run: death at waves 12–20 (≈6–10 min at ×1, 30 s per wave including the pause) |
+| B2 | First run without the workshop: a new player clears ~3 waves, death at waves 4–6 (≈2–3 min at ×1). Revised 2026-10-06 by the owner (was 12–20) |
 | B3 | Every return session (≤ 5 min) → at least one noticeable purchase in Workshop/Labs |
 | B4 | Tier 2 opens after ≈1.5–3 h of total play (greedy bot + meta) |
 | B5 | ≥ 80% of first runs (no cards) reach a 2-set; average run with meta — 2-set by wave 10, 4-set by wave 40 |

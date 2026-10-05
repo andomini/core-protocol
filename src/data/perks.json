@@ -1,5 +1,5 @@
 {
-  "schedule": {"waves": [1, 3, 5, 8, 10], "every": 5},
+  "schedule": {"waves": [1, 2, 3, 5, 8, 10], "every": 5},
   "offer": {"size": 3, "sizeLab": 4, "rarityWeights": {"common": 70, "rare": 25, "epic": 5}, "pityAfter": 3},
   "freeRerolls": 1,
   "boost": {"energyMul": 2, "waves": 5, "cooldownWaves": 10},

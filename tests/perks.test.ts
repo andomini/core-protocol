@@ -42,9 +42,9 @@ function apply(w: World, d: GameData, ...cmds: Command[]): SimEvent[] {
 }
 
 describe('pick schedule (spec §2.4)', () => {
-  it('picks at waves 1, 3, 5, 8, 10, then every 5', () => {
-    const yes = [1, 3, 5, 8, 10, 15, 20, 25, 100];
-    const no = [2, 4, 6, 7, 9, 11, 12, 13, 14, 16, 19, 21];
+  it('picks at waves 1, 2, 3, 5, 8, 10, then every 5', () => {
+    const yes = [1, 2, 3, 5, 8, 10, 15, 20, 25, 100];
+    const no = [4, 6, 7, 9, 11, 12, 13, 14, 16, 19, 21];
     for (const w of yes) expect(isPickWave(DEFAULT_DATA, w), `wave ${w}`).toBe(true);
     for (const w of no) expect(isPickWave(DEFAULT_DATA, w), `wave ${w}`).toBe(false);
   });

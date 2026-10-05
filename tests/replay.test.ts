@@ -58,7 +58,7 @@ describe('a live session log replays exactly', () => {
   it('queued, paused (apply-now) and post-death commands all reproduce the session', () => {
     const opts: RunOptions = { seed: 31, tier: 1, unlocked: [...STAT_IDS] };
     // Hard-hitting viruses, so the run dies (post-death commands) after a few protocol picks.
-    const data = testData({ enemies: { basic: { damage: 12 }, fast: { damage: 8 }, tank: { damage: 32 }, ranged: { damage: 16 }, boss: { damage: 40 } } });
+    const data = testData({ enemies: { basic: { damage: 12 }, fast: { damage: 8 }, tank: { damage: 32 }, ranged: { damage: 16 }, boss: { damage: 40 } } }, { health: 2000 });
     const s = new RunSession(data, opts);
     let i = 0;
     while (!s.world.dead && s.world.tick < 20000) {

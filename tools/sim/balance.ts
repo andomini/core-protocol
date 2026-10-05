@@ -72,12 +72,13 @@ const all = combos.filter((c) => c.protocols).flatMap((c) => by[c.key]!);
 const firstPick = Math.max(...all.map((r) => r.firstPickS));
 const b1 = all.every((r) => r.firstPickS === 0);
 
-// B2: greedy buying + greedy picking dies at waves 12–20 in ≈6–10 min; no-upgrade runs much earlier.
+// B2 (revised 2026-10-06, owner): without the workshop a new player clears ~3 waves — greedy buying + greedy
+// picking dies at waves 4–6 (≈2–3 min); a no-upgrade run dies earlier.
 const g = by['greedy + greedy-pick']!;
 const gw = med('greedy + greedy-pick');
 const gm = quantile(g.map((r) => r.simMinutes), 0.5);
 const nw = med('none + greedy-pick');
-const b2 = gw >= 12 && gw <= 20 && gm >= 6 && gm <= 10 && nw < gw * 0.6;
+const b2 = gw >= 4 && gw <= 6 && nw < gw;
 
 // B5: ≥ 80 % of first runs reach a 2-set; median 2-set by wave 10.
 const b5rows = ['greedy + greedy-pick', 'greedy + random-pick', 'greedy + first'].map((k) => {
@@ -129,7 +130,7 @@ const md = [
   '',
   `The wave-1 pick opens the run at sim time ${firstPick} s (tick 0, before any spawn) in every run. The wall-clock time from page load to the visible overlay is measured by \`npm run ui\` (\`reports/ui-smoke.json\`, \`*.firstPickMs\`).`,
   '',
-  `## B2: first run dies at waves 12–20 (≈6–10 min at ×1) — **${b2 ? 'PASS' : 'FAIL'}**`,
+  `## B2: first run (no workshop) dies at waves 4–6 — **${b2 ? 'PASS' : 'FAIL'}**`,
   '',
   `greedy + greedy-pick: median wave ${gw} at ${f1(gm)} sim-min; no upgrades (none + greedy-pick): median wave ${nw}.`,
   '',
