@@ -59,7 +59,10 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
   const tier = data.tiers[w.tier - 1]!;
   const c = data.config;
   const wave = Math.max(1, w.wave);
-  const hp = clampValue(scaleForWave(def.hp, tier.hpMul, tier.hpGrowth, wave) * hpMul);
+  // Late wall: from config.lateWave on, HP and damage grow by an extra factor per wave, so every build
+  // eventually meets a wall (no endless snowball); meta progress pushes the wall back.
+  const late = powInt(c.lateGrowth, Math.max(0, wave - c.lateWave));
+  const hp = clampValue(scaleForWave(def.hp, tier.hpMul, tier.hpGrowth, wave) * hpMul * late);
   const e: Enemy = {
     id: w.nextId++,
     kind,
@@ -67,7 +70,7 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
     y,
     hp,
     maxHp: hp,
-    damage: scaleForWave(def.damage, tier.damageMul, tier.damageGrowth, wave),
+    damage: clampValue(scaleForWave(def.damage, tier.damageMul, tier.damageGrowth, wave) * late),
     speed: def.speed * (tier.speedMul ?? 1),
     radius: def.radius,
     standoff: def.standoff,
@@ -78,6 +81,7 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
     slow: 0,
     slowUntil: 0,
     frozenUntil: 0,
+    kbUntil: 0,
   };
   w.enemies.push(e);
   events.push({ type: 'spawn', id: e.id, kind, x, y });

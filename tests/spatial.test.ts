@@ -4,7 +4,7 @@ import { SpatialHash } from '../src/sim/spatial';
 import type { Enemy } from '../src/sim/state';
 
 function enemy(id: number, x: number, y: number, hp = 1): Enemy {
-  return { id, kind: 'basic', x, y, hp, maxHp: 1, damage: 1, speed: 1, radius: 1, standoff: 0, attackIntervalTicks: 30, attackCd: 0, energy: 1, bits: 1, slow: 0, slowUntil: 0, frozenUntil: 0 };
+  return { id, kind: 'basic', x, y, hp, maxHp: 1, damage: 1, speed: 1, radius: 1, standoff: 0, attackIntervalTicks: 30, attackCd: 0, energy: 1, bits: 1, slow: 0, slowUntil: 0, frozenUntil: 0, kbUntil: 0 };
 }
 
 /** Reference: sort every living enemy in range by (d², id). */

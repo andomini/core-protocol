@@ -124,6 +124,13 @@ export interface SimConfig {
   hashCell: number;
   /** Rewarded revive: core HP share restored, and viruses within this radius (world px) are purged. */
   reviveHp: number;
+  /** Damage share of each extra Multishot projectile (the first shot is full damage). */
+  multishotDamage: number;
+  /** Seconds between two knockbacks of the same enemy. */
+  knockbackCooldown: number;
+  /** Late wall: from this wave, enemy HP and damage get an extra ×lateGrowth per wave. */
+  lateWave: number;
+  lateGrowth: number;
   reviveClearRadius: number;
 }
 
@@ -214,6 +221,10 @@ export function validateData(d: GameData): GameData {
 
   positive(c.hashCell, 'config.hashCell');
   check(Number.isFinite(c.reviveHp) && c.reviveHp > 0 && c.reviveHp <= 1, 'config.reviveHp must be in (0, 1]');
+  nonNeg(c.knockbackCooldown, 'config.knockbackCooldown');
+  check(Number.isInteger(c.lateWave) && c.lateWave >= 1, 'config.lateWave must be a whole number ≥ 1');
+  check(Number.isFinite(c.lateGrowth) && c.lateGrowth >= 1, 'config.lateGrowth must be ≥ 1');
+  check(Number.isFinite(c.multishotDamage) && c.multishotDamage > 0 && c.multishotDamage <= 1, 'config.multishotDamage must be in (0, 1]');
   nonNeg(c.reviveClearRadius, 'config.reviveClearRadius');
   check(Number.isFinite(c.bossWaveEnemyMul) && c.bossWaveEnemyMul >= 0 && c.bossWaveEnemyMul <= 1, 'config.bossWaveEnemyMul must be in [0, 1]');
   const k = d.core;

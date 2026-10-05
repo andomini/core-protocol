@@ -29,6 +29,8 @@ export interface Enemy {
   slowUntil: number;
   /** Frozen (no move, no attack) while `frozenUntil` ≥ the current tick. */
   frozenUntil: number;
+  /** Tick before which this enemy cannot be knocked back again. */
+  kbUntil: number;
 }
 
 export interface Projectile {

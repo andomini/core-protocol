@@ -1,18 +1,66 @@
 {
   "workshop": {
-    "default": { "base": 12, "growth": 1.16 },
+    "default": {
+      "base": 62,
+      "growth": 1.26
+    },
     "stats": {
-      "damage": { "base": 8, "growth": 1.15 },
-      "attackSpeed": { "base": 10, "growth": 1.17 },
-      "health": { "base": 8, "growth": 1.15 },
-      "regen": { "base": 10, "growth": 1.16 },
-      "energyPerWave": { "base": 10, "growth": 1.16 },
-      "bitsPerWave": { "base": 14, "growth": 1.18 },
-      "bitsPerKill": { "base": 16, "growth": 1.18 }
+      "damage": {
+        "base": 45,
+        "growth": 1.24
+      },
+      "attackSpeed": {
+        "base": 55,
+        "growth": 1.26
+      },
+      "health": {
+        "base": 45,
+        "growth": 1.24
+      },
+      "regen": {
+        "base": 55,
+        "growth": 1.25
+      },
+      "energyPerWave": {
+        "base": 55,
+        "growth": 1.26
+      },
+      "bitsPerWave": {
+        "base": 75,
+        "growth": 1.28
+      },
+      "bitsPerKill": {
+        "base": 88,
+        "growth": 1.29
+      }
     }
   },
-  "tiers": { "unlockWave": 50 },
-  "milestones": { "waves": [10, 25, 50, 75, 100], "keys": [1, 2, 3, 4, 6], "keysPerTier": 1 },
-  "offline": { "bitsPerWaveHour": 0.6, "capHours": 4, "minMinutes": 5 },
-  "ads": { "doubleBits": 2 }
+  "tiers": {
+    "unlockWave": 50
+  },
+  "milestones": {
+    "waves": [
+      10,
+      25,
+      50,
+      75,
+      100
+    ],
+    "keys": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ],
+    "keysPerTier": 1
+  },
+  "offline": {
+    "bitsPerWaveHour": 0.6,
+    "capHours": 4,
+    "minMinutes": 5
+  },
+  "ads": {
+    "doubleBits": 2
+  }
 }

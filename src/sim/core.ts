@@ -49,7 +49,9 @@ export function updateCore(w: World, data: GameData, st: CoreStats, prof: PerkPr
       const crit = chance(w.rng.combat, st.critChance);
       c.shots += 1;
       const big = prof.nthEvery > 0 && c.shots % prof.nthEvery === 0;
-      const damage = clampValue((crit ? st.damage * st.critFactor : st.damage) * (big ? prof.nthMul : 1));
+      // Multishot: the extra projectiles (i > 0) hit for a share of the main shot's damage.
+      const share = i === 0 ? 1 : data.config.multishotDamage;
+      const damage = clampValue((crit ? st.damage * st.critFactor : st.damage) * (big ? prof.nthMul : 1) * share);
       const p: Projectile = { id: w.nextId++, targetId: t.id, x: 0, y: 0, damage, crit, bounces, hits: [] };
       w.projectiles.push(p);
       events.push({ type: 'shot', projectileId: p.id, targetId: t.id, crit, big });

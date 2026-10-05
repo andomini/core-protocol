@@ -12,5 +12,9 @@
   "bitsGrowth": 1.02,
   "hashCell": 64,
   "reviveHp": 0.5,
-  "reviveClearRadius": 200
+  "reviveClearRadius": 200,
+  "multishotDamage": 0.35,
+  "knockbackCooldown": 2,
+  "lateWave": 30,
+  "lateGrowth": 1.04
 }

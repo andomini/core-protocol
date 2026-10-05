@@ -20,7 +20,8 @@
     "build:all": "npm run build:local && npm run build:crazygames && npm run build:poki",
     "package": "npm run build:all && node tools/package.mjs",
     "ui:portal-build": "node tools/ui/portal-check.mjs",
-    "telemetry:report": "tsx tools/telemetry-report/report.ts"
+    "telemetry:report": "tsx tools/telemetry-report/report.ts",
+    "sim:meta": "tsx tools/sim/meta.ts"
   },
   "dependencies": {
     "phaser": "3.90.0"

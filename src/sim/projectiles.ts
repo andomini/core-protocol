@@ -90,7 +90,11 @@ export function hitEnemy(
     events.push({ type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys });
     return;
   }
-  if (source === 'shot' && st.knockback > 0) knockBack(e, data, st.knockback * data.enemies[e.kind].knockback);
+  // At most one knockback per enemy per cooldown: Multishot volleys must not pin the whole crowd.
+  if (source === 'shot' && st.knockback > 0 && w.tick >= e.kbUntil) {
+    knockBack(e, data, st.knockback * data.enemies[e.kind].knockback);
+    e.kbUntil = w.tick + Math.round(data.config.knockbackCooldown * data.config.tickHz);
+  }
 }
 
 const near: Enemy[] = [];
