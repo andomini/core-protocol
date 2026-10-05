@@ -1,0 +1,40 @@
+{
+  "branches": [
+    { "id": "speed", "name": "Speed" },
+    { "id": "arsenal", "name": "Arsenal" },
+    { "id": "protocols", "name": "Protocols" },
+    { "id": "cards", "name": "Cards" },
+    { "id": "economy", "name": "Economy" }
+  ],
+  "nodes": [
+    { "id": "speed3", "branch": "speed", "name": "Overclock ×3", "cost": 60, "requires": [], "effect": { "type": "speed", "value": 3 } },
+    { "id": "speed4", "branch": "speed", "name": "Overclock ×4", "cost": 900, "requires": ["speed3"], "effect": { "type": "speed", "value": 4 } },
+    { "id": "speed5", "branch": "speed", "name": "Overclock ×5", "cost": 6000, "requires": ["speed4"], "effect": { "type": "speed", "value": 5 } },
+
+    { "id": "multishot", "branch": "arsenal", "name": "Multishot", "cost": 150, "requires": [], "effect": { "type": "unlock", "stat": "multishot" } },
+    { "id": "lifesteal", "branch": "arsenal", "name": "Lifesteal", "cost": 220, "requires": [], "effect": { "type": "unlock", "stat": "lifesteal" } },
+    { "id": "interest", "branch": "arsenal", "name": "Interest", "cost": 300, "requires": [], "effect": { "type": "unlock", "stat": "interest" } },
+    { "id": "freeUpgrade", "branch": "arsenal", "name": "Free Upgrade", "cost": 700, "requires": ["interest"], "effect": { "type": "unlock", "stat": "freeUpgrade" } },
+    { "id": "maxAtkSpeed", "branch": "arsenal", "name": "Attack Speed cap +10", "cost": 1500, "requires": ["multishot"], "effect": { "type": "maxLevel", "stat": "attackSpeed", "value": 10 } },
+    { "id": "maxRange", "branch": "arsenal", "name": "Range cap +10", "cost": 2500, "requires": ["maxAtkSpeed"], "effect": { "type": "maxLevel", "stat": "range", "value": 10 } },
+
+    { "id": "perkChoice", "branch": "protocols", "name": "Fourth card", "cost": 400, "requires": [], "effect": { "type": "perkChoice" } },
+    { "id": "freeReroll", "branch": "protocols", "name": "Free reroll", "cost": 250, "requires": [], "effect": { "type": "freeReroll" } },
+    { "id": "rare1", "branch": "protocols", "name": "Rare signal", "cost": 600, "requires": ["freeReroll"], "effect": { "type": "rareMul", "value": 1.5 } },
+    { "id": "pickEvery", "branch": "protocols", "name": "Fast protocols", "cost": 2000, "requires": ["perkChoice"], "effect": { "type": "pickEvery", "value": 4 } },
+    { "id": "rare2", "branch": "protocols", "name": "Rare signal II", "cost": 5000, "requires": ["rare1"], "effect": { "type": "rareMul", "value": 2 } },
+
+    { "id": "slot3", "branch": "cards", "name": "Card slot 3", "cost": 120, "requires": [], "effect": { "type": "cardSlot" } },
+    { "id": "slot4", "branch": "cards", "name": "Card slot 4", "cost": 800, "requires": ["slot3"], "effect": { "type": "cardSlot" } },
+    { "id": "presets", "branch": "cards", "name": "Loadout presets", "cost": 500, "requires": ["slot3"], "effect": { "type": "presets" } },
+    { "id": "slot5", "branch": "cards", "name": "Card slot 5", "cost": 3000, "requires": ["slot4"], "effect": { "type": "cardSlot" } },
+    { "id": "slot6", "branch": "cards", "name": "Card slot 6", "cost": 9000, "requires": ["slot5"], "effect": { "type": "cardSlot" } },
+
+    { "id": "bits1", "branch": "economy", "name": "Bit miner I", "cost": 80, "requires": [], "effect": { "type": "bitsMul", "value": 1.1 } },
+    { "id": "bits2", "branch": "economy", "name": "Bit miner II", "cost": 700, "requires": ["bits1"], "effect": { "type": "bitsMul", "value": 1.1 } },
+    { "id": "bits3", "branch": "economy", "name": "Bit miner III", "cost": 4000, "requires": ["bits2"], "effect": { "type": "bitsMul", "value": 1.1 } },
+    { "id": "startEnergy", "branch": "economy", "name": "Warm boot", "cost": 200, "requires": [], "effect": { "type": "startEnergy", "value": 40 } },
+    { "id": "offline8", "branch": "economy", "name": "Offline cache 8h", "cost": 500, "requires": [], "effect": { "type": "offlineCap", "hours": 8 } },
+    { "id": "offline12", "branch": "economy", "name": "Offline cache 12h", "cost": 2500, "requires": ["offline8"], "effect": { "type": "offlineCap", "hours": 12 } }
+  ]
+}

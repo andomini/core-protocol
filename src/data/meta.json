@@ -1,0 +1,18 @@
+{
+  "workshop": {
+    "default": { "base": 12, "growth": 1.16 },
+    "stats": {
+      "damage": { "base": 8, "growth": 1.15 },
+      "attackSpeed": { "base": 10, "growth": 1.17 },
+      "health": { "base": 8, "growth": 1.15 },
+      "regen": { "base": 10, "growth": 1.16 },
+      "energyPerWave": { "base": 10, "growth": 1.16 },
+      "bitsPerWave": { "base": 14, "growth": 1.18 },
+      "bitsPerKill": { "base": 16, "growth": 1.18 }
+    }
+  },
+  "tiers": { "unlockWave": 50 },
+  "milestones": { "waves": [10, 25, 50, 75, 100], "keys": [1, 2, 3, 4, 6], "keysPerTier": 1 },
+  "offline": { "bitsPerWaveHour": 0.6, "capHours": 4, "minMinutes": 5 },
+  "ads": { "doubleBits": 2 }
+}
