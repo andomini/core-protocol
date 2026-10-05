@@ -29,3 +29,39 @@ export function formatNum(n: number): string {
   const truncated = Math.floor(x * factor * (1 + EPS)) / factor;
   return `${sign}${truncated.toFixed(digits)}${suffixFor(group)}`;
 }
+
+/** Trims trailing zeros of a fixed-point string ("1.50" → "1.5", "2.00" → "2"). */
+function trim(s: string): string {
+  return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
+}
+
+/** A small value with up to `dp` decimals (trailing zeros trimmed), or formatNum when large. */
+function small(v: number, dp: number): string {
+  if (Math.abs(v) >= 1000) return formatNum(v);
+  return trim(v.toFixed(dp));
+}
+
+export type StatFormatKind = 'num' | 'int' | 'pct' | 'mult' | 'perSec' | 'plus';
+
+/** A stat value for the upgrade panel. */
+export function formatStat(kind: StatFormatKind, v: number): string {
+  switch (kind) {
+    case 'int':
+      return formatNum(Math.round(v));
+    case 'pct':
+      return `${small(v * 100, Math.abs(v) < 0.1 ? 1 : 0)}%`;
+    case 'mult':
+      return `×${small(v, 2)}`;
+    case 'perSec':
+      return `${small(v, Math.abs(v) < 10 ? 2 : 1)}/s`;
+    case 'plus':
+      return `+${formatNum(Math.round(v))}`;
+    default:
+      return small(v, Math.abs(v) < 100 ? 1 : 0);
+  }
+}
+
+/** A price: rounded up below 1000 so a shown price is never less than what the buy needs. */
+export function formatPrice(cost: number): string {
+  return cost < 1000 ? String(Math.ceil(cost - 1e-9)) : formatNum(cost);
+}

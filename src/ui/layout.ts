@@ -1,5 +1,8 @@
 // Screen layout (pure, no Phaser): chosen once at load from the window aspect.
-// Portrait 720×1280: HUD strip on top, arena ≈55 % of the height, upgrade panel at the bottom.
+// Portrait 720 wide × 1280–1560 tall (adapts to tall phones): HUD strip on top, arena ≈55 % of the
+// height, upgrade panel at the bottom. Extra height beyond 1280 goes mostly to the panel; the arena may
+// grow only a little (PORTRAIT_ARENA_EXTRA_MAX) because a taller arena zooms the world in, which pushes
+// side spawns further off-screen and the Range ring towards the side edges.
 // Landscape 1280×720: arena on the left 60 % at full height, HUD + upgrade panel in the right column.
 // The world (sim px, core at 0,0) maps onto the arena centre with a uniform scale.
 
@@ -22,7 +25,7 @@ export interface Layout {
   h: number;
   hud: Rect;
   arena: Rect;
-  /** Reserved for the upgrade panel (M2b). */
+  /** The upgrade panel. */
   panel: Rect;
   /** Screen position of the core (world 0,0). */
   cx: number;
@@ -39,6 +42,13 @@ export const SPAWN_MARGIN = 24;
 
 const PORTRAIT_HUD_H = 136;
 const PORTRAIT_ARENA_H = 704; // 55 % of 1280
+export const PORTRAIT_W = 720;
+export const PORTRAIT_MIN_H = 1280;
+export const PORTRAIT_MAX_H = 1560;
+/** Share of the extra portrait height given to the arena, and its cap (spawn visibility ≤ 1 s, max-level
+ *  Range ring inside the 720-px width; see tests/layout.test.ts and tests/spawnVisibility.test.ts). */
+const PORTRAIT_ARENA_SHARE = 0.3;
+const PORTRAIT_ARENA_EXTRA_MAX = 72;
 const LANDSCAPE_ARENA_W = 768; // 60 % of 1280
 const LANDSCAPE_HUD_H = 208;
 
@@ -46,15 +56,24 @@ export function chooseOrientation(width: number, height: number): Orientation {
   return width > height ? 'landscape' : 'portrait';
 }
 
-export function makeLayout(o: Orientation, data: GameData): Layout {
+/** Portrait logical height for a window aspect (height / width): fills tall phones instead of letterboxing. */
+export function portraitHeight(aspect: number): number {
+  if (!Number.isFinite(aspect)) return PORTRAIT_MIN_H;
+  return Math.max(PORTRAIT_MIN_H, Math.min(PORTRAIT_MAX_H, Math.round(PORTRAIT_W * aspect)));
+}
+
+/** `aspect` = window height / width; used only in portrait (landscape is always 1280×720). */
+export function makeLayout(o: Orientation, data: GameData, aspect = PORTRAIT_MIN_H / PORTRAIT_W): Layout {
   let w: number, h: number, hud: Rect, arena: Rect, panel: Rect, minFont: number;
   if (o === 'portrait') {
-    w = 720;
-    h = 1280;
+    w = PORTRAIT_W;
+    h = portraitHeight(aspect);
     minFont = 28;
+    const extra = h - PORTRAIT_MIN_H;
+    const arenaH = PORTRAIT_ARENA_H + Math.min(PORTRAIT_ARENA_EXTRA_MAX, Math.round(extra * PORTRAIT_ARENA_SHARE));
     hud = { x: 0, y: 0, w, h: PORTRAIT_HUD_H };
-    arena = { x: 0, y: PORTRAIT_HUD_H, w, h: PORTRAIT_ARENA_H };
-    const panelY = PORTRAIT_HUD_H + PORTRAIT_ARENA_H;
+    arena = { x: 0, y: PORTRAIT_HUD_H, w, h: arenaH };
+    const panelY = PORTRAIT_HUD_H + arenaH;
     panel = { x: 0, y: panelY, w, h: h - panelY };
   } else {
     w = 1280;

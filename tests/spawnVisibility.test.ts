@@ -5,14 +5,21 @@ import { DEFAULT_DATA } from '../src/sim/data';
 import type { SimEvent } from '../src/sim/events';
 import { createWorld } from '../src/sim/state';
 import { step } from '../src/sim/step';
-import { circleInRect, makeLayout, ORIENTATIONS, worldToScreen } from '../src/ui/layout';
+import { circleInRect, type Layout, makeLayout, worldToScreen } from '../src/ui/layout';
 
 const data = DEFAULT_DATA;
 const MAX_SECONDS = 1;
 
+/** Every layout the game can pick (portrait height adapts to the phone aspect, 1280…1560). */
+const LAYOUTS: [string, () => Layout][] = [
+  ['portrait', () => makeLayout('portrait', data)],
+  ['portrait 390×844', () => makeLayout('portrait', data, 844 / 390)],
+  ['portrait tallest', () => makeLayout('portrait', data, 3)],
+  ['landscape', () => makeLayout('landscape', data)],
+];
+
 /** Seconds until an enemy walking in from the ring along -dir first touches the arena rect. */
-function secondsToVisible(o: (typeof ORIENTATIONS)[number], dx: number, dy: number): number {
-  const L = makeLayout(o, data);
+function secondsToVisible(L: Layout, dx: number, dy: number): number {
   const e = data.enemies.basic;
   const dt = 1 / data.config.tickHz;
   let r = data.config.spawnRadius;
@@ -35,9 +42,9 @@ describe('spawn ring vs visible arena', () => {
     expect(spawn?.type === 'spawn' && spawn.kind).toBe('basic');
   });
 
-  for (const o of ORIENTATIONS) {
+  for (const [o, mk] of LAYOUTS) {
     it(`${o}: spawns start off-screen on the short axis and the ring is outside the range circle`, () => {
-      const L = makeLayout(o, data);
+      const L = mk();
       const ringPx = data.config.spawnRadius * L.scale;
       const halfShort = Math.min(L.arena.w, L.arena.h) / 2;
       const halfLong = Math.max(L.arena.w, L.arena.h) / 2;
@@ -51,14 +58,15 @@ describe('spawn ring vs visible arena', () => {
     });
 
     it(`${o}: from any of the 64 spawn directions a basic is visible within ${MAX_SECONDS} s`, () => {
-      const worst = Math.max(...data.directions.map(([dx, dy]) => secondsToVisible(o, dx, dy)));
+      const L = mk();
+      const worst = Math.max(...data.directions.map(([dx, dy]) => secondsToVisible(L, dx, dy)));
       // The first spawn is on the wave-start tick (spawn interval starts at tick 1 of the wave).
       expect(worst).toBeLessThanOrEqual(MAX_SECONDS);
       expect(worst).toBeGreaterThan(0.2); // the ring is not inside the screen
     });
 
     it(`${o}: in the real sim an enemy is on screen within ${MAX_SECONDS} s of the wave-1 start (10 seeds)`, () => {
-      const L = makeLayout(o, data);
+      const L = mk();
       for (let seed = 1; seed <= 10; seed++) {
         const w = createWorld(data, { seed, tier: 1 });
         const ev: SimEvent[] = [];

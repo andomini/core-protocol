@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatNum, suffixFor } from '../src/ui/format';
+import { formatNum, formatPrice, formatStat, suffixFor } from '../src/ui/format';
 
 describe('formatNum', () => {
   it('small numbers are whole and plain', () => {
@@ -43,5 +43,31 @@ describe('formatNum', () => {
     expect(formatNum(-12345)).toBe('-12.3K');
     expect(formatNum(Infinity)).toBe('∞');
     expect(formatNum(NaN)).toBe('—');
+  });
+});
+
+describe('formatStat / formatPrice', () => {
+  it('formats each stat kind compactly', () => {
+    expect(formatStat('num', 5)).toBe('5');
+    expect(formatStat('num', 6.5)).toBe('6.5');
+    expect(formatStat('num', 110)).toBe('110');
+    expect(formatStat('num', 12345)).toBe('12.3K');
+    expect(formatStat('int', 302)).toBe('302');
+    expect(formatStat('pct', 0)).toBe('0%');
+    expect(formatStat('pct', 0.005)).toBe('0.5%');
+    expect(formatStat('pct', 0.25)).toBe('25%');
+    expect(formatStat('pct', 1.5)).toBe('150%');
+    expect(formatStat('mult', 1.5)).toBe('×1.5');
+    expect(formatStat('mult', 1.75)).toBe('×1.75');
+    expect(formatStat('perSec', 1.05)).toBe('1.05/s');
+    expect(formatStat('perSec', 0.5)).toBe('0.5/s');
+    expect(formatStat('plus', 2)).toBe('+2');
+  });
+
+  it('prices round up below 1000 and use suffixes above', () => {
+    expect(formatPrice(5)).toBe('5');
+    expect(formatPrice(5.6)).toBe('6');
+    expect(formatPrice(5.0000000001)).toBe('5');
+    expect(formatPrice(1234)).toBe('1.23K');
   });
 });

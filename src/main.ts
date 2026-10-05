@@ -8,7 +8,7 @@ import { DEFAULT_DATA } from './sim/data';
 import { chooseOrientation, makeLayout } from './ui/layout';
 
 // The layout is chosen once at load from the window aspect (spec §4); a later resize only re-fits.
-const layout = makeLayout(chooseOrientation(window.innerWidth, window.innerHeight), DEFAULT_DATA);
+const layout = makeLayout(chooseOrientation(window.innerWidth, window.innerHeight), DEFAULT_DATA, window.innerHeight / window.innerWidth);
 const rs = initRenderScale(layout.w, layout.h, window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
 
 const game = new Phaser.Game({

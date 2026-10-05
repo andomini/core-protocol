@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_DATA } from '../src/sim/data';
-import { chooseOrientation, circleInRect, makeLayout, ORIENTATIONS, type Rect, worldToScreen } from '../src/ui/layout';
+import { statValue } from '../src/sim/stats';
+import { chooseOrientation, circleInRect, makeLayout, ORIENTATIONS, portraitHeight, type Rect, worldToScreen } from '../src/ui/layout';
+
+/** Every layout the game can pick: landscape, and portrait from the 1280 floor to the 1560 cap. */
+const LAYOUTS = [
+  { name: 'landscape', L: () => makeLayout('landscape', DEFAULT_DATA) },
+  { name: 'portrait 720×1280', L: () => makeLayout('portrait', DEFAULT_DATA) },
+  { name: 'portrait 390×844', L: () => makeLayout('portrait', DEFAULT_DATA, 844 / 390) },
+  { name: 'portrait tallest', L: () => makeLayout('portrait', DEFAULT_DATA, 3) },
+];
+const range = DEFAULT_DATA.stats.stats.range;
 
 const area = (r: Rect): number => r.w * r.h;
 const overlaps = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -61,6 +71,34 @@ describe('layout', () => {
     expect(L.hud.y).toBe(0);
     expect(L.panel.y + L.panel.h).toBe(L.h);
   });
+
+  it('portrait height adapts to the aspect: 1280 floor, 1560 cap; 390×844 gets 1558', () => {
+    expect(portraitHeight(1280 / 720)).toBe(1280);
+    expect(portraitHeight(1)).toBe(1280);
+    expect(portraitHeight(844 / 390)).toBe(1558);
+    expect(portraitHeight(5)).toBe(1560);
+    expect(portraitHeight(Number.NaN)).toBe(1280);
+    const L = makeLayout('portrait', DEFAULT_DATA, 844 / 390);
+    expect([L.w, L.h]).toEqual([720, 1558]);
+    const base = makeLayout('portrait', DEFAULT_DATA);
+    // The extra height goes to the arena (a little) and the panel (most).
+    expect(L.arena.h).toBeGreaterThan(base.arena.h);
+    expect(L.panel.h - base.panel.h).toBeGreaterThan(L.arena.h - base.arena.h);
+    expect(L.panel.y + L.panel.h).toBe(L.h);
+    expect(makeLayout('landscape', DEFAULT_DATA, 844 / 390).h).toBe(720);
+  });
+
+  for (const { name, L: mk } of LAYOUTS) {
+    it(`${name}: HUD, arena and panel tile the screen; the max-level Range ring stays inside the arena`, () => {
+      const L = mk();
+      const rects = [L.hud, L.arena, L.panel];
+      for (const r of rects) expect(inside(r, L.w, L.h), JSON.stringify(r)).toBe(true);
+      expect(rects.reduce((s, r) => s + area(r), 0)).toBe(L.w * L.h);
+      const maxRange = statValue(range, range.maxLevel!);
+      expect(maxRange * L.scale).toBeLessThan(Math.min(L.arena.w, L.arena.h) / 2);
+      expect(maxRange).toBeLessThan(DEFAULT_DATA.config.spawnRadius);
+    });
+  }
 
   it('landscape: the arena takes the left 60 % at full height, the right column is HUD + panel', () => {
     const L = makeLayout('landscape', DEFAULT_DATA);
