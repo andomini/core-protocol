@@ -126,22 +126,26 @@ function bounceTarget(data: GameData, prof: PerkProfile, p: Projectile, from: En
   return undefined;
 }
 
-/** A projectile reached `t`: damage, on-hit/on-crit procs, then maybe a bounce. Returns true if it flies on. */
+/** A projectile reached `t`: damage, on-hit procs (first hit only), then maybe a bounce. Returns true if it flies on. */
 function resolveHit(w: World, data: GameData, st: CoreStats, prof: PerkProfile, p: Projectile, t: Enemy, events: SimEvent[]): boolean {
   hitEnemy(w, data, st, prof, t, clampValue(p.damage * conditionalMul(w, t, st, prof)), p.crit, 'shot', events);
   const alive = t.hp > 0;
-  if (alive && prof.slowOnHit > 0) {
+  // On-hit procs (slow, freeze, lightning) fire only on a projectile's first hit, not on its bounces:
+  // otherwise 🔗 bounces spread 🧊 crowd control over the whole pile and chains multiply.
+  const first = p.hits.length === 0;
+  if (alive && first && prof.slowOnHit > 0) {
     t.slow = prof.slowOnHit;
     t.slowUntil = w.tick + prof.slowTicks;
   }
-  if (alive && prof.freezeChance > 0 && chance(w.rng.combat, prof.freezeChance)) {
+  if (alive && first && prof.freezeChance > 0 && chance(w.rng.combat, prof.freezeChance)) {
     t.frozenUntil = Math.max(t.frozenUntil, w.tick + prof.freezeTicks);
     events.push({ type: 'freeze', enemyId: t.id });
   }
   const arc =
-    (prof.lightningChance > 0 && chance(w.rng.combat, prof.lightningChance)) ||
-    (p.crit && prof.critLightning) ||
-    (t.kind === 'boss' && prof.rules.bossLightning > 0);
+    first &&
+    ((prof.lightningChance > 0 && chance(w.rng.combat, prof.lightningChance)) ||
+      (p.crit && prof.critLightning) ||
+      (t.kind === 'boss' && prof.rules.bossLightning > 0));
   if (arc) lightning(w, data, st, prof, t, p.damage, events);
   if (p.bounces <= 0) return false;
   const next = bounceTarget(data, prof, p, t);

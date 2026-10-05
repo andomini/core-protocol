@@ -1,8 +1,8 @@
 [
-  { "hpMul": 1,   "damageMul": 1,  "bitsMul": 1,   "hpGrowth": 1.045, "damageGrowth": 1.035 },
-  { "hpMul": 3,   "damageMul": 2,  "bitsMul": 2.5, "hpGrowth": 1.047, "damageGrowth": 1.036 },
-  { "hpMul": 9,   "damageMul": 4,  "bitsMul": 6,   "hpGrowth": 1.049, "damageGrowth": 1.037 },
-  { "hpMul": 27,  "damageMul": 8,  "bitsMul": 15,  "hpGrowth": 1.051, "damageGrowth": 1.038 },
-  { "hpMul": 81,  "damageMul": 16, "bitsMul": 38,  "hpGrowth": 1.053, "damageGrowth": 1.039 },
-  { "hpMul": 243, "damageMul": 32, "bitsMul": 95,  "hpGrowth": 1.055, "damageGrowth": 1.04 }
+  {"hpMul": 1, "damageMul": 1, "bitsMul": 1, "hpGrowth": 1.058, "damageGrowth": 1.04},
+  {"hpMul": 3, "damageMul": 2, "bitsMul": 2.5, "hpGrowth": 1.06, "damageGrowth": 1.041},
+  {"hpMul": 9, "damageMul": 4, "bitsMul": 6, "hpGrowth": 1.062, "damageGrowth": 1.042},
+  {"hpMul": 27, "damageMul": 8, "bitsMul": 15, "hpGrowth": 1.064, "damageGrowth": 1.043},
+  {"hpMul": 81, "damageMul": 16, "bitsMul": 38, "hpGrowth": 1.066, "damageGrowth": 1.044},
+  {"hpMul": 243, "damageMul": 32, "bitsMul": 95, "hpGrowth": 1.068, "damageGrowth": 1.045}
 ]

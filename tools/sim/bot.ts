@@ -9,6 +9,9 @@ import botJson from './bot.json';
 import { type Command, isUnlocked, quoteFor } from '../../src/sim/commands';
 import { type GameData, STAT_IDS, type StatId, type TabId } from '../../src/sim/data';
 import type { World } from '../../src/sim/state';
+import { TAGS, type Tag } from '../../src/sim/perkData';
+import { tagCounts } from '../../src/sim/perks';
+import { createStream, nextInt } from '../../src/sim/rng';
 
 export type PolicyName = 'none' | 'greedy' | 'atk-first' | 'def-first' | 'round-robin';
 export const POLICIES: PolicyName[] = ['none', 'greedy', 'atk-first', 'def-first', 'round-robin'];
@@ -75,4 +78,57 @@ export function makeBot(name: PolicyName): Bot {
     default:
       return weighted(name);
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Protocol pick policies (M3). A run = a buy policy × a pick policy.
+//   first        always the first card (baseline)
+//   greedy-pick  highest rarity; among equals, a card of a held tag (most-held first); else offer order
+//   random-pick  a uniform random card (its own seeded stream: replayable)
+//   tag:<tag>    the best card of its tag when offered (rarity first); otherwise greedy-pick
+
+export type PickPolicyName = 'first' | 'greedy-pick' | 'random-pick' | `tag:${Tag}`;
+export const TAG_PICKS: PickPolicyName[] = TAGS.map((t) => `tag:${t}` as const);
+export const PICK_POLICIES: PickPolicyName[] = ['first', 'greedy-pick', 'random-pick', ...TAG_PICKS];
+
+const RANK = { common: 0, rare: 1, epic: 2 } as const;
+
+export interface Picker {
+  name: PickPolicyName;
+  /** Index of the card to take from the open offer. */
+  choose(w: World, data: GameData): number;
+}
+
+function greedyIndex(w: World, data: GameData, filter: (id: string) => boolean = () => true): number {
+  const counts = tagCounts(w, data);
+  let best = -1;
+  let bestScore = -Infinity;
+  w.offer.forEach((id, i) => {
+    if (!filter(id)) return;
+    const p = data.perks.perks[id]!;
+    const score = RANK[p.rarity] * 100 + counts[p.tag];
+    if (score > bestScore) {
+      bestScore = score;
+      best = i;
+    }
+  });
+  return best;
+}
+
+export function makePicker(name: PickPolicyName, seed: number): Picker {
+  if (name === 'first') return { name, choose: () => 0 };
+  if (name === 'greedy-pick') return { name, choose: (w, data) => Math.max(0, greedyIndex(w, data)) };
+  if (name === 'random-pick') {
+    const rng = createStream(seed, 'bot-random-pick');
+    return { name, choose: (w) => nextInt(rng, w.offer.length) };
+  }
+  const tag = name.slice(4) as Tag;
+  if (!TAGS.includes(tag)) throw new Error(`unknown pick policy ${name}`);
+  return {
+    name,
+    choose(w, data) {
+      const own = greedyIndex(w, data, (id) => data.perks.perks[id]!.tag === tag);
+      return own >= 0 ? own : Math.max(0, greedyIndex(w, data));
+    },
+  };
 }

@@ -19,10 +19,10 @@ import {
 import { restore, snapshot } from '../src/sim/snapshot';
 import { createWorld, type RunOptions, type World, worldStats } from '../src/sim/state';
 import { step } from '../src/sim/step';
-import { ofType, testData } from './helpers';
+import { mechanicsData, ofType } from './helpers';
 
-const data = testData({}, { health: 1e9 });
-const P = DEFAULT_DATA.perks.perks;
+const data = mechanicsData({}, { health: 1e9 });
+const P = data.perks.perks;
 
 /** Steps `ticks`, taking card `pickIndex` whenever an offer is open; `extra(w)` adds commands per step. */
 function play(w: World, d: GameData, ticks: number, extra: (w: World) => Command[] = () => [], pickIndex = 0): SimEvent[] {
@@ -315,63 +315,63 @@ describe('tags, sets and modifiers', () => {
   });
 
   it('two card tags of one kind complete its 2-set at run start', () => {
-    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1, cardTags: ['chain', 'chain'] });
+    const w = createWorld(data, { seed: 1, tier: 1, cardTags: ['chain', 'chain'] });
     expect(w.setTiers.chain).toBe(2);
-    expect(perkProfile(w, DEFAULT_DATA).rules.bounces).toBe(DEFAULT_DATA.perks.rules.bounces + 1);
+    expect(perkProfile(w, data).rules.bounces).toBe(data.perks.rules.bounces + 1);
   });
 
   it('set tiers switch on at 2, 4 and 6 with one event each; stat bonuses apply once', () => {
-    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1 });
-    const base = worldStats(w, DEFAULT_DATA).damage;
+    const w = createWorld(data, { seed: 1, tier: 1 });
+    const base = worldStats(w, data).damage;
     const tiers: number[] = [];
     const seq = ['critSpike', 'critSpike', 'critSpike', 'critSpike', 'critSpike', 'hotBarrel'];
     seq.forEach((id, i) => {
       const ev: SimEvent[] = [];
-      grantPerk(w, DEFAULT_DATA, id, ev);
+      grantPerk(w, data, id, ev);
       for (const e of ofType(ev, 'setTier')) tiers.push(e.tier);
       expect(w.setTiers.overload).toBe(i + 1 >= 6 ? 6 : i + 1 >= 4 ? 4 : i + 1 >= 2 ? 2 : 0);
     });
     expect(tiers).toEqual([2, 4, 6]);
-    const st = worldStats(w, DEFAULT_DATA);
+    const st = worldStats(w, data);
     expect(st.damage).toBeCloseTo(base * 1.1, 9);
-    expect(st.critFactor).toBeCloseTo(DEFAULT_DATA.stats.stats.critFactor.base * 1.5, 9);
-    expect(perkProfile(w, DEFAULT_DATA).periodic.map((p) => p.e.action)).toEqual(['overdrive']);
+    expect(st.critFactor).toBeCloseTo(data.stats.stats.critFactor.base * 1.5, 9);
+    expect(perkProfile(w, data).periodic.map((p) => p.e.action)).toEqual(['overdrive']);
     expect(w.mods.filter((m) => m.source.startsWith('set:'))).toHaveLength(2);
   });
 
   it('no double application: a perk adds its modifiers once; recomputing (twice, or after a restore) changes nothing', () => {
-    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1 });
     const n0 = w.mods.length;
-    const d0 = worldStats(w, DEFAULT_DATA).damage;
-    grantPerk(w, DEFAULT_DATA, 'overclockRounds', null);
+    const d0 = worldStats(w, data).damage;
+    grantPerk(w, data, 'overclockRounds', null);
     expect(w.mods).toHaveLength(n0 + 1);
-    const a = worldStats(w, DEFAULT_DATA);
-    const b = worldStats(w, DEFAULT_DATA);
+    const a = worldStats(w, data);
+    const b = worldStats(w, data);
     expect(b).toEqual(a);
     expect(a.damage).toBeCloseTo(d0 * 1.15, 12);
-    applySetTiers(w, DEFAULT_DATA, null);
-    applySetTiers(w, DEFAULT_DATA, null);
+    applySetTiers(w, data, null);
+    applySetTiers(w, data, null);
     expect(w.mods).toHaveLength(n0 + 1);
-    expect(perkProfile(w, DEFAULT_DATA)).toEqual(perkProfile(w, DEFAULT_DATA));
-    expect(worldStats(restore(snapshot(w)), DEFAULT_DATA)).toEqual(a);
+    expect(perkProfile(w, data)).toEqual(perkProfile(w, data));
+    expect(worldStats(restore(snapshot(w)), data)).toEqual(a);
   });
 
   it('stacks compound: two Overclock Rounds = ×1.15² (and the ⚡ 2-set ×1.1 they complete)', () => {
-    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1 });
-    const d0 = worldStats(w, DEFAULT_DATA).damage;
-    grantPerk(w, DEFAULT_DATA, 'overclockRounds', null);
-    grantPerk(w, DEFAULT_DATA, 'overclockRounds', null);
+    const w = createWorld(data, { seed: 1, tier: 1 });
+    const d0 = worldStats(w, data).damage;
+    grantPerk(w, data, 'overclockRounds', null);
+    grantPerk(w, data, 'overclockRounds', null);
     expect(w.perks.overclockRounds).toBe(2);
-    expect(worldStats(w, DEFAULT_DATA).damage).toBeCloseTo(d0 * 1.15 * 1.15 * 1.1, 12);
+    expect(worldStats(w, data).damage).toBeCloseTo(d0 * 1.15 * 1.15 * 1.1, 12);
   });
 
   it('max HP perks keep HP consistent: Bunker adds the new HP, Glass Cannon clamps it', () => {
-    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1 });
-    const h0 = worldStats(w, DEFAULT_DATA).health;
+    const w = createWorld(data, { seed: 1, tier: 1 });
+    const h0 = worldStats(w, data).health;
     w.core.hp = h0 - 10;
-    grantPerk(w, DEFAULT_DATA, 'bunker', null);
+    grantPerk(w, data, 'bunker', null);
     expect(w.core.hp).toBeCloseTo(h0 * 1.4 - 10, 9);
-    grantPerk(w, DEFAULT_DATA, 'glassCannon', null);
+    grantPerk(w, data, 'glassCannon', null);
     expect(w.core.hp).toBeCloseTo(h0 * 1.4 * 0.75, 9);
   });
 });

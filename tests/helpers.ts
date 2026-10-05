@@ -1,4 +1,5 @@
 import type { Command } from '../src/sim/commands';
+import mechanicsFixture from './fixtures/mechanics-m3.json';
 import { DEFAULT_DATA, validateData, type GameData, type StatId } from '../src/sim/data';
 import type { SimEvent } from '../src/sim/events';
 import type { World } from '../src/sim/state';
@@ -26,6 +27,16 @@ export function testData(patch: DeepPartial<GameData> = {}, bases: StatBases = {
   merge(d as unknown as Record<string, unknown>, patch as Record<string, unknown>);
   for (const [id, v] of Object.entries(bases)) d.stats.stats[id as StatId].base = v;
   return validateData(d);
+}
+
+/**
+ * Like `testData`, but with the protocol and set values pinned to `tests/fixtures/mechanics-m3.json`, so
+ * mechanics tests check how effects work, not the current balance numbers (tuned in `src/data`).
+ */
+export function mechanicsData(patch: DeepPartial<GameData> = {}, bases: StatBases = {}): GameData {
+  const pinned = structuredClone(mechanicsFixture) as unknown as Record<string, unknown>;
+  merge(pinned, patch as Record<string, unknown>);
+  return testData(pinned as DeepPartial<GameData>, bases);
 }
 
 /** Steps `n` ticks (passing `cmds` to the first step) and returns every event produced, oldest first. */

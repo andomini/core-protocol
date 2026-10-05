@@ -39,8 +39,8 @@ function tryImmunity(w: World, data: GameData, st: CoreStats, prof: PerkProfile,
 }
 
 /**
- * Moves enemies toward the core (slowed / frozen); arrived enemies attack it on their own cooldown.
- * Frozen enemies neither move nor attack. Defense % reduces the damage taken; an immunity window blocks
+ * Moves enemies toward the core; arrived enemies attack it on their own cooldown. Slows scale both the
+ * movement and the attack cadence; frozen enemies neither move nor attack. Defense % reduces the damage taken; an immunity window blocks
  * it; Thorns reflect a share of melee damage (and ranged with the 🛡 4-set) back at the attacker.
  */
 export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
@@ -51,14 +51,16 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
     if (e.hp <= 0 || isFrozen(w, e)) continue;
     const stopAt = e.standoff > 0 ? e.standoff : coreRadius + e.radius;
     const dist = dsqrt(e.x * e.x + e.y * e.y);
+    // Cryo slows both movement and the attack cadence (a slowed virus also hits less often).
+    const pace = 1 - slowFactor(w, e, st, prof);
     if (dist > stopAt + ARRIVE_EPS) {
       // dist > stopAt > 0 here, so the division is safe.
-      const move = Math.min(e.speed * (1 - slowFactor(w, e, st, prof)) * perTick, dist - stopAt);
+      const move = Math.min(e.speed * pace * perTick, dist - stopAt);
       e.x -= (e.x / dist) * move;
       e.y -= (e.y / dist) * move;
       continue;
     }
-    e.attackCd -= 1;
+    e.attackCd -= pace;
     if (e.attackCd <= 0) {
       e.attackCd += e.attackIntervalTicks;
       const ranged = e.standoff > 0;

@@ -7,11 +7,11 @@ import { grantPerk, perkProfile } from '../src/sim/perks';
 import { createWorld, type World, worldStats } from '../src/sim/state';
 import { combatStats, step } from '../src/sim/step';
 import { spawnEnemy } from '../src/sim/waves';
-import { type DeepPartial, ofType, type StatBases, stepN, testData } from './helpers';
+import { type DeepPartial, ofType, type StatBases, stepN, mechanicsData } from './helpers';
 
 /** A world in wave 1 with no regular spawns: enemies are placed by the test. */
 function arena(patch: DeepPartial<GameData> = {}, bases: StatBases = {}, perks: string[] = []): { d: GameData; w: World } {
-  const d = testData(patch, { health: 1e9, ...bases });
+  const d = mechanicsData(patch, { health: 1e9, ...bases });
   const w = createWorld(d, { seed: 1, tier: 1, protocols: false });
   step(w, d, [], []);
   w.spawnQueue = [];
@@ -244,6 +244,18 @@ describe('lightning and bounce', () => {
     // With only two enemies the projectile stops after A → B (it never returns to A).
     const p0 = ofType(ev, 'shot')[0]!.projectileId;
     expect(ofType(ev, 'bounce').filter((x) => x.projectileId === p0)).toHaveLength(1);
+  });
+
+  it('on-hit procs fire on the first hit only: a bounced-to enemy is not slowed by Frost Shot', () => {
+    const { d, w } = arena({}, { critChance: 0 }, ['bounce', 'frostShot']);
+    const a = dummy(w, d, 100, 0);
+    const b = dummy(w, d, 160, 0);
+    w.core.fireCd = 0;
+    const ev = stepN(w, d, 12);
+    w.core.fireCd = 1e9;
+    expect(ofType(ev, 'bounce').some((x) => x.fromId === a.id && x.toId === b.id)).toBe(true);
+    expect(a.slow).toBeGreaterThan(0);
+    expect(b.slow).toBe(0);
   });
 
   it('Overcharge Link: +2 bounces, each bounce −40 % damage', () => {
