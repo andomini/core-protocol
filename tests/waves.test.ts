@@ -11,13 +11,13 @@ const tough = () => testData({}, { health: 1e9 });
 describe('waves', () => {
   it('the first tick starts wave 1 (no boss)', () => {
     const data = tough();
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     expect(ofType(stepN(w, data, 1), 'waveStart')).toEqual([{ type: 'waveStart', wave: 1, boss: false }]);
   });
 
   it('wave 1 ends on tick 780 and wave 2 starts on tick 901', () => {
     const data = tough();
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     const first = stepN(w, data, 900);
     expect(ofType(first, 'waveEnd')).toEqual([{ type: 'waveEnd', wave: 1 }]);
     expect(ofType(first, 'waveStart').map((e) => e.wave)).toEqual([1]);
@@ -26,7 +26,7 @@ describe('waves', () => {
 
   it('wave 1 spawns enemiesPerWave(1) basic enemies on the spawn circle', () => {
     const data = tough();
-    const w = createWorld(data, { seed: 3, tier: 1 });
+    const w = createWorld(data, { seed: 3, tier: 1, protocols: false });
     const spawns = ofType(stepN(w, data, 780), 'spawn');
     expect(spawns).toHaveLength(enemiesPerWave(data, 1));
     for (const s of spawns) {
@@ -37,7 +37,7 @@ describe('waves', () => {
 
   it('every 10th wave starts with a boss and kinds respect firstWave', () => {
     const data = tough();
-    const w = createWorld(data, { seed: 5, tier: 1 });
+    const w = createWorld(data, { seed: 5, tier: 1, protocols: false });
     const events = stepN(w, data, 1 + 9 * 900);
     const starts = ofType(events, 'waveStart');
     expect(starts.at(-1)).toEqual({ type: 'waveStart', wave: 10, boss: true });

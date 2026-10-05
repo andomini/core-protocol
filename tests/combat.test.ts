@@ -6,7 +6,7 @@ import { ofType, type StatBases, stepN, testData } from './helpers';
 
 function setup(core: StatBases = {}) {
   const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 } }, core);
-  const w = createWorld(data, { seed: 1, tier: 1 });
+  const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
   stepN(w, data, 1); // start wave 1
   return { data, w };
 }
@@ -63,7 +63,7 @@ describe('combat', () => {
 
   it('a run with default data ends in death within an hour of sim time', () => {
     const data = testData();
-    const w = createWorld(data, { seed: 11, tier: 1 });
+    const w = createWorld(data, { seed: 11, tier: 1, protocols: false });
     const events = stepN(w, data, 60 * 60 * data.config.tickHz);
     expect(w.dead).toBe(true);
     expect(ofType(events, 'death')).toHaveLength(1);

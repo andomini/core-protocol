@@ -5,6 +5,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import { type BuyCount, type Command, type LoggedCommand, quoteFor } from '../../src/sim/commands';
 import { DEFAULT_DATA, STAT_IDS } from '../../src/sim/data';
 import type { SimEvent } from '../../src/sim/events';
+import { hashWorld as hashOf } from '../../src/sim/hash';
 import { replay } from '../../src/sim/replay';
 import { createWorld, type RunOptions } from '../../src/sim/state';
 import { step } from '../../src/sim/step';
@@ -12,7 +13,16 @@ import { step } from '../../src/sim/step';
 const PATH = 'tests/replays/golden-01.json';
 const data = DEFAULT_DATA;
 // Workshop levels exercise that input too (M4 fills them for real): 15 % Free Upgrade, +200 % Energy per kill, +30 Energy per wave.
-const opts: RunOptions = { seed: 20261005, tier: 1, unlocked: [...STAT_IDS], workshop: { freeUpgrade: 15, energyBonus: 40, energyPerWave: 15, health: 5 } };
+// M3: protocol picks are on, with both lab flags (4 cards, a free reroll) and a chain card tag.
+const opts: RunOptions = {
+  seed: 20261005,
+  tier: 1,
+  unlocked: [...STAT_IDS],
+  workshop: { freeUpgrade: 15, energyBonus: 40, energyPerWave: 15, health: 5 },
+  extraPerkChoice: true,
+  freeReroll: true,
+  cardTags: ['chain'],
+};
 const TICKS = 3 * 60 * data.config.tickHz;
 const HASH_EVERY = 100;
 const COUNTS: BuyCount[] = [1, 1, 10, 1, 'max'];
@@ -29,8 +39,16 @@ let frees = 0;
 let saving: { stat: (typeof STAT_IDS)[number]; count: BuyCount } | null = null;
 let starred = 0;
 let kind = 0;
+let picks = 0;
 while (w.tick < TICKS) {
   const cmds: Command[] = [];
+  if (w.phase === 'pick') {
+    // Opening pick: boost first; pick 2: an ad reroll and a bad index; pick 3: the free reroll.
+    if (w.picks === 0) cmds.push({ type: 'boost' });
+    if (w.picks === 1) cmds.push({ type: 'reroll', via: 'ad' }, { type: 'pickPerk', index: 9 });
+    if (w.picks === 2) cmds.push({ type: 'reroll', via: 'free' });
+    cmds.push({ type: 'pickPerk', index: picks++ % w.offer.length });
+  }
   // Every 30 s, save up (≤ 30 s) for the next starred stat (they cost more), or for a ×10 batch.
   if (w.tick % 900 === 300) {
     saving = starred % 2 === 1 ? { stat: 'critChance', count: 10 } : { stat: STARRED[(starred >> 1) % STARRED.length]!, count: 1 };
@@ -71,11 +89,12 @@ const golden = {
   opts,
   ticks: TICKS,
   hashEvery: HASH_EVERY,
-  final: { wave: r.world.wave, dead: r.world.dead, energy: r.world.energy, levels: r.world.levels },
+  final: { wave: r.world.wave, dead: r.world.dead, energy: r.world.energy, levels: r.world.levels, perks: r.world.perks, setTiers: r.world.setTiers },
   log,
   hashes: r.hashes,
 };
-const summary = `${log.length} commands, ${buys} levels (${frees} free), ${r.hashes.length} hashes, final wave ${r.world.wave}, dead ${r.world.dead}`;
+if (hashOf(r.world) !== hashOf(w)) throw new Error('record-replay: the replay does not reproduce the recorded run');
+const summary = `${log.length} commands, ${buys} levels (${frees} free), ${r.world.picks} picks, ${r.hashes.length} hashes, final wave ${r.world.wave}, dead ${r.world.dead}`;
 if (existsSync(PATH) && !process.argv.includes('--update')) {
   console.log(`${PATH} exists; pass --update to overwrite (${summary}).`);
 } else {

@@ -45,17 +45,17 @@ describe('FixedLoop', () => {
 
 describe('RunSession', () => {
   it('steps the world exactly like a plain step loop and routes every event in order', () => {
-    const s = new RunSession(tough, { seed: 9, tier: 1 });
+    const s = new RunSession(tough, { seed: 9, tier: 1, protocols: false });
     const routed: SimEvent[] = [];
     expect(s.advance(1200, (e) => routed.push(e))).toBe(1200);
-    const ref = createWorld(tough, { seed: 9, tier: 1 });
+    const ref = createWorld(tough, { seed: 9, tier: 1, protocols: false });
     const direct = stepN(ref, tough, 1200);
     expect(hashWorld(s.world)).toBe(hashWorld(ref));
     expect(routed).toEqual(direct);
   });
 
   it('remembers positions from the start of the last tick for interpolation', () => {
-    const s = new RunSession(tough, { seed: 2, tier: 1 });
+    const s = new RunSession(tough, { seed: 2, tier: 1, protocols: false });
     s.advance(10, () => {});
     const e = s.world.enemies[0]!;
     const p = s.prevOf(e.id)!;
@@ -64,7 +64,7 @@ describe('RunSession', () => {
   });
 
   it('a killed enemy is still known with the position where it died', () => {
-    const s = new RunSession(tough, { seed: 4, tier: 1 });
+    const s = new RunSession(tough, { seed: 4, tier: 1, protocols: false });
     let found = false;
     for (let i = 0; i < 2000 && !found; i++) {
       s.advance(1, (ev) => {
@@ -81,7 +81,7 @@ describe('RunSession', () => {
 
   it('stops advancing once the core is dead', () => {
     const weak = testData({}, { health: 1, regen: 0 });
-    const s = new RunSession(weak, { seed: 1, tier: 1 });
+    const s = new RunSession(weak, { seed: 1, tier: 1, protocols: false });
     let deaths = 0;
     const ran = s.advance(100_000, (e) => {
       if (e.type === 'death') deaths++;
@@ -93,7 +93,7 @@ describe('RunSession', () => {
   });
 
   it('spawn() puts n enemies of a kind on the spawn ring and emits spawn events', () => {
-    const s = new RunSession(tough, { seed: 1, tier: 1 });
+    const s = new RunSession(tough, { seed: 1, tier: 1, protocols: false });
     const spawns: SimEvent[] = [];
     s.spawn('tank', 5, (e) => spawns.push(e));
     expect(spawns).toHaveLength(5);
@@ -103,7 +103,7 @@ describe('RunSession', () => {
   });
 
   it('restart() starts a new run with a new seed and forgets render memory', () => {
-    const s = new RunSession(tough, { seed: 1, tier: 1 });
+    const s = new RunSession(tough, { seed: 1, tier: 1, protocols: false });
     s.advance(300, () => {});
     const id = s.world.enemies[0]!.id;
     s.restart({ seed: 2, tier: 1 });
@@ -114,7 +114,7 @@ describe('RunSession', () => {
   });
 
   it('queued commands apply at the start of the next step, are logged with that tick, and replay identically', () => {
-    const s = new RunSession(tough, { seed: 3, tier: 1 });
+    const s = new RunSession(tough, { seed: 3, tier: 1, protocols: false });
     s.advance(900, () => {});
     const e0 = s.world.energy;
     expect(e0).toBeGreaterThan(tough.stats.stats.damage.cost.base);
@@ -131,8 +131,8 @@ describe('RunSession', () => {
   });
 
   it('applyPendingNow (paused) is equivalent to applying at the next step', () => {
-    const a = new RunSession(tough, { seed: 8, tier: 1 });
-    const b = new RunSession(tough, { seed: 8, tier: 1 });
+    const a = new RunSession(tough, { seed: 8, tier: 1, protocols: false });
+    const b = new RunSession(tough, { seed: 8, tier: 1, protocols: false });
     a.advance(1000, () => {});
     b.advance(1000, () => {});
     a.queue({ type: 'buy', stat: 'health', count: 'max' });

@@ -4,13 +4,21 @@
 import { type GameData, STAT_IDS, type StatId } from './data';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
+import { pickPerk, type ProtocolReject, rerollOffer, takeBoost } from './perks';
 import { chance } from './rng';
 import { quoteBuy, type BuyQuote } from './stats';
 import { type World, worldStats } from './state';
 
 export type BuyCount = number | 'max';
 
-export type Command = { type: 'buy'; stat: StatId; count: BuyCount };
+export type Command =
+  | { type: 'buy'; stat: StatId; count: BuyCount }
+  /** Takes card `index` of the open protocol offer. */
+  | { type: 'pickPerk'; index: number }
+  /** A new offer: `free` (lab node) or `ad` (after a watched rewarded ad). */
+  | { type: 'reroll'; via: 'free' | 'ad' }
+  /** Rewarded boost: × Energy for the next waves (pick screen only, with a cooldown). */
+  | { type: 'boost' };
 
 export interface LoggedCommand {
   /** World tick before the step that applies it (applied first thing in that step). */
@@ -61,11 +69,19 @@ function buy(w: World, data: GameData, stat: unknown, count: unknown, events: Si
   events.push({ type: 'buy', stat, levels: q.levels, level: w.levels[stat], cost: free ? 0 : q.cost, free });
 }
 
-/** Applies commands in order. Invalid ones change nothing and emit `buyRejected`. */
+function protocol(events: SimEvent[], cmd: string, r: ProtocolReject | null): void {
+  if (r !== null) events.push({ type: 'commandRejected', cmd, reason: r });
+}
+
+/** Applies commands in order. Invalid ones change nothing and emit `buyRejected` / `commandRejected`. */
 export function applyCommands(w: World, data: GameData, cmds: readonly Command[], events: SimEvent[]): void {
   for (const cmd of cmds) {
-    const c = cmd as { type?: unknown; stat?: unknown; count?: unknown };
+    const c = cmd as { type?: unknown; stat?: unknown; count?: unknown; index?: unknown; via?: unknown };
     if (c.type === 'buy') buy(w, data, c.stat, c.count, events);
-    else reject(events, c.stat, 'unknown');
+    else if (c.type === 'pickPerk') protocol(events, 'pickPerk', pickPerk(w, data, c.index, events));
+    else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
+    else if (c.type === 'boost') protocol(events, 'boost', takeBoost(w, data, events));
+    else if (typeof c.stat === 'string') reject(events, c.stat, 'unknown');
+    else events.push({ type: 'commandRejected', cmd: String(c.type), reason: 'unknown' });
   }
 }

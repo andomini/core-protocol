@@ -10,7 +10,7 @@ const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0
 const S = data.stats.stats;
 
 function rich(energy = 1e6, unlocked: string[] = []) {
-  const w = createWorld(data, { seed: 3, tier: 1, unlocked });
+  const w = createWorld(data, { seed: 3, tier: 1, protocols: false, unlocked });
   w.energy = energy;
   return w;
 }
@@ -54,7 +54,7 @@ describe('buy command', () => {
     w.core.hp = 50;
     apply(w, { type: 'buy', stat: 'health', count: 3 });
     expect(w.core.hp).toBe(50 + 3 * S.health.per);
-    expect(Object.keys(w.core).sort()).toEqual(['fireCd', 'hp']);
+    expect(Object.keys(w.core).sort()).toEqual(['fireCd', 'hp', 'shots']);
   });
 
   it('a locked stat cannot be bought: no change, a buyRejected(locked) event', () => {
@@ -107,7 +107,7 @@ describe('buy command', () => {
 describe('Free Upgrade', () => {
   it('with chance 1 every purchase is free; the levels are still added', () => {
     const d = testData({ stats: { stats: { freeUpgrade: { cap: 1 } } } }, { freeUpgrade: 1 });
-    const w = createWorld(d, { seed: 1, tier: 1 });
+    const w = createWorld(d, { seed: 1, tier: 1, protocols: false });
     w.energy = 1000;
     const ev: SimEvent[] = [];
     applyCommands(w, d, [{ type: 'buy', stat: 'damage', count: 'max' }], ev);
@@ -118,8 +118,8 @@ describe('Free Upgrade', () => {
 
   it('rolls on its own stream: purchases never shift the combat or spawn streams', () => {
     const d = testData({}, { freeUpgrade: 0.5, health: 1e9 });
-    const plain = createWorld(d, { seed: 9, tier: 1 });
-    const buyer = createWorld(d, { seed: 9, tier: 1 });
+    const plain = createWorld(d, { seed: 9, tier: 1, protocols: false });
+    const buyer = createWorld(d, { seed: 9, tier: 1, protocols: false });
     stepN(plain, d, 600);
     stepN(buyer, d, 600);
     buyer.energy = 1e12;

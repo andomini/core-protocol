@@ -33,7 +33,7 @@ function secondsToVisible(L: Layout, dx: number, dy: number): number {
 
 describe('spawn ring vs visible arena', () => {
   it('wave 1 spawns its first enemy on the wave-start tick and it is a basic', () => {
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     const ev: SimEvent[] = [];
     step(w, data, [], ev);
     const start = ev.findIndex((e) => e.type === 'waveStart');
@@ -68,7 +68,7 @@ describe('spawn ring vs visible arena', () => {
     it(`${o}: in the real sim an enemy is on screen within ${MAX_SECONDS} s of the wave-1 start (10 seeds)`, () => {
       const L = mk();
       for (let seed = 1; seed <= 10; seed++) {
-        const w = createWorld(data, { seed, tier: 1 });
+        const w = createWorld(data, { seed, tier: 1, protocols: false });
         const ev: SimEvent[] = [];
         let startTick = -1;
         let seenTick = -1;

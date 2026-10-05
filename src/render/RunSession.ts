@@ -53,10 +53,18 @@ export class RunSession {
     return this.pending.length > 0;
   }
 
-  /** Runs up to `ticks` sim ticks (fewer once the core is dead); events go to `onEvent` after each tick. */
+  /** True while a protocol offer is open (the world does not tick until a pickPerk). */
+  get picking(): boolean {
+    return this.world.phase === 'pick';
+  }
+
+  /**
+   * Runs up to `ticks` sim ticks (fewer once the core is dead or a protocol pick is waiting for a
+   * command); events go to `onEvent` after each tick.
+   */
   advance(ticks: number, onEvent: EventSink): number {
     let ran = 0;
-    for (; ran < ticks && !this.world.dead; ran++) {
+    for (; ran < ticks && !this.world.dead && !(this.picking && this.pending.length === 0); ran++) {
       this.capture();
       step(this.world, this.data, this.takePending(), this.events);
       this.flush(onEvent);

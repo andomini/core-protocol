@@ -9,7 +9,7 @@ const quiet = (core: StatBases = {}) =>
 
 function setup(core: StatBases = {}) {
   const data = quiet(core);
-  const w = createWorld(data, { seed: 1, tier: 1 });
+  const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
   stepN(w, data, 1); // start wave 1
   return { data, w };
 }
@@ -31,7 +31,7 @@ describe('enemies', () => {
     const standoff = data.enemies.ranged.standoff;
     const e = spawnEnemy(w, data, 'ranged', standoff + 2, 0, []);
     const hits = ofType(stepN(w, data, 3), 'coreHit');
-    expect(hits).toEqual([{ type: 'coreHit', enemyId: e.id, damage: e.damage, ranged: true }]);
+    expect(hits).toEqual([{ type: 'coreHit', enemyId: e.id, damage: e.damage, ranged: true, blocked: false }]);
     expect(e.x).toBeCloseTo(standoff, 6);
   });
 
@@ -39,7 +39,7 @@ describe('enemies', () => {
     const { data, w } = setup({ health: 1 });
     spawnEnemy(w, data, 'basic', data.core.radius + data.enemies.basic.radius, 0, []);
     const events = stepN(w, data, 1);
-    expect(ofType(events, 'death')).toEqual([{ type: 'death', wave: 1, tick: w.tick }]);
+    expect(ofType(events, 'death')).toEqual([{ type: 'death', wave: 1, tick: w.tick, bonusBits: 0 }]);
     expect(w.dead).toBe(true);
     expect(w.core.hp).toBe(0);
     const tick = w.tick;

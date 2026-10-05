@@ -12,7 +12,7 @@ const QUIET = { config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 } };
 
 function setup(bases: StatBases = {}, patch = {}) {
   const data = testData({ ...QUIET, ...patch }, bases);
-  const w = createWorld(data, { seed: 1, tier: 1 });
+  const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
   stepN(w, data, 1); // start wave 1
   return { data, w };
 }
@@ -137,7 +137,7 @@ describe('knockback', () => {
 
   it('never pushes past the spawn ring, and an enemy at the exact centre gets a defined direction', () => {
     const data = testData();
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     const e = spawnEnemy(w, data, 'basic', data.config.spawnRadius - 3, 0, []);
     knockBack(e, data, 50);
     expect(dist(e)).toBeCloseTo(data.config.spawnRadius, 9);
@@ -162,7 +162,7 @@ describe('economy', () => {
 
   function toWaveEnd(bases: StatBases, energy: number) {
     const data = testData(QUIET, bases);
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     stepN(w, data, 2);
     w.energy = energy;
     const ev: SimEvent[] = stepN(w, data, data.config.waveSeconds * data.config.tickHz);
@@ -190,7 +190,7 @@ describe('economy', () => {
 
   it('the Interest cap grows with the wave and with interestCap modifiers', () => {
     const data = testData(QUIET, { interest: 0.5 });
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     w.mods.push({ stat: 'interestCap', op: 'mul', value: 2, source: 'test' });
     stepN(w, data, 2);
     w.wave = 5;
