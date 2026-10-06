@@ -13,10 +13,11 @@ export type SimEvent =
   | { type: 'spawn'; id: number; kind: EnemyKind; x: number; y: number }
   /** `big`: an every-Nth-shot (Hot Barrel) projectile. */
   | { type: 'shot'; projectileId: number; targetId: number; crit: boolean; big: boolean }
-  | { type: 'hit'; enemyId: number; damage: number; crit: boolean; source: 'shot' | 'thorns' | 'lightning' }
+  /** `dealt`: damage actually removed (no overkill); `healed`: Lifesteal HP from this hit. */
+  | { type: 'hit'; enemyId: number; damage: number; dealt: number; crit: boolean; source: 'shot' | 'bounce' | 'thorns' | 'lightning' | 'tesla'; healed: number }
   | { type: 'kill'; enemyId: number; kind: EnemyKind; energy: number; bits: number; keys: number }
   /** `blocked`: absorbed by the 🛡 immunity window. */
-  | { type: 'coreHit'; enemyId: number; damage: number; ranged: boolean; blocked: boolean }
+  | { type: 'coreHit'; enemyId: number; damage: number; ranged: boolean; blocked: boolean; absorbed: number }
   /** A protocol offer opened (or was rerolled). */
   | { type: 'pickOffer'; pick: number; wave: number; offer: string[]; rerolls: number }
   | { type: 'perkPicked'; id: string; stacks: number }

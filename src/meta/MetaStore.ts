@@ -6,6 +6,7 @@ import type { GameData } from '../sim/data';
 import { restore, snapshot } from '../sim/snapshot';
 import type { RunOptions, World } from '../sim/state';
 import type { MetaData } from './metaData';
+import { type RunStats, validateRunStats } from './runStats';
 import { defaultMeta, type MetaState, validateMeta } from './state';
 
 export const META_KEY = 'core-protocol.meta';
@@ -15,12 +16,14 @@ interface RunSave {
   snapshot: string;
   opts: RunOptions;
   savedAt: number;
+  stats?: RunStats;
 }
 
 export interface SavedRun {
   world: World;
   opts: RunOptions;
   savedAt: number;
+  stats: RunStats;
 }
 
 export class MetaStore {
@@ -47,7 +50,7 @@ export class MetaStore {
         const o = x as Partial<RunSave> | null;
         if (o === null) return null;
         if (typeof o !== 'object' || typeof o.snapshot !== 'string' || typeof o.opts !== 'object' || o.opts === null) throw new Error('run save: bad shape');
-        return { snapshot: o.snapshot, opts: o.opts as RunOptions, savedAt: typeof o.savedAt === 'number' ? o.savedAt : 0 };
+        return { snapshot: o.snapshot, opts: o.opts as RunOptions, savedAt: typeof o.savedAt === 'number' ? o.savedAt : 0, stats: validateRunStats(o.stats) };
       },
     });
   }
@@ -59,10 +62,10 @@ export class MetaStore {
   }
 
   /** Saves the run in progress (never a dead one). Failures are silent: a lost snapshot only costs a Continue. */
-  saveRun(w: World, opts: RunOptions): void {
+  saveRun(w: World, opts: RunOptions, stats?: RunStats): void {
     if (w.dead) return;
     try {
-      this.runSlot.save({ snapshot: snapshot(w), opts, savedAt: this.now() });
+      this.runSlot.save({ snapshot: snapshot(w), opts, savedAt: this.now(), stats });
     } catch {
       /* a non-finite value: keep the previous snapshot */
     }
@@ -80,7 +83,7 @@ export class MetaStore {
       return null;
     }
     try {
-      return { world: restore(r.data.snapshot), opts: r.data.opts, savedAt: r.data.savedAt };
+      return { world: restore(r.data.snapshot), opts: r.data.opts, savedAt: r.data.savedAt, stats: validateRunStats(r.data.stats) };
     } catch {
       this.clearRun();
       return null;

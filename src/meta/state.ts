@@ -1,6 +1,7 @@
 // The persistent player state (meta save). Plain JSON; validated on load.
 import { type GameData, STAT_IDS, type StatId } from '../sim/data';
 import { cardDef } from './cards';
+import { emptyLifetime, type LifetimeStats, validateLifetime } from './runStats';
 import { labNode, type MetaData } from './metaData';
 
 export interface Settings {
@@ -40,6 +41,8 @@ export interface MetaState {
   /** Epoch ms of the last free (rewarded) pack. */
   freePackAt: number;
   starterGiven: boolean;
+  /** Lifetime statistics (The Tower-style Stats). */
+  lifetime: LifetimeStats;
   settings: Settings;
 }
 
@@ -63,6 +66,7 @@ export function defaultMeta(): MetaState {
     packsSinceEpic: 0,
     freePackAt: 0,
     starterGiven: false,
+    lifetime: emptyLifetime(),
     settings: { sound: true, music: true, reduceMotion: false },
   };
 }
@@ -104,6 +108,7 @@ export function validateMeta(raw: unknown, data: GameData, md: MetaData): MetaSt
   m.packsSinceEpic = int(raw.packsSinceEpic, 0);
   m.freePackAt = num(raw.freePackAt, 0);
   m.starterGiven = raw.starterGiven === true;
+  m.lifetime = validateLifetime(raw.lifetime);
   if (isObj(raw.settings)) {
     m.settings.sound = raw.settings.sound !== false;
     m.settings.music = raw.settings.music !== false;

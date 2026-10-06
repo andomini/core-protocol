@@ -48,7 +48,7 @@ describe('card effects', () => {
     const bolts = ofType(ev, 'lightning').filter((x) => x.fromId === 0);
     expect(bolts.length).toBe(1);
     expect(bolts[0]!.targets).toEqual([e.id]);
-    const hit = ofType(ev, 'hit').find((h) => h.source === 'lightning');
+    const hit = ofType(ev, 'hit').find((h) => h.source === 'tesla');
     expect(hit!.damage).toBeCloseTo(worldStats(w, d).damage * 2, 9);
   });
 

@@ -52,7 +52,8 @@ export function conditionalMul(w: World, e: Enemy, st: CoreStats, prof: PerkProf
   return m;
 }
 
-export type HitSource = 'shot' | 'thorns' | 'lightning';
+/** `bounce`: a projectile's later hits; `tesla`: the Tesla Coil card's bolt from the core. */
+export type HitSource = 'shot' | 'bounce' | 'thorns' | 'lightning' | 'tesla';
 
 /**
  * Applies damage; on the killing blow pays the reward (Energy Bonus, Energy Siphon, boss multipliers, boost,
@@ -73,10 +74,14 @@ export function hitEnemy(
   if (e.hp <= 0 || !(damage > 0)) return;
   const dealt = Math.min(damage, e.hp);
   e.hp = clampValue(e.hp - damage);
-  events.push({ type: 'hit', enemyId: e.id, damage, crit, source });
-  if (source === 'shot' && st.lifesteal > 0 && w.core.hp < st.health) {
+  const projectile = source === 'shot' || source === 'bounce';
+  let healed = 0;
+  if (projectile && st.lifesteal > 0 && w.core.hp < st.health) {
+    const before = w.core.hp;
     w.core.hp = Math.min(st.health, clampValue(w.core.hp + dealt * st.lifesteal));
+    healed = w.core.hp - before;
   }
+  events.push({ type: 'hit', enemyId: e.id, damage, dealt, crit, source, healed });
   if (e.hp <= 0) {
     const boss = e.kind === 'boss';
     const boost = boostActive(w) ? data.perks.boost.energyMul : 1;
@@ -91,7 +96,7 @@ export function hitEnemy(
     return;
   }
   // At most one knockback per enemy per cooldown: Multishot volleys must not pin the whole crowd.
-  if (source === 'shot' && st.knockback > 0 && w.tick >= e.kbUntil) {
+  if (projectile && st.knockback > 0 && w.tick >= e.kbUntil) {
     knockBack(e, data, st.knockback * data.enemies[e.kind].knockback);
     e.kbUntil = w.tick + Math.round(data.config.knockbackCooldown * data.config.tickHz);
   }
@@ -132,7 +137,7 @@ function bounceTarget(data: GameData, prof: PerkProfile, p: Projectile, from: En
 
 /** A projectile reached `t`: damage, on-hit procs (first hit only), then maybe a bounce. Returns true if it flies on. */
 function resolveHit(w: World, data: GameData, st: CoreStats, prof: PerkProfile, p: Projectile, t: Enemy, events: SimEvent[]): boolean {
-  hitEnemy(w, data, st, prof, t, clampValue(p.damage * conditionalMul(w, t, st, prof)), p.crit, 'shot', events);
+  hitEnemy(w, data, st, prof, t, clampValue(p.damage * conditionalMul(w, t, st, prof)), p.crit, p.hits.length === 0 ? 'shot' : 'bounce', events);
   const alive = t.hp > 0;
   // On-hit procs (slow, freeze, lightning) fire only on a projectile's first hit, not on its bounces:
   // otherwise 🔗 bounces spread 🧊 crowd control over the whole pile and chains multiply.

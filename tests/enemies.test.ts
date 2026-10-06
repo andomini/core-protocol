@@ -31,7 +31,7 @@ describe('enemies', () => {
     const standoff = data.enemies.ranged.standoff;
     const e = spawnEnemy(w, data, 'ranged', standoff + 2, 0, []);
     const hits = ofType(stepN(w, data, 3), 'coreHit');
-    expect(hits).toEqual([{ type: 'coreHit', enemyId: e.id, damage: e.damage, ranged: true, blocked: false }]);
+    expect(hits).toEqual([{ type: 'coreHit', enemyId: e.id, damage: e.damage, ranged: true, blocked: false, absorbed: 0 }]);
     expect(e.x).toBeCloseTo(standoff, 6);
   });
 

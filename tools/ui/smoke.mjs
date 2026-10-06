@@ -617,6 +617,51 @@ const scenarios = {
     }
   },
 
+  async stats() {
+    for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
+      const h = await open(browser, srv.base, device, '?seed=5');
+      await h.call('setSpeed', 5);
+      await h.waitFor((x) => x.wave >= 2, 30000, 100);
+      await h.call('pause', true);
+      await h.p.waitForTimeout(200);
+      const btn = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').statsBtn.r);
+      await h.tapLogical(...centre(btn));
+      await h.p.waitForTimeout(300);
+      const st = await h.p.evaluate(() => {
+        const b = window.__cp.game.scene.getScene('Battle');
+        return { visible: b.statsPanel.visible, kills: b.runStats.kills, worldKills: b.session.world.kills, close: b.statsPanel.closeRect() };
+      });
+      const k = Object.values(st.kills).reduce((a, b) => a + b, 0);
+      check(results, `${label} stats: STATS opens from pause; kills match the world`, st.visible && k === st.worldKills && k > 0, st);
+      await minTextCheck(h, `${label} stats panel`);
+      await h.shot(`stats-${label}`);
+      await h.tapLogical(...centre(st.close));
+      await h.p.waitForTimeout(200);
+      const closed = await h.p.evaluate(() => !window.__cp.game.scene.getScene('Battle').statsPanel.visible);
+      check(results, `${label} stats: CLOSE returns to the paused battle`, closed && (await h.state()).paused, closed);
+      // Death → STATS from the death screen; lifetime stats grow.
+      await h.call('pause', false);
+      await h.waitFor((x) => x.overlay, 60000, 100);
+      const ds = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').death.statsRect());
+      await h.tapLogical(...centre(ds));
+      await h.p.waitForTimeout(300);
+      const vis = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').statsPanel.visible);
+      const life = (await h.call('meta')).lifetime;
+      check(results, `${label} stats: STATS from the death screen; lifetime counts the run`, vis && life.runs === 1 && life.waves >= 2 && life.damage > 0, { vis, life });
+      await h.call('goto', 'Home');
+      await h.p.waitForTimeout(600);
+      const okR = await h.p.evaluate(() => window.__cp.game.scene.getScene('Home').modalButtons[0]?.r ?? null);
+      if (okR) await h.tapLogical(...centre(okR));
+      await h.p.waitForTimeout(200);
+      await h.p.evaluate(() => window.__cp.game.scene.getScene('Home').openStats());
+      await h.p.waitForTimeout(300);
+      await minTextCheck(h, `${label} lifetime stats`);
+      await h.shot(`lifetime-${label}`);
+      check(results, `${label} stats: no console errors`, h.errors.length === 0, h.errors);
+      await h.close();
+    }
+  },
+
   async stress() {
     for (const device of ['desktop', 'phone']) {
       const h = await open(browser, srv.base, device, '?stress=1');

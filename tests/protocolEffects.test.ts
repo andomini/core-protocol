@@ -238,7 +238,7 @@ describe('lightning and bounce', () => {
     w.core.fireCd = 1e9;
     const bounces = ofType(ev, 'bounce').filter((x) => x.fromId === a.id);
     expect(bounces[0]).toMatchObject({ fromId: a.id, toId: b.id });
-    const first = ofType(ev, 'hit').filter((h) => h.source === 'shot');
+    const first = ofType(ev, 'hit').filter((h) => h.source === 'shot' || h.source === 'bounce');
     expect(first[1]!.enemyId).toBe(b.id);
     expect(first[1]!.damage).toBeCloseTo(first[0]!.damage * 0.7, 9);
     // With only two enemies the projectile stops after A → B (it never returns to A).

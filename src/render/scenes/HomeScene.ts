@@ -6,6 +6,9 @@ import { DEFAULT_META_DATA, type MetaData } from '../../meta/metaData';
 import { buyLab, labEffects, labState } from '../../meta/labs';
 import { CARDS, canFreePack, cardDef, cardSlots, claimFreePack, equip, openPack, type PackCard, starsFor, unequip } from '../../meta/cards';
 import { cardEffectText } from '../../ui/cardText';
+import { StatsPanel } from '../../ui/StatsPanel';
+import { lifetimeTabs } from '../../ui/statsRows';
+import { addRunToLifetime } from '../../meta/runStats';
 import { drawTagIcon } from '../../ui/tagIcon';
 import { offlineReward } from '../../meta/offline';
 import { settleRun } from '../../meta/runEnd';
@@ -51,6 +54,7 @@ export class HomeScene extends Phaser.Scene {
   private keysText!: Phaser.GameObjects.Text;
   private modal: Phaser.GameObjects.GameObject[] = [];
   private modalButtons: Button[] = [];
+  statsPanel!: StatsPanel;
 
   constructor() {
     super('Home');
@@ -84,6 +88,7 @@ export class HomeScene extends Phaser.Scene {
     services.audio.sfxOn = set.sound;
     services.audio.musicOn = set.music;
     services.audio.apply();
+    this.statsPanel = new StatsPanel(this, this.L, () => this.statsPanel.hide());
     this.refresh();
     services.guard.gameplayStop?.();
     const starter = this.registry.get('starterReveal') as PackCard[] | undefined;
@@ -239,7 +244,10 @@ export class HomeScene extends Phaser.Scene {
       this.btn({ x: cx - bw / 2, y: by, w: bw, h: portrait ? 90 : 60 }, 'ABANDON RUN', () => this.abandonRun(), { edge: 0xff3b5c, fill: 0x2a0610, color: '#ff8a9b' });
     } else {
       this.btn({ x: cx - bw / 2, y: by, w: bw, h: bh }, 'START RUN', () => this.startRun(tier), { size: this.G.big + 6, edge: 0x2bffb0, fill: 0x063a2a, color: '#2bffb0' });
+      by += bh + 20;
     }
+    const sh = portrait ? 76 : 50;
+    this.btn({ x: cx - bw / 2, y: by + (saved ? portrait ? 90 + 20 : 60 + 20 : 0), w: bw, h: sh }, 'STATS', () => this.openStats(), { size: f, color: '#22e5ff' });
     // Progress summary.
     const e = labEffects(m, this.md);
     const wsLevels = Object.values(m.workshop).reduce((a, b) => a + (b ?? 0), 0);
@@ -255,6 +263,24 @@ export class HomeScene extends Phaser.Scene {
     } else {
       this.t(cx, c.y + c.h - f - 4, summary.join('   ·   '), f - 2 >= this.L.minFont ? f - 2 : f, TEXT_DIM).setOrigin(0.5, 0);
     }
+  }
+
+  openStats(): void {
+    const m = services.meta.meta;
+    this.statsPanel.show(
+      lifetimeTabs({
+        life: m.lifetime,
+        best: m.best,
+        tierUnlocked: m.tierUnlocked,
+        tickHz: this.gd.config.tickHz,
+        packs: m.packs,
+        cardsOwned: Object.values(m.cards).filter((c) => c > 0).length,
+        cardsTotal: CARDS.cards.length,
+        labsOwned: m.labs.length,
+        labsTotal: this.md.labs.nodes.length,
+        workshopLevels: Object.values(m.workshop).reduce((a, b) => a + (b ?? 0), 0),
+      }),
+    );
   }
 
   private pickTier(t: number): void {
@@ -276,7 +302,15 @@ export class HomeScene extends Phaser.Scene {
     const saved = services.meta.loadRun();
     if (saved) {
       const w = saved.world;
-      settleRun(services.meta.meta, this.gd, this.md, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false });
+      const m = services.meta.meta;
+      const st = settleRun(m, this.gd, this.md, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: saved.opts.metaBonus?.bitsMul });
+      addRunToLifetime(m.lifetime, saved.stats, {
+        waves: w.wave,
+        simTicks: w.tick,
+        bits: st.bits,
+        keys: st.keys,
+        energyEarned: Math.max(0, w.energy + saved.stats.energySpent - (saved.opts.startEnergy ?? 0)),
+      });
     }
     services.meta.clearRun();
     this.save();

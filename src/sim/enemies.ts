@@ -72,13 +72,14 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
       const blocked = immune(w, prof) || tryImmunity(w, data, st, prof, damage, events);
       if (blocked) damage = 0;
       // Barrier (card) absorbs first.
+      let absorbed = 0;
       if (w.shield > 0 && damage > 0) {
-        const a = Math.min(w.shield, damage);
-        w.shield -= a;
-        damage -= a;
+        absorbed = Math.min(w.shield, damage);
+        w.shield -= absorbed;
+        damage -= absorbed;
       }
       w.core.hp = clampValue(w.core.hp - damage);
-      events.push({ type: 'coreHit', enemyId: e.id, damage, ranged, blocked });
+      events.push({ type: 'coreHit', enemyId: e.id, damage, ranged, blocked, absorbed });
       const reflects = !ranged || prof.rules.thornsRanged > 0;
       if (reflects && st.thorns > 0 && damage > 0) hitEnemy(w, data, st, prof, e, clampValue(damage * st.thorns), false, 'thorns', events);
     }

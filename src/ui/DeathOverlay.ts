@@ -21,6 +21,7 @@ export interface DeathStats {
 }
 
 export interface DeathHandlers {
+  stats(): void;
   revive(): void;
   double(): void;
   home(): void;
@@ -38,6 +39,7 @@ export class DeathOverlay {
   private readonly doubleBtn: Button;
   private readonly homeBtn: Button;
   private readonly retryBtn: Button;
+  private readonly statsBtn: Button;
   private readonly blocker: Phaser.GameObjects.Zone;
   visible = false;
   private shownAt = 0;
@@ -123,7 +125,14 @@ export class DeathOverlay {
     this.doubleBtn = new Button(scene, { x: bx0 + bw + gap, y: by1, w: bw, h: bh }, '×2 BITS ▶AD', bf, D + 0.4, () => h.double(), { font: 'title', edge: ENERGY, fill: 0x2a2306, textColor: '#ffd23f', glow: '#ffd23f', lw: 2.5, blur: 12 });
     this.homeBtn = new Button(scene, { x: bx0, y: by2, w: bw, h: bh }, 'HOME', bf + 4, D + 0.4, () => h.home(), { font: 'title', edge: CYAN, fill: 0x0a1230, lw: 2.5, blur: 12 });
     this.retryBtn = new Button(scene, { x: bx0 + bw + gap, y: by2, w: bw, h: bh }, 'RETRY', bf + 4, D + 0.4, () => h.retry(), { font: 'title', edge: CYAN, fill: 0x062a3a, lw: 3, blur: 14 });
+    const sw = portrait ? 150 : 110;
+    const sh = portrait ? 60 : 40;
+    this.statsBtn = new Button(scene, { x: x0 + cw - sw - 18, y: y0 + 16, w: sw, h: sh }, 'STATS', portrait ? 28 : 18, D + 0.4, () => h.stats(), { font: 'title', edge: CYAN, fill: 0x0a1230, lw: 2, blur: 8 });
     this.hide();
+  }
+
+  statsRect(): Rect {
+    return this.statsBtn.r;
   }
 
   private setBtn(b: Button, on: boolean): void {
@@ -139,6 +148,7 @@ export class DeathOverlay {
     for (const o of this.objs) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(true);
     this.homeBtn.setVisible(true);
     this.retryBtn.setVisible(true);
+    this.statsBtn.setVisible(true);
     this.setBtn(this.reviveBtn, s.canRevive);
     this.setBtn(this.doubleBtn, s.canDouble);
     this.blocker.setInteractive();
@@ -166,7 +176,7 @@ export class DeathOverlay {
 
   hide(): void {
     for (const o of this.objs) (o as unknown as Phaser.GameObjects.Components.Visible).setVisible(false);
-    for (const b of [this.reviveBtn, this.doubleBtn, this.homeBtn, this.retryBtn]) b.setVisible(false);
+    for (const b of [this.reviveBtn, this.doubleBtn, this.homeBtn, this.retryBtn, this.statsBtn]) b.setVisible(false);
     this.blocker.disableInteractive();
     this.visible = false;
   }

@@ -87,7 +87,7 @@ describe('defense, thorns, lifesteal, regen', () => {
     const e = spawnEnemy(w, data, 'tank', data.core.radius + data.enemies.tank.radius, 0, []);
     const ev = stepN(w, data, 1);
     const taken = e.damage * 0.8;
-    expect(ofType(ev, 'hit')).toEqual([{ type: 'hit', enemyId: e.id, damage: taken * 0.5, crit: false, source: 'thorns' }]);
+    expect(ofType(ev, 'hit')).toEqual([{ type: 'hit', enemyId: e.id, damage: taken * 0.5, dealt: taken * 0.5, crit: false, source: 'thorns', healed: 0 }]);
     expect(e.hp).toBeCloseTo(e.maxHp - taken * 0.5, 9);
 
     const k = setup({ thorns: 100, damage: 0, regen: 0 });

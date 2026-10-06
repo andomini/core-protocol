@@ -33,7 +33,7 @@ export function runPeriodic(w: World, data: GameData, prof: PerkProfile, events:
       const target = nearestInRange(w.enemies, st.range);
       if (target) {
         events.push({ type: 'lightning', fromId: 0, targets: [target.id] });
-        hitEnemy(w, data, st, prof, target, clampValue(st.damage * e.value), false, 'lightning', events);
+        hitEnemy(w, data, st, prof, target, clampValue(st.damage * e.value), false, 'tesla', events);
       }
     } else {
       for (const en of w.enemies) en.frozenUntil = Math.max(en.frozenUntil, t.until);

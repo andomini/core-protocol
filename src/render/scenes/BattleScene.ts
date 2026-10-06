@@ -17,6 +17,9 @@ import { type Settlement, settleRun } from '../../meta/runEnd';
 import { Button } from '../../ui/kit';
 import { PickOverlay } from '../../ui/PickOverlay';
 import { DamageNumbers } from '../../ui/DamageNumbers';
+import { StatsPanel } from '../../ui/StatsPanel';
+import { runTabs } from '../../ui/statsRows';
+import { addRunToLifetime, emptyRunStats, type LifetimeStats, recordEvent, type RunStats } from '../../meta/runStats';
 import { Hints } from '../../ui/Hints';
 import { quoteFor } from '../../sim/commands';
 import { ProtocolsPanel } from '../../ui/ProtocolsPanel';
@@ -61,6 +64,10 @@ export class BattleScene extends Phaser.Scene {
   pick!: PickOverlay;
   numbers!: DamageNumbers;
   hints!: Hints;
+  statsPanel!: StatsPanel;
+  runStats: RunStats = emptyRunStats();
+  private statsBtn!: Button;
+  private statsRefreshAt = 0;
   chips!: SetChips;
   protocols!: ProtocolsPanel;
   private pausedBeforePanel = false;
@@ -80,7 +87,7 @@ export class BattleScene extends Phaser.Scene {
   private tier = 1;
   private speeds: number[] = SPEEDS;
   /** The death settlement already paid into the meta save (undone on a revive). */
-  private paid: { s: Settlement; runKeys: number; doubled: boolean } | null = null;
+  private paid: { s: Settlement; runKeys: number; doubled: boolean; lifetimeBefore: LifetimeStats } | null = null;
   private starter: PackCard[] | null = null;
   /** Fast Boot (card): waves played at ×4 unless the player picks another speed. */
   private fastBoot = 0;
@@ -103,6 +110,7 @@ export class BattleScene extends Phaser.Scene {
     this.bannerUntil = 0;
     this.frameMs = [];
     this.paid = null;
+    this.runStats = emptyRunStats();
     this.starter = null;
     this.speedChosen = false;
     this.secondWindPending = 0;
@@ -126,6 +134,7 @@ export class BattleScene extends Phaser.Scene {
       this.tier = saved.world.tier;
       this.session = new RunSession(this.gd, saved.opts);
       this.session.adopt(saved.world, saved.opts);
+      this.runStats = saved.stats;
     } else {
       this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
     }
@@ -143,6 +152,7 @@ export class BattleScene extends Phaser.Scene {
       pending: () => this.session.hasPending,
     });
     this.death = new DeathOverlay(this, this.L, {
+      stats: () => this.openStats(),
       revive: () => this.revive(),
       double: () => this.doubleBits(),
       home: () => this.goHome(),
@@ -158,6 +168,7 @@ export class BattleScene extends Phaser.Scene {
     });
     this.chips = new SetChips(this, this.L, () => this.openProtocols());
     this.protocols = new ProtocolsPanel(this, this.L, this.gd, () => this.closeProtocols());
+    this.statsPanel = new StatsPanel(this, this.L, () => this.closeStats());
     const a = this.L.arena;
     this.banner = text(this, a.x + a.w / 2, a.y + a.h * 0.18, '', this.L.o === 'portrait' ? 44 : 34, { font: 'title', weight: '900', glow: '#22e5ff', blur: 16 })
       .setOrigin(0.5)
@@ -173,6 +184,10 @@ export class BattleScene extends Phaser.Scene {
     const ew = this.L.o === 'portrait' ? 340 : 260;
     const eh = this.L.o === 'portrait' ? 90 : 60;
     this.exitBtn = new Button(this, { x: a2.x + a2.w / 2 - ew / 2, y: a2.y + a2.h * 0.2 + (this.L.o === 'portrait' ? 70 : 50), w: ew, h: eh }, 'SAVE & EXIT', this.L.o === 'portrait' ? 30 : 20, DEPTH.overlay - 1, () => this.saveAndExit(), {
+      font: 'title',
+      fill: 0x062a3a,
+    }).setVisible(false);
+    this.statsBtn = new Button(this, { x: a2.x + a2.w / 2 - ew / 2, y: a2.y + a2.h * 0.2 + (this.L.o === 'portrait' ? 70 : 50) + eh + 16, w: ew, h: eh }, 'STATS', this.L.o === 'portrait' ? 30 : 20, DEPTH.overlay - 1, () => this.openStats(), {
       font: 'title',
       fill: 0x062a3a,
     }).setVisible(false);
@@ -205,7 +220,7 @@ export class BattleScene extends Phaser.Scene {
   saveRun(): void {
     const w = this.session?.world;
     if (!w || w.dead || this.flags.stress) return;
-    services.meta.saveRun(w, this.session.opts);
+    services.meta.saveRun(w, this.session.opts, this.runStats);
   }
 
   private saveAndExit(): void {
@@ -249,8 +264,16 @@ export class BattleScene extends Phaser.Scene {
     services.meta.clearRun();
     if (this.flags.stress) return;
     const m = services.meta.meta;
+    const lifetimeBefore = structuredClone(m.lifetime);
     const s = settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul });
-    this.paid = { s, runKeys: Math.floor(w.keys), doubled: false };
+    this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore };
+    addRunToLifetime(m.lifetime, this.runStats, {
+      waves: w.wave,
+      simTicks: w.tick,
+      bits: s.bits,
+      keys: s.keys,
+      energyEarned: Math.max(0, w.energy + this.runStats.energySpent - (this.session.opts.startEnergy ?? 0)),
+    });
     // After the first run: the starter cards (spec §3.4) and the Cards tab.
     this.starter = m.starterGiven ? null : grantStarter(m);
     if (this.starter) this.registry.set('starterReveal', this.starter);
@@ -278,6 +301,7 @@ export class BattleScene extends Phaser.Scene {
         m.bits = Math.max(0, m.bits - p.s.bits * (p.doubled ? 2 : 1));
         m.keys = Math.max(0, m.keys - p.runKeys);
         m.runs = Math.max(0, m.runs - 1);
+        m.lifetime = p.lifetimeBefore;
         this.paid = null;
         services.meta.save();
       }
@@ -316,6 +340,24 @@ export class BattleScene extends Phaser.Scene {
     } finally {
       this.pick.setBusy(false);
     }
+  }
+
+  private statsTabs() {
+    return runTabs({ world: this.session.world, stats: this.runStats, core: this.session.stats, data: this.gd, startEnergy: this.session.opts.startEnergy ?? 0 });
+  }
+
+  openStats(): void {
+    if (this.statsPanel.visible) return;
+    this.pausedBeforePanel = this.paused;
+    this.paused = true;
+    this.life.hold('stats', true);
+    this.statsPanel.show(this.statsTabs());
+  }
+
+  closeStats(): void {
+    this.statsPanel.hide();
+    this.life.hold('stats', false);
+    this.paused = this.pausedBeforePanel;
   }
 
   openProtocols(): void {
@@ -430,6 +472,7 @@ export class BattleScene extends Phaser.Scene {
     this.death.hide();
     this.pick.hide();
     this.protocols.hide();
+    this.statsPanel.hide();
     this.chips.reset();
     this.paused = false;
     this.deathAt = 0;
@@ -472,6 +515,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private readonly onEvent = (e: SimEvent): void => {
+    recordEvent(this.runStats, e);
     this.life.onEvent(e, this.session.world);
     const now = this.time.now;
     const sfx = services.audio;
@@ -609,7 +653,10 @@ export class BattleScene extends Phaser.Scene {
       this.life.runStarted(w, []);
     }
     const n = this.loop.frame(delta, this.paused || w.dead || services.ads.running ? 0 : this.speed);
-    if (n > 0) this.session.advance(n, this.onEvent);
+    if (n > 0) {
+      this.session.advance(n, this.onEvent);
+      this.runStats.realMs += delta;
+    }
     const alpha = w.dead ? 1 : this.loop.alpha();
     this.view.draw(alpha, time);
     this.fx.update();
@@ -655,7 +702,13 @@ export class BattleScene extends Phaser.Scene {
       this.pick.hide();
       this.life.hold('perkPick', false);
     }
-    this.exitBtn.setVisible(this.paused && !w.dead && !this.protocols.visible && w.phase !== 'pick');
+    const pauseMenu = this.paused && !w.dead && !this.protocols.visible && !this.statsPanel.visible && w.phase !== 'pick';
+    this.exitBtn.setVisible(pauseMenu);
+    this.statsBtn.setVisible(pauseMenu);
+    if (this.statsPanel.visible && time >= this.statsRefreshAt) {
+      this.statsRefreshAt = time + 500;
+      this.statsPanel.update(this.statsTabs());
+    }
     this.death.update(time);
     this.frameMs.push(delta);
     if (this.frameMs.length > 120) this.frameMs.shift();
