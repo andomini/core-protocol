@@ -1,7 +1,7 @@
 // Run settlement: Bits (× labs, × rewarded doubling), Keys (boss drops + milestones), best wave, tier unlock.
 import type { GameData } from '../sim/data';
 import { labEffects } from './labs';
-import type { MetaData } from './metaData';
+import { type MetaData, unlockWaveFor } from './metaData';
 import type { MetaState } from './state';
 
 export interface RunResult {
@@ -43,7 +43,7 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
   const newBest = r.wave > (m.best[key] ?? 0);
   if (newBest) m.best[key] = r.wave;
   let tierUnlocked = 0;
-  if (r.wave >= md.tiers.unlockWave && r.tier === m.tierUnlocked && m.tierUnlocked < data.tiers.length) {
+  if (r.wave >= unlockWaveFor(md, r.tier) && r.tier === m.tierUnlocked && m.tierUnlocked < data.tiers.length) {
     m.tierUnlocked += 1;
     tierUnlocked = m.tierUnlocked;
   }

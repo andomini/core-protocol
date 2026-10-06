@@ -91,7 +91,7 @@ Wave, best wave on the tier, ◆ Bits earned, 🔑 earned. Buttons: **Revive** (
 The same 18 stats, with permanent levels that set the **starting value** of each stat in the run. Cost is `base × w^level`, `w` ∈ [1.10, 1.20]. Locked stats open through labs.
 
 ### 3.2 Tiers (6)
-- The next tier unlocks at **wave 60** on the current one (was 50; raised 2026-10-06 together with the harder start).
+- The next tier unlocks at a per-tier wave: **45 / 47 / 63 / 70 / 72** on tiers 1–5 (`meta.json tiers.unlockWaves`, tuned 2026-10-06 with the progression sim).
 - `tierMul` (enemy HP and damage) and `bitsMul` grow with each tier (`data/tiers.json`).
 - From tier 3, each tier adds one condition: T3 viruses regenerate 1%/s; T4 "Swarm" (boss every 5 waves); T5 Ranged shoot ×2 as often; T6 all enemies +25% speed.
 - **Milestones** for waves 10 / 25 / 50 / 75 / 100 on each tier → 🔑 (the main free source of cards).
@@ -178,7 +178,7 @@ core-protocol/
 | B1 | First protocol pick ≤ 30 s after loading |
 | B2 | First run without the workshop: a new player clears ~3 waves, death at waves 4–6 (≈2–3 min at ×1). Revised 2026-10-06 by the owner (was 12–20) |
 | B3 | Every return session (≤ 5 min) → at least one noticeable purchase in Workshop/Labs |
-| B4 | Tier 2 opens after ≈1.5–3 h of total play (greedy bot + meta) |
+| B4 | Real-time pacing (owner, 2026-10-06: ~80 h to tier 6 for an active player). Checked by `npm run sim:progression` (bots × strategies, real time = sim time at the unlocked speed + menus): active player T2 ≈2 h, T3 ≈10 h, T4 ≈25 h, T5 ≈50 h, T6 ≈80 h |
 | B5 | ≥ 80% of first runs (no cards) reach a 2-set; average run with meta — 2-set by wave 10, 4-set by wave 40 |
 | B6 | No dominant tag: median wave of tag bots within ±20% of each other |
 | B7 | At the end of v1 content, a run lasts ≈30–60 min of real time at ×5 |

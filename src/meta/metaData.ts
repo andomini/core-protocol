@@ -33,7 +33,8 @@ export interface LabNode {
 
 export interface MetaData {
   workshop: { default: PriceCurve; stats: Partial<Record<StatId, PriceCurve>> };
-  tiers: { unlockWave: number };
+  /** Wave to reach on tier t to unlock tier t+1: `unlockWaves[t-1]`, else `unlockWave`. */
+  tiers: { unlockWave: number; unlockWaves?: number[] };
   milestones: { waves: number[]; keys: number[]; keysPerTier: number };
   offline: { bitsPerWaveHour: number; capHours: number; minMinutes: number };
   ads: { doubleBits: number };
@@ -67,6 +68,11 @@ export function validateMetaData(d: MetaData): MetaData {
 }
 
 export const DEFAULT_META_DATA: MetaData = validateMetaData({ ...(metaJson as unknown as Omit<MetaData, 'labs'>), labs: labsJson as unknown as MetaData['labs'] });
+
+/** Wave to reach on `tier` to unlock the next one. */
+export function unlockWaveFor(md: MetaData, tier: number): number {
+  return md.tiers.unlockWaves?.[tier - 1] ?? md.tiers.unlockWave;
+}
 
 export function labNode(md: MetaData, id: string): LabNode | undefined {
   return md.labs.nodes.find((n) => n.id === id);

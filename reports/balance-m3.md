@@ -1,6 +1,6 @@
 # Balance report — M3 (protocols, tags, sets; first run)
 
-Seeds 1–24 per policy · tier 1 · no workshop · starred stats locked · no cards · 12.4 s · `npm run sim:balance`
+Seeds 1–24 per policy · tier 1 · no workshop · starred stats locked · no cards · 12.1 s · `npm run sim:balance`
 
 ## B1: first protocol pick ≤ 30 s after loading — **PASS**
 

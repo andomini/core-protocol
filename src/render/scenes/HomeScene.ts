@@ -2,7 +2,7 @@
 // (🃏 Cards joins in M5 after the first run). Every view is rebuilt on refresh: menus change rarely.
 
 import Phaser from 'phaser';
-import { DEFAULT_META_DATA, type MetaData } from '../../meta/metaData';
+import { DEFAULT_META_DATA, type MetaData, unlockWaveFor } from '../../meta/metaData';
 import { buyLab, labEffects, labState } from '../../meta/labs';
 import { CARDS, canFreePack, cardDef, cardSlots, claimFreePack, equip, openPack, type PackCard, starsFor, unequip } from '../../meta/cards';
 import { cardEffectText } from '../../ui/cardText';
@@ -231,7 +231,7 @@ export class HomeScene extends Phaser.Scene {
       this.t(x + mw / 2, y + 8 + f, `+${ms.keys[i]! + (tier - 1) * ms.keysPerTier}`, f, KEY_CSS).setOrigin(0.5, 0);
     });
     if (nextLocked && tier < this.gd.tiers.length) {
-      this.t(cx, r.y + r.h - f - 18, `Reach wave ${this.md.tiers.unlockWave} to unlock tier ${tier + 1}`, f, TEXT_DIM).setOrigin(0.5, 0);
+      this.t(cx, r.y + r.h - f - 18, `Reach wave ${unlockWaveFor(this.md, tier)} to unlock tier ${tier + 1}`, f, TEXT_DIM).setOrigin(0.5, 0);
     }
     // Run buttons.
     const saved = services.meta.loadRun();

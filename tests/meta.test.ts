@@ -121,6 +121,15 @@ describe('run settlement', () => {
     expect(m.tierUnlocked).toBe(2);
   });
 
+  it('per-tier unlock waves: tier t needs unlockWaves[t-1]', () => {
+    const md = { ...M, tiers: { unlockWave: 60, unlockWaves: [40, 50] } };
+    const m = defaultMeta();
+    expect(settleRun(m, D, md, { tier: 1, wave: 40, bits: 0, keys: 0, doubled: false }).tierUnlocked).toBe(2);
+    expect(settleRun(m, D, md, { tier: 2, wave: 49, bits: 0, keys: 0, doubled: false }).tierUnlocked).toBe(0);
+    expect(settleRun(m, D, md, { tier: 2, wave: 50, bits: 0, keys: 0, doubled: false }).tierUnlocked).toBe(3);
+    expect(settleRun(m, D, md, { tier: 3, wave: 59, bits: 0, keys: 0, doubled: false }).tierUnlocked).toBe(0); // falls back to unlockWave 60
+  });
+
   it('higher tiers pay extra Keys per milestone', () => {
     const m = defaultMeta();
     m.tierUnlocked = 3;
