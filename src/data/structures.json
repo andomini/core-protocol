@@ -1,3 +1,5 @@
 {
-  "wall": { "minRadius": 240, "ringStep": 12, "rangeMargin": 32, "segments": 6, "contestDist": 60 }
+  "wall": { "minRadius": 240, "ringStep": 12, "rangeMargin": 32, "segments": 6, "contestDist": 60 },
+  "turret": { "muzzle": 10, "shotSec": 1 },
+  "mine": { "trigger": 24, "band": [30, 70] }
 }

@@ -409,7 +409,6 @@ export interface PerkProfile {
   lightningFreezeTicks: number;
   thornsSlow: number;
   thornsSlowTicks: number;
-  retaliateMul: number;
   /** Fusion structures by kind, folded field-wise (max) over the reached tiers; absent = not built. */
   structures: Partial<Record<StructureKind, StructureValues>>;
   /** The crystal's sectors, reach and muzzles this tick (spec 2026-10-14 §A). */
@@ -455,7 +454,6 @@ function blankProfile(data: GameData): PerkProfile {
     lightningFreezeTicks: 0,
     thornsSlow: 0,
     thornsSlowTicks: 0,
-    retaliateMul: 0,
     structures: {},
     shape: { sectors: [null, null, null, null, null, null], reach: [0, 0, 0, 0, 0, 0], tips: [] },
     owned: 0,
@@ -563,9 +561,6 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
       case 'thornsSlow':
         p.thornsSlow = Math.max(p.thornsSlow, e.strength);
         p.thornsSlowTicks = Math.max(p.thornsSlowTicks, Math.round(e.seconds * hz));
-        return;
-      case 'retaliate':
-        p.retaliateMul += e.damageMul * n;
         return;
       case 'structure':
         foldStructure(p.structures, e);

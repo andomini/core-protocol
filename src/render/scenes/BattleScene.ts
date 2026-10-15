@@ -909,6 +909,27 @@ export class BattleScene extends Phaser.Scene {
         sfx.play('kill');
         this.shake(120, 0.003);
         break;
+      case 'turretShot': {
+        // A short tracer from the barrel to the first target, in the Bastion's colour.
+        if (!this.screenOf(e.targetIds[0]!)) break;
+        const [tx, ty] = [this.tmp.x, this.tmp.y];
+        const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
+        this.structures.shot(e.sid, this.session.world, tx, ty, now);
+        const d = Math.hypot(tx - sx, ty - sy) || 1;
+        const m = this.gd.structures.turret.muzzle * L.scale;
+        this.fx.bounce(sx + ((tx - sx) / d) * m, sy + ((ty - sy) / d) * m, tx, ty, TAG_COLOR.overload);
+        for (let i = 1; i < e.targetIds.length; i++) {
+          if (this.screenOf(e.targetIds[i]!)) this.fx.bounce(sx, sy, this.tmp.x, this.tmp.y, TAG_COLOR.overload);
+        }
+        sfx.play('shot', 1.4);
+        break;
+      }
+      case 'mineBlast': {
+        this.fx.pulse(L.cx + e.x * L.scale, L.cy + e.y * L.scale, e.r * L.scale * 1.4, TAG_COLOR.chain);
+        sfx.play('zap');
+        this.shake(100, 0.002);
+        break;
+      }
       case 'structUp':
         this.fx.waveRing(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 26 * L.scale, TAG_COLOR.cryo);
         break;

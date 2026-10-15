@@ -37,6 +37,12 @@ export interface RunResult {
   /** Virus damage that landed on wall segments / on the core over the run (after Defense; structHit / coreHit events, blocked hits excluded). */
   wallTaken: number;
   coreTaken: number;
+  /** Kills (and their Energy) whose killing hit came from a Bastion turret / a Minefield blast, against all kills and all kill Energy. */
+  turretKills: number;
+  mineKills: number;
+  turretEnergy: number;
+  mineEnergy: number;
+  killEnergy: number;
 }
 
 export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, maxMinutes = 60, pick: PickPolicyName = 'greedy-pick'): RunResult {
@@ -56,6 +62,13 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
   let buys = 0;
   let wallTaken = 0;
   let coreTaken = 0;
+  let turretKills = 0;
+  let mineKills = 0;
+  let turretEnergy = 0;
+  let mineEnergy = 0;
+  let killEnergy = 0;
+  // The source of each enemy's latest hit this tick: the kill event follows its killing hit.
+  const lastHit = new Map<number, string>();
   while (!w.dead && w.tick < maxTicks) {
     const cmds: Command[] = bot.decide(w, data);
     if (w.phase === 'pick') cmds.push({ type: 'pickPerk', index: picker.choose(w, data) });
@@ -65,6 +78,17 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
       if (e.type === 'buy') {
         spent += e.cost;
         buys += e.levels;
+      } else if (e.type === 'hit') lastHit.set(e.enemyId, e.source);
+      else if (e.type === 'kill') {
+        killEnergy += e.energy;
+        const src = lastHit.get(e.enemyId);
+        if (src === 'turret') {
+          turretKills += 1;
+          turretEnergy += e.energy;
+        } else if (src === 'mine') {
+          mineKills += 1;
+          mineEnergy += e.energy;
+        }
       } else if (e.type === 'structHit') wallTaken += e.damage;
       else if (e.type === 'coreHit') coreTaken += e.blocked ? 0 : e.damage;
       else if (e.type === 'waveStart') waveStartS[e.wave] = w.tick / data.config.tickHz;
@@ -80,6 +104,7 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
       }
     }
     events.length = 0;
+    lastHit.clear();
   }
   return {
     policy,
@@ -93,6 +118,11 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
     keys: w.keys,
     wallTaken,
     coreTaken,
+    turretKills,
+    mineKills,
+    turretEnergy,
+    mineEnergy,
+    killEnergy,
     seed: opts.seed,
     wave: w.wave,
     dead: w.dead,

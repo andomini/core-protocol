@@ -71,6 +71,15 @@ function wallShare(rs: RunResult[]): string {
   return `${pct(quantile(share, 0.5) * 100, 100)} (${walled.length}/${rs.length} runs)`;
 }
 
+/** Share of the kills (and of the kill Energy) that came from Bastion turrets + Minefield blasts, over the runs that landed any (— if none did); the Minefield's own Energy share after the slash. */
+function structShare(rs: RunResult[]): string {
+  const built = rs.filter((r) => r.turretKills + r.mineKills > 0);
+  if (built.length === 0) return '—';
+  const kills = built.map((r) => (r.turretKills + r.mineKills) / Math.max(1, r.kills));
+  const mine = built.map((r) => r.mineEnergy / Math.max(1, r.killEnergy));
+  return `${pct(quantile(kills, 0.5) * 100, 100)} of kills (target ≤ 25 % at III), Minefield ${pct(quantile(mine, 0.5) * 100, 100)} of kill Energy (${built.length}/${rs.length} runs)`;
+}
+
 const rows = combos.map((c) => {
   const rs = by[c.key]!;
   const waves = rs.map((r) => r.wave);
@@ -177,6 +186,10 @@ const md = [
   `## B7: Ice Wall (spec 2026-10-15, phase 1) — report only`,
   '',
   `Runs whose auto-placed crystal reached cryo+firewall tier I+ (greedy + greedy-pick): ${pct(g.filter((r) => (r.world.fusionTiers['cryo+firewall'] ?? 0) > 0).length, g.length)}. Median wave with / without the wall: ${wallWaves(g, true)} / ${wallWaves(g, false)}. Wall absorbed (median share of virus damage that hit a segment, walled runs): ${wallShare(g)}; the same for the tag:cryo and tag:firewall bots: ${wallShare(by['greedy + tag:cryo']!)} / ${wallShare(by['greedy + tag:firewall']!)}.`,
+  '',
+  `## B8: Bastion and Minefield (spec 2026-10-15, phase 2) — report only`,
+  '',
+  `Turret + mine share, greedy + greedy-pick: ${structShare(g)}. The tag:overload / tag:chain / tag:firewall bots: ${structShare(by['greedy + tag:overload']!)} / ${structShare(by['greedy + tag:chain']!)} / ${structShare(by['greedy + tag:firewall']!)}.`,
   '',
   '## All policies',
   '',

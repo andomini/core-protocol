@@ -6,12 +6,12 @@ import { SECTOR_DIRS, sectorOf } from '../src/sim/hex';
 import { validateSets, validateEffect, type Effect } from '../src/sim/perkData';
 import { fusionStructure, grantPerk, perkProfile } from '../src/sim/perks';
 import { restore, snapshot } from '../src/sim/snapshot';
-import { createWorld, worldStats, type World } from '../src/sim/state';
+import { createWorld, worldStats, type Struct, type World } from '../src/sim/state';
 import type { SimEvent } from '../src/sim/events';
-import { prepareStructures, wallMaxHp, wallRadius } from '../src/sim/structures';
+import { breakSegment, prepareStructures, wallMaxHp, wallRadius } from '../src/sim/structures';
 import { combatStats } from '../src/sim/step';
 import { spawnEnemy } from '../src/sim/waves';
-import { terrainFor } from '../src/sim/territory';
+import { farMul, terrainFor } from '../src/sim/territory';
 import { effectLine } from '../src/ui/perkText';
 import { ofType, type StatBases, stepN, testData } from './helpers';
 
@@ -412,5 +412,235 @@ describe('structures: data and text', () => {
     expect(effectLine(data, { type: 'structure', kind: 'wall', hpFrac: 0.28, shatterRadius: 80, shatterSec: 1.5 })).toBe(
       '6 wall segments, 28% Health each; Shatter: a breaking segment freezes viruses within 80px for 1.5s',
     );
+  });
+});
+
+// A world with one firewall fusion at `tier`, a core with real Damage and tanky viruses placed by the test.
+function setupFusion(key: string, tier: 1 | 3 | 5, core: StatBases = {}) {
+  const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 } }, { damage: 100, regen: 0, thorns: 0, health: 1000, ...core });
+  const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
+  w.fusionTiers[key] = tier;
+  stepN(w, data, 1);
+  return { data, w };
+}
+const TANK = 1e9;
+const turrets = (w: World) => w.structs.filter((s) => s.kind === 'turret');
+const mines = (w: World) => w.structs.filter((s) => s.kind === 'mine');
+
+describe('structures: the Bastion (spec 2026-10-15, phase 2)', () => {
+  it('tier I: one turret on the ring hits the nearest virus in range for its share of Damage, no projectile', () => {
+    const { data, w } = setupFusion('overload+firewall', 1);
+    expect(turrets(w)).toHaveLength(1);
+    expect(w.structs.some((s) => s.kind === 'wall')).toBe(false);
+    const t = turrets(w)[0]!;
+    expect([t.x, t.y]).toEqual(onAxis(0, w.wallR));
+    const e = spawnEnemy(w, data, 'basic', ...onAxis(0, w.wallR + 80), [], TANK);
+    const ev = stepN(w, data, 2);
+    const shots = ofType(ev, 'turretShot');
+    expect(shots).toHaveLength(1);
+    expect(shots[0]).toMatchObject({ sid: t.id, targetIds: [e.id] });
+    const hit = ofType(ev, 'hit').find((h) => h.source === 'turret')!;
+    expect(hit.enemyId).toBe(e.id);
+    expect(hit.damage).toBeCloseTo(worldStats(w, data).damage * 0.2, 6);
+  });
+
+  it('a virus out of range is left alone; the turret waits at its cooldown', () => {
+    const { data, w } = setupFusion('overload+firewall', 1);
+    spawnEnemy(w, data, 'basic', ...onAxis(3, w.wallR + 300), [], TANK);
+    expect(ofType(stepN(w, data, 3), 'turretShot')).toHaveLength(0);
+  });
+
+  it('Frenzy: below the Health threshold the turrets fire faster', () => {
+    const shotsIn = (w: World, data: ReturnType<typeof setupFusion>['data']) => {
+      spawnEnemy(w, data, 'basic', ...onAxis(0, w.wallR + 80), [], TANK).speed = 0;
+      return ofType(stepN(w, data, 90), 'turretShot').length;
+    };
+    const calm = setupFusion('overload+firewall', 3);
+    expect(turrets(calm.w)).toHaveLength(2);
+    const base = shotsIn(calm.w, calm.data);
+    const hurt = setupFusion('overload+firewall', 3);
+    hurt.w.core.hp = worldStats(hurt.w, hurt.data).health * 0.4;
+    expect(shotsIn(hurt.w, hurt.data)).toBeGreaterThan(base);
+  });
+
+  it('tier V: three turrets spread round the ring, each hitting two viruses', () => {
+    const { data, w } = setupFusion('overload+firewall', 5);
+    expect(turrets(w)).toHaveLength(3);
+    expect(new Set(turrets(w).map((t) => sectorOf(t.x, t.y))).size).toBe(3);
+    spawnEnemy(w, data, 'basic', ...onAxis(0, w.wallR + 60), [], TANK);
+    spawnEnemy(w, data, 'basic', ...onAxis(0, w.wallR + 90), [], TANK);
+    const shot = ofType(stepN(w, data, 2), 'turretShot').find((e) => e.targetIds.length === 2);
+    expect(shot).toBeDefined();
+  });
+
+  it('turret kills pay Energy', () => {
+    const { data, w } = setupFusion('overload+firewall', 1);
+    const e = spawnEnemy(w, data, 'basic', ...onAxis(0, w.wallR + 80), [], 1e-9);
+    e.speed = 0;
+    const e0 = w.energy;
+    const ev = stepN(w, data, 2);
+    const kill = ofType(ev, 'kill').find((k) => k.enemyId === e.id)!;
+    expect(kill.energy).toBeGreaterThan(0);
+    expect(w.energy).toBeCloseTo(e0 + kill.energy, 6);
+  });
+
+  it('Frenzy also starts when a wall segment is down', () => {
+    const shotsIn = (broken: boolean) => {
+      const { data, w } = setupFusion('overload+firewall', 3);
+      w.fusionTiers['cryo+firewall'] = 1;
+      stepN(w, data, 1);
+      expect(w.structs.filter((s) => s.kind === 'wall')).toHaveLength(6);
+      if (broken) breakSegment(w, data, perkProfile(w, data), seg(w, 4), []);
+      spawnEnemy(w, data, 'basic', ...onAxis(0, w.wallR + 80), [], TANK).speed = 0;
+      return ofType(stepN(w, data, 150), 'turretShot').length;
+    };
+    const intact = shotsIn(false);
+    expect(intact).toBeGreaterThan(0);
+    expect(shotsIn(true)).toBeGreaterThanOrEqual(intact * 1.5);
+  });
+
+  it('a tier drop that lowers the count leaves the surplus turrets inert', () => {
+    const { data, w } = setupFusion('overload+firewall', 5);
+    expect(turrets(w)).toHaveLength(3);
+    const [t0, t1, t2] = turrets(w) as [Struct, Struct, Struct];
+    // Turrets keep their sector as the Bastion grows or shrinks.
+    expect([t0, t1, t2].map((t) => sectorOf(t.x, t.y))).toEqual([0, 2, 4]);
+    w.fusionTiers['overload+firewall'] = 1;
+    stepN(w, data, 1);
+    expect([t0, t1, t2].map((t) => sectorOf(t.x, t.y))).toEqual([0, 2, 4]);
+    spawnEnemy(w, data, 'basic', ...onAxis(2, w.wallR + 60), [], TANK).speed = 0;
+    spawnEnemy(w, data, 'basic', ...onAxis(4, w.wallR + 60), [], TANK).speed = 0;
+    expect(ofType(stepN(w, data, 90), 'turretShot')).toHaveLength(0);
+    spawnEnemy(w, data, 'basic', ...onAxis(0, w.wallR + 60), [], TANK).speed = 0;
+    const shots = ofType(stepN(w, data, 90), 'turretShot');
+    expect(shots.length).toBeGreaterThan(0);
+    expect(new Set(shots.map((e) => e.sid))).toEqual(new Set([t0.id]));
+  });
+
+  it('losing the link takes the turrets off the field', () => {
+    const { data, w } = setupFusion('overload+firewall', 1);
+    delete w.fusionTiers['overload+firewall'];
+    stepN(w, data, 2);
+    expect(ofType(stepN(w, data, 30), 'turretShot')).toHaveLength(0);
+  });
+});
+
+describe('structures: the Minefield (spec 2026-10-15, phase 2)', () => {
+  it('plants perWave mines in the band outside the ring at wave start, replayable from the seed', () => {
+    const a = setupFusion('chain+firewall', 1);
+    expect(mines(a.w)).toHaveLength(2);
+    const [near, far] = a.data.structures.mine.band;
+    for (const m of mines(a.w)) {
+      const d = Math.hypot(m.x, m.y);
+      expect(d).toBeGreaterThanOrEqual(a.w.wallR + near - 1e-6);
+      expect(d).toBeLessThanOrEqual(a.w.wallR + far + 1e-6);
+    }
+    const b = setupFusion('chain+firewall', 1);
+    expect(mines(b.w)).toEqual(mines(a.w));
+    const back = restore(snapshot(a.w));
+    stepN(back, a.data, 30);
+    stepN(a.w, a.data, 30);
+    expect(hashWorld(back)).toBe(hashWorld(a.w));
+  });
+
+  it('no Minefield link, no mines', () => {
+    expect(mines(setup(0).w)).toHaveLength(0);
+    expect(mines(setup(1).w)).toHaveLength(0);
+  });
+
+  it('a virus on a mine sets it off: blast damage to the nearest few, the mine is spent', () => {
+    const { data, w } = setupFusion('chain+firewall', 1);
+    const m = mines(w)[0]!;
+    const e = spawnEnemy(w, data, 'basic', m.x, m.y, [], TANK);
+    e.speed = 0;
+    const ev = stepN(w, data, 2);
+    const blast = ofType(ev, 'mineBlast');
+    expect(blast).toHaveLength(1);
+    expect(blast[0]).toMatchObject({ x: m.x, y: m.y, r: 40 });
+    expect(mines(w).some((s) => s.id === m.id)).toBe(false);
+    const hit = ofType(ev, 'hit').find((h) => h.source === 'mine')!;
+    expect(hit.enemyId).toBe(e.id);
+    expect(hit.damage).toBeCloseTo(worldStats(w, data).damage * 1.5, 6);
+  });
+
+  it('the blast stops at its target count; tier II arcs lightning on from the first victim', () => {
+    const { data, w } = setupFusion('chain+firewall', 3);
+    const m = mines(w)[0]!;
+    const near: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      const e = spawnEnemy(w, data, 'basic', m.x + (i === 0 ? 0 : 10 + i), m.y, [], TANK);
+      e.speed = 0;
+      near.push(e.id);
+    }
+    const ev = stepN(w, data, 2);
+    expect(ofType(ev, 'hit').filter((h) => h.source === 'mine')).toHaveLength(3);
+    const arcs = ofType(ev, 'hit').filter((h) => h.source === 'lightning');
+    expect(arcs.length).toBeGreaterThan(0);
+    // Arcs use the core's Damage as their base, like a shot's lightning (not the 150 % blast).
+    expect(arcs[0]!.damage).toBeCloseTo(worldStats(w, data).damage * perkProfile(w, data).rules.lightningDamage, 6);
+  });
+
+  it('surviving mines are renumbered when the next wave plants more', () => {
+    const { data, w } = setupFusion('chain+firewall', 3);
+    const first = mines(w)[0]!;
+    w.structs.splice(w.structs.indexOf(first), 1);
+    w.wave += 1;
+    prepareStructures(w, data, worldStats(w, data), perkProfile(w, data), []);
+    expect(mines(w).map((m) => m.slot)).toEqual(mines(w).map((_, i) => i));
+  });
+
+  it('a mine kill pays no far-from-core bonus; a turret kill at the same spot does', () => {
+    const killAt = (key: string, kindOfShot: 'mine' | 'turret') => {
+      const { data, w } = setupFusion(key, 1);
+      const [x, y] = onAxis(0, 400);
+      if (kindOfShot === 'mine') {
+        const m = mines(w)[0]!;
+        m.x = x;
+        m.y = y;
+      }
+      const e = spawnEnemy(w, data, 'basic', x, y, [], 1e-9);
+      e.speed = 0;
+      const ev = stepN(w, data, 2);
+      const src = ofType(ev, 'hit').find((h) => h.enemyId === e.id)!.source;
+      expect(src).toBe(kindOfShot);
+      return { kill: ofType(ev, 'kill').find((k) => k.enemyId === e.id)!, far: farMul(data, x, y) };
+    };
+    const mine = killAt('chain+firewall', 'mine');
+    const turret = killAt('overload+firewall', 'turret');
+    expect(turret.far).toBeGreaterThan(1.05);
+    expect(mine.kill.energy).toBeGreaterThan(0);
+    expect(turret.kill.energy / mine.kill.energy).toBeCloseTo(turret.far, 6);
+    expect(turret.kill.bits / mine.kill.bits).toBeCloseTo(turret.far, 6);
+  });
+
+  it('a mine far from any virus stays put', () => {
+    const { data, w } = setupFusion('chain+firewall', 1);
+    const before = mines(w).length;
+    stepN(w, data, 30);
+    expect(mines(w)).toHaveLength(before);
+  });
+
+  it('mines stop planting at max', () => {
+    const { data, w } = setupFusion('chain+firewall', 1);
+    for (let i = 0; i < 6; i++) {
+      w.wave += 1;
+      prepareStructures(w, data, worldStats(w, data), perkProfile(w, data), []);
+    }
+    expect(mines(w)).toHaveLength(6);
+  });
+});
+
+describe('structures: phase 2 data and text', () => {
+  it('retaliate is gone as an effect type', () => {
+    expect(() => validateEffect({ type: 'retaliate', value: 1 } as unknown as Effect, 'x', true)).toThrow();
+  });
+
+  it('effectLine reads the Bastion and Minefield steps', () => {
+    const { data } = setup(0);
+    const bastion = effectLine(data, { type: 'structure', kind: 'turret', count: 2, frenzyBelow: 0.5, frenzyMul: 2 });
+    expect(bastion).toMatch(/2 turrets/);
+    expect(bastion).toMatch(/Frenzy/i);
+    const mine = effectLine(data, { type: 'structure', kind: 'mine', perWave: 2, max: 6, dmgMul: 1.5, blast: 40, targets: 3 });
+    expect(mine).toMatch(/2 mines per wave \(up to 6\)/);
   });
 });

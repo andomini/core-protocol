@@ -20,10 +20,10 @@ export const RULE_IDS = [
 export type RuleId = (typeof RULE_IDS)[number];
 export type Rules = Record<RuleId, number>;
 
-export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'retaliate', 'structure'] as const;
+export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'structure'] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
-/** Battlefield structures a firewall fusion builds (spec 2026-10-15). Only the wall is simulated so far. */
+/** Battlefield structures a firewall fusion builds (spec 2026-10-15). The wall, turret and mine are simulated; the station is phase 3. */
 export const STRUCTURE_KINDS = ['wall', 'turret', 'mine', 'station'] as const;
 export type StructureKind = (typeof STRUCTURE_KINDS)[number];
 
@@ -116,8 +116,6 @@ export type Effect =
   | { type: 'lightningFreeze'; seconds: number }
   /** A Thorns hit slows its attacker by `strength` for `seconds`. */
   | { type: 'thornsSlow'; strength: number; seconds: number }
-  /** Every virus attack on the core is answered by a bolt at the attacker for `damageMul` × Damage. */
-  | { type: 'retaliate'; damageMul: number }
   /** A fusion's battlefield structure; the fields are per kind (STRUCTURE_FIELDS), a tier lists only what it raises. */
   | ({ type: 'structure'; kind: StructureKind } & { [F in StructureField]?: number });
 
@@ -273,9 +271,6 @@ export function validateEffect(e: Effect, at: string, allowStructure = false): v
     case 'thornsSlow':
       frac(e.strength, `${at}.strength`);
       pos(e.seconds, `${at}.seconds`);
-      return;
-    case 'retaliate':
-      pos(e.damageMul, `${at}.damageMul`);
       return;
     case 'structure': {
       // Only fusion ladders build structures: the renderer folds those alone (fusionStructure) and must agree with the sim.

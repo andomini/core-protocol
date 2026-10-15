@@ -1,6 +1,7 @@
 import type { EnemyKind, StatId } from './data';
 import type { StructureKind, Tag } from './perkData';
 import type { ProtocolReject } from './perks';
+import type { HitSource } from './projectiles';
 
 export type BuyRejectReason = 'dead' | 'unknown' | 'badCount' | 'locked' | 'maxed' | 'funds';
 
@@ -14,7 +15,7 @@ export type SimEvent =
   /** `big`: an every-Nth-shot (Hot Barrel) projectile. */
   | { type: 'shot'; projectileId: number; targetId: number; crit: boolean; big: boolean }
   /** `dealt`: damage actually removed (no overkill); `healed`: Lifesteal HP from this hit. */
-  | { type: 'hit'; enemyId: number; damage: number; dealt: number; crit: boolean; source: 'shot' | 'bounce' | 'thorns' | 'lightning' | 'tesla'; healed: number }
+  | { type: 'hit'; enemyId: number; damage: number; dealt: number; crit: boolean; source: HitSource; healed: number }
   | { type: 'kill'; enemyId: number; kind: EnemyKind; energy: number; bits: number; keys: number }
   /** `blocked`: absorbed by the 🛡 immunity window. */
   | { type: 'coreHit'; enemyId: number; damage: number; ranged: boolean; blocked: boolean; absorbed: number }
@@ -22,6 +23,10 @@ export type SimEvent =
   | { type: 'structHit'; sid: number; kind: StructureKind; x: number; y: number; enemyId: number; damage: number; ranged: boolean }
   /** A structure was destroyed (or, with a link broken, counted as destroyed); it comes back at `structUp`. */
   | { type: 'structDown'; sid: number; kind: StructureKind; x: number; y: number }
+  /** A Bastion turret fired at `targetIds` from (x, y). */
+  | { type: 'turretShot'; sid: number; targetIds: number[]; x: number; y: number }
+  /** A mine went off at (x, y) with blast radius r; the mine is gone. */
+  | { type: 'mineBlast'; x: number; y: number; r: number }
   /** A destroyed structure was rebuilt (regrow, wave-start repair, revive). */
   | { type: 'structUp'; sid: number; kind: StructureKind; x: number; y: number }
   /** A protocol offer opened (or was rerolled). */

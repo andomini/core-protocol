@@ -137,11 +137,6 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
       w.core.hp = clampValue(w.core.hp - damage);
       events.push({ type: 'coreHit', enemyId: e.id, damage, ranged, blocked, absorbed });
       reflectThorns(w, data, st, prof, e, damage, ranged, events);
-      // Grounding (fusion): every attack on the core is answered by a bolt from the core.
-      if (prof.retaliateMul > 0 && e.hp > 0) {
-        events.push({ type: 'lightning', fromId: 0, targets: [e.id] });
-        hitEnemy(w, data, st, prof, e, clampValue(st.damage * prof.retaliateMul), false, 'lightning', events);
-      }
     }
   }
 }

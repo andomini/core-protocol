@@ -54,7 +54,8 @@ export function conditionalMul(w: World, e: Enemy, st: CoreStats, prof: PerkProf
 }
 
 /** `bounce`: a projectile's later hits; `tesla`: the Tesla Coil card's bolt from the core. */
-export type HitSource = 'shot' | 'bounce' | 'thorns' | 'lightning' | 'tesla';
+/** `turret`, `mine`: the Bastion's shots and the Minefield's blasts (spec 2026-10-15); mines count as chain. */
+export type HitSource = 'shot' | 'bounce' | 'thorns' | 'lightning' | 'tesla' | 'turret' | 'mine';
 
 /**
  * Applies damage; on the killing blow pays the reward (Energy Bonus, Energy Siphon, boss multipliers, boost,
@@ -76,7 +77,7 @@ export function hitEnemy(
   // Ground under the target (spec 2026-10-14 §B): ⚡ cells amplify every hit, 🔗 cells bounces and lightning.
   const ground = groundAt(w, data, prof.shape.sectors, e.x, e.y);
   if (ground === 'overload') damage = clampValue(damage * data.territory.overloadDamage);
-  else if (ground === 'chain' && (source === 'bounce' || source === 'lightning')) damage = clampValue(damage * data.territory.chainDamage);
+  else if (ground === 'chain' && (source === 'bounce' || source === 'lightning' || source === 'mine')) damage = clampValue(damage * data.territory.chainDamage);
   const dealt = Math.min(damage, e.hp);
   e.hp = clampValue(e.hp - damage);
   const projectile = source === 'shot' || source === 'bounce';
@@ -93,12 +94,13 @@ export function hitEnemy(
     // Territory income: the owned share scales kill Energy; 💰 ground pays extra; Encryption (gene) takes a cut.
     const t = data.territory;
     const land = (t.energyBase + t.energyPerOwned * prof.owned) * (ground === 'mining' ? t.miningEnergy : 1) * prof.geneEnergy;
-    const far = farMul(data, e.x, e.y);
+    // Mines lie just outside the wall: their kills pay the near-ground rate, not the far-out bonus.
+    const far = source === 'mine' ? 1 : farMul(data, e.x, e.y);
     // Fusions: crit kills, frozen kills and bounce/lightning kills pay more Energy.
     let how = 1;
     if (crit) how *= prof.critKillMul;
     if (isFrozen(w, e)) how *= prof.frozenKillMul;
-    if (source === 'bounce' || source === 'lightning' || source === 'tesla') how *= prof.chainKillMul;
+    if (source === 'bounce' || source === 'lightning' || source === 'tesla' || source === 'mine') how *= prof.chainKillMul;
     const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how);
     const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far);
     const keys = data.enemies[e.kind].keys + (boss ? prof.bossKeys : 0);

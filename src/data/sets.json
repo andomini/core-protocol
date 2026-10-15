@@ -125,16 +125,16 @@
       }
     },
     "overload+firewall": {
-      "name": "Berserk",
+      "name": "Bastion",
       "tiers": {
         "1": [
-          { "type": "conditional", "when": "coreHpBelow", "frac": 0.5, "damageMul": 1.3 }
+          { "type": "structure", "kind": "turret", "count": 1, "dmgFrac": 0.2, "rateMul": 1, "range": 220, "targets": 1 }
         ],
         "3": [
-          { "type": "statMul", "stat": "regen", "value": 1.5 }
+          { "type": "structure", "kind": "turret", "count": 2, "frenzyBelow": 0.5, "frenzyMul": 2 }
         ],
         "5": [
-          { "type": "conditional", "when": "coreHpBelow", "frac": 0.5, "damageMul": 1.5 }
+          { "type": "structure", "kind": "turret", "count": 3, "dmgFrac": 0.3, "targets": 2 }
         ]
       }
     },
@@ -197,16 +197,17 @@
       }
     },
     "chain+firewall": {
-      "name": "Grounding",
+      "name": "Minefield",
       "tiers": {
         "1": [
-          { "type": "retaliate", "damageMul": 0.5 }
+          { "type": "structure", "kind": "mine", "perWave": 2, "max": 6, "dmgMul": 1.5, "blast": 40, "targets": 3, "arcs": 0 }
         ],
         "3": [
-          { "type": "statAdd", "stat": "defense", "value": 0.05 }
+          { "type": "structure", "kind": "mine", "perWave": 3, "max": 9, "arcs": 1 }
         ],
         "5": [
-          { "type": "retaliate", "damageMul": 1 }
+          { "type": "structure", "kind": "mine", "perWave": 4, "max": 12, "dmgMul": 2.5 },
+          { "type": "statAdd", "stat": "defense", "value": 0.05 }
         ]
       }
     },

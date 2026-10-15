@@ -60,10 +60,31 @@ function structureLine(data: GameData, e: Extract<Effect, { type: 'structure' }>
     if (e.shatterRadius !== undefined && e.shatterSec !== undefined) {
       parts.push(`Shatter: a breaking segment freezes viruses within ${round(e.shatterRadius)}px for ${round(e.shatterSec)}s`);
     }
+  } else if (e.kind === 'turret') {
+    const head = e.count !== undefined ? `${e.count} turret${e.count === 1 ? '' : 's'}` : '';
+    const stats: string[] = [];
+    if (e.dmgFrac !== undefined) stats.push(`${pct(e.dmgFrac)} Damage`);
+    if (e.rateMul !== undefined) stats.push(`${round(e.rateMul / data.structures.turret.shotSec)} shot/s`);
+    if (e.range !== undefined) stats.push(`range ${round(e.range)}`);
+    if (e.targets !== undefined && e.targets > 1) stats.push(`each shot hits ${e.targets}`);
+    parts.push([head, stats.join(', ')].filter((x) => x !== '').join(': '));
+    if (e.frenzyBelow !== undefined && e.frenzyMul !== undefined) {
+      parts.push(`Frenzy: ×${round(e.frenzyMul)} fire rate while Core HP < ${pct(e.frenzyBelow)} or a wall segment is down`);
+    }
+  } else if (e.kind === 'mine') {
+    if (e.perWave !== undefined) {
+      const near = e.blast !== undefined ? ' just outside the wall' : '';
+      parts.push(`${e.perWave} mine${e.perWave === 1 ? '' : 's'} per wave${e.max !== undefined ? ` (up to ${e.max})` : ''}${near}`);
+    }
+    if (e.dmgMul !== undefined) {
+      const spread = e.blast !== undefined && e.targets !== undefined ? `, up to ${e.targets} virus${e.targets === 1 ? '' : 'es'}` : '';
+      parts.push(`${pct(e.dmgMul)} Damage${e.blast !== undefined ? ' blast' : ''}${spread}`);
+    }
+    if (e.arcs !== undefined && e.arcs > 0) parts.push('blasts arc lightning');
   } else {
     parts.push(`${e.kind} structure`);
   }
-  const line = parts.join('; ');
+  const line = parts.join(e.kind === 'mine' ? ': ' : '; ');
   return line.charAt(0).toUpperCase() + line.slice(1);
 }
 
@@ -130,8 +151,6 @@ export function effectLine(data: GameData, e: Effect): string {
       return `Thorns slow attackers ${pct(e.strength)} for ${round(e.seconds)}s`;
     case 'structure':
       return structureLine(data, e);
-    case 'retaliate':
-      return `Each virus attack: bolt back for ×${round(e.damageMul)} Damage`;
     case 'ruleChange': {
       const f = RULE_TEXT[e.rule];
       return f ? f(e.op, e.value) : `${e.rule} ${e.op === 'mul' ? '×' : '+'}${round(e.value)}`;

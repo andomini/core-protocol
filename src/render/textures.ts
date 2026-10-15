@@ -195,6 +195,28 @@ function core(scene: Phaser.Scene, data: GameData): void {
   });
 }
 
+/** Firewall structures (white, tinted per kind at draw time): a Bastion turret, barrel along +x, and a mine. */
+function structures(scene: Phaser.Scene, data: GameData): void {
+  const S = 48;
+  const c = S / 2;
+  const muzzle = data.structures.turret.muzzle;
+  bake(scene, 'st_turret', S, S, (ctx) => {
+    neon(ctx, regular(c, c, 8, 6, Math.PI / 6), WHITE, 1.6, 0.3, 7);
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = rgba(WHITE, 1);
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(c, c);
+    ctx.lineTo(c + muzzle, c);
+    ctx.stroke();
+  });
+  bake(scene, 'st_mine', S, S, (ctx) => {
+    neon(ctx, [[c, c - 7], [c + 6, c], [c, c + 7], [c - 6, c]], WHITE, 1.4, 0.25, 6);
+    ctx.fillStyle = rgba(WHITE, 1);
+    ctx.fillRect(c - 1.2, c - 1.2, 2.4, 2.4);
+  });
+}
+
 function fx(scene: Phaser.Scene): void {
   // Tracer: head at the right end, fading tail.
   const tw = TRACER_LEN + PAD * 2;
@@ -573,6 +595,7 @@ export function generateTextures(scene: Phaser.Scene, data: GameData): void {
   enemies(scene, data);
   core(scene, data);
   fx(scene);
+  structures(scene, data);
   icons(scene);
   statIcons(scene, data);
 }

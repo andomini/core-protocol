@@ -56,7 +56,7 @@ export interface Projectile {
 export interface Struct {
   id: number;
   kind: StructureKind;
-  /** Index among the entries of its kind (wall: the sector, 0..5). */
+  /** Index among the entries of its kind (wall: the sector, 0..5; turret: TURRET_SECTORS[slot]; mines are renumbered at planting). */
   slot: number;
   x: number;
   y: number;

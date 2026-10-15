@@ -248,7 +248,7 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
   });
 
   it('moves are commands: a run with swaps at its picks replays to the same world', () => {
-    const opts = { seed: 11, tier: 1 };
+    const opts = { seed: 12, tier: 1 };
     const w = createWorld(D, opts);
     const log: LoggedCommand[] = [];
     const events: SimEvent[] = [];

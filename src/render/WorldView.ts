@@ -35,7 +35,7 @@ export function coreColors(crystal: readonly { tag: Tag; perk: string }[], perks
 }
 
 export const DEPTH = {
-  grid: 1, light: 2, pulse: 3, range: 4, wall: 4.5, boss: 5, enemy: 6, projectile: 7, core: 8, fx: 9, bars: 10,
+  grid: 1, light: 2, pulse: 3, mine: 3.5, range: 4, wall: 4.5, boss: 5, enemy: 6, projectile: 7, turret: 7.5, core: 8, fx: 9, bars: 10,
   vignette: 11, scan: 12, hud: 20, overlay: 40,
 } as const;
 

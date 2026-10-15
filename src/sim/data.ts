@@ -239,6 +239,18 @@ export interface StructuresDef {
     /** A segment is contested while a virus stands in its sector within wallR + this. */
     contestDist: number;
   };
+  turret: {
+    /** Barrel length (world px): where the shot leaves the turret (render only). */
+    muzzle: number;
+    /** Seconds between two shots at rateMul 1. */
+    shotSec: number;
+  };
+  mine: {
+    /** A mine goes off when a virus comes within this (plus its own radius). */
+    trigger: number;
+    /** Mines are planted this far outside the wall ring: [near, far] (world px). */
+    band: [number, number];
+  };
 }
 
 export interface GameData {
@@ -381,6 +393,11 @@ export function validateData(d: GameData): GameData {
   check(sw.segments === 6, 'structures.wall.segments must be 6 (one per sector)');
   nonNeg(sw.contestDist, 'structures.wall.contestDist');
   check(sw.minRadius > d.core.radius, 'structures.wall.minRadius must lie outside the core');
+  positive(d.structures.turret?.muzzle, 'structures.turret.muzzle');
+  positive(d.structures.turret.shotSec, 'structures.turret.shotSec');
+  positive(d.structures.mine?.trigger, 'structures.mine.trigger');
+  const band = d.structures.mine.band;
+  check(Array.isArray(band) && band.length === 2 && Number.isFinite(band[0]) && Number.isFinite(band[1]) && band[0] >= 0 && band[0] <= band[1], 'structures.mine.band must be [near, far] with 0 ≤ near ≤ far');
   const mu = d.mutations;
   check(Number.isInteger(mu?.startWave) && mu.startWave >= 1, 'mutations.startWave must be a whole number ≥ 1');
   check(Number.isInteger(mu.every) && mu.every >= 1, 'mutations.every must be a whole number ≥ 1');
