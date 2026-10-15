@@ -15,6 +15,14 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 - `npm run ui:portal-build` — production CrazyGames/Poki builds with a stubbed and a blocked SDK (build first)
 - `npm run telemetry:report -- <export.json>…` → `reports/telemetry-<date>.md`
 
+## Запуск локально
+- `npm run dev:up` — idempotent: starts Vite detached on :5173 (logs `.dev/vite.log`) only if not already running, prints URL; `dev:status`, `dev:stop`.
+
+## Desktop widget
+- `?widget=1` (any build; code lives on the local branch `widget`: `src/render/widget.ts` + `src/data/widget.json`): no pause when hidden (setTimeout loop), auto-pick after 5 s, auto-restart 8 s after death, Home → back to play after 2 min idle, live state in `document.title`. Auto-buy in a run only for stats marked by tapping a row's glyph (AUTO badge; A pauses all); after each run Bits go to workshop levels / lab nodes marked AUTO on Home (cheapest first). Nothing is marked by default.
+- `~/.local/bin/core-protocol` [toggle|start|install|stop|status]: Chrome `--app` with its own profile in `~/.local/share/core-protocol-widget` (save on disk), on Hyprland `special:core`, Super+G.
+- `scripts/widget-install.sh` (hooks post-commit/post-merge/post-rewrite on main, or `npm run widget:install`): merges main into `widget` in the worktree `~/.local/share/core-protocol-widget/build`, builds, swaps `app/`; the open widget reloads within 30 s (run saved). A merge conflict keeps the old build — see `install.log`. `npm run widget:install -- --wip` builds the *uncommitted* working tree of main instead (for trying WIP in the widget).
+
 ## Rules
 - `src/sim` is pure and deterministic: only + − × ÷, Math.floor/ceil/min/max/abs/imul; roots via `dsqrt`, powers via `powInt` (`src/sim/num.ts`). No Math.random/sqrt/pow/trig, `**`, Date, DOM. Checked by `tests/purity.test.ts`.
 - All balance numbers live in `src/data/*.json`, never in code.

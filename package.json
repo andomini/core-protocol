@@ -23,7 +23,10 @@
     "telemetry:report": "tsx tools/telemetry-report/report.ts",
     "sim:meta": "tsx tools/sim/meta.ts",
     "ui:loadtime": "node tools/ui/loadtime.mjs",
-    "sim:progression": "tsx tools/sim/progression.ts"
+    "sim:progression": "tsx tools/sim/progression.ts",
+    "dev:up": "scripts/dev-up.sh",
+    "dev:status": "scripts/dev-up.sh status",
+    "dev:stop": "scripts/dev-up.sh stop"
   },
   "dependencies": {
     "phaser": "3.90.0"

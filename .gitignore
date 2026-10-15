@@ -3,3 +3,4 @@ dist/
 *.log
 .superpowers/
 publish/out/raw/
+.dev/
