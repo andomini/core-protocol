@@ -80,6 +80,22 @@ function structShare(rs: RunResult[]): string {
   return `${pct(quantile(kills, 0.5) * 100, 100)} of kills (target ≤ 25 % at III), Minefield ${pct(quantile(mine, 0.5) * 100, 100)} of kill Energy (${built.length}/${rs.length} runs)`;
 }
 
+/** Median share of a run's Energy from kills + stations that came from Relay Stations, over the runs that were paid by any (— if none were). */
+function stationShare(rs: RunResult[]): string {
+  const paid = rs.filter((r) => r.stationEnergy > 0);
+  if (paid.length === 0) return '—';
+  const share = paid.map((r) => r.stationEnergy / (r.killEnergy + r.stationEnergy));
+  return `${pct(quantile(share, 0.5) * 100, 100)} (${paid.length}/${rs.length} runs)`;
+}
+
+/** Median share of all virus damage (core + wall + stations) that the Relay Stations soaked, over the runs where they were hit (— if none were). */
+function stationSoak(rs: RunResult[]): string {
+  const hit = rs.filter((r) => r.stationTaken > 0);
+  if (hit.length === 0) return '—';
+  const share = hit.map((r) => r.stationTaken / (r.stationTaken + r.wallTaken + r.coreTaken));
+  return `${pct(quantile(share, 0.5) * 100, 100)} (${hit.length}/${rs.length} runs)`;
+}
+
 const rows = combos.map((c) => {
   const rs = by[c.key]!;
   const waves = rs.map((r) => r.wave);
@@ -190,6 +206,12 @@ const md = [
   `## B8: Bastion and Minefield (spec 2026-10-15, phase 2) — report only`,
   '',
   `Turret + mine share, greedy + greedy-pick: ${structShare(g)}. The tag:overload / tag:chain / tag:firewall bots: ${structShare(by['greedy + tag:overload']!)} / ${structShare(by['greedy + tag:chain']!)} / ${structShare(by['greedy + tag:firewall']!)}.`,
+  '',
+  `## B9: Relay Stations (spec 2026-10-15, phase 3) — report only`,
+  '',
+  `Station share of Energy income (stations / kills + stations; target ≤ 20 % at III), greedy + greedy-pick: ${stationShare(g)}. The tag:mining / tag:firewall bots: ${stationShare(by['greedy + tag:mining']!)} / ${stationShare(by['greedy + tag:firewall']!)}.`,
+  '',
+  `Decoy share (damage the stations soaked / core + wall + stations), greedy + greedy-pick: ${stationSoak(g)}. The tag:mining / tag:firewall bots: ${stationSoak(by['greedy + tag:mining']!)} / ${stationSoak(by['greedy + tag:firewall']!)}.`,
   '',
   '## All policies',
   '',

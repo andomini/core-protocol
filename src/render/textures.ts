@@ -195,7 +195,7 @@ function core(scene: Phaser.Scene, data: GameData): void {
   });
 }
 
-/** Firewall structures (white, tinted per kind at draw time): a Bastion turret, barrel along +x, and a mine. */
+/** Firewall structures (white, tinted per kind at draw time): a Bastion turret, barrel along +x, a mine and a Relay Station. */
 function structures(scene: Phaser.Scene, data: GameData): void {
   const S = 48;
   const c = S / 2;
@@ -209,6 +209,19 @@ function structures(scene: Phaser.Scene, data: GameData): void {
     ctx.moveTo(c, c);
     ctx.lineTo(c + muzzle, c);
     ctx.stroke();
+  });
+  // Relay Station: a hexagon with a thin ring around it (the image turns slowly, so the ring's gaps drift).
+  bake(scene, 'st_station', S, S, (ctx) => {
+    neon(ctx, regular(c, c, 10, 6, 0), WHITE, 1.6, 0.3, 7);
+    ctx.strokeStyle = rgba(WHITE, 0.7);
+    ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(c, c, 16, (i * Math.PI * 2) / 3, (i * Math.PI * 2) / 3 + 1.4);
+      ctx.stroke();
+    }
+    ctx.fillStyle = rgba(WHITE, 1);
+    ctx.fillRect(c - 1.5, c - 1.5, 3, 3);
   });
   bake(scene, 'st_mine', S, S, (ctx) => {
     neon(ctx, [[c, c - 7], [c + 6, c], [c, c + 7], [c - 6, c]], WHITE, 1.4, 0.25, 6);

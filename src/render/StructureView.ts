@@ -3,7 +3,8 @@
 // is a faint dashed ghost. Hits flash the arc; below half HP the arc cracks. Redrawn only when something it shows changed. A wall whose link is broken
 // (dormant) is not drawn at all. Reads the World only; the arc of slot i is the sector `sectorOf` gives, because
 // both use SECTOR_DIRS. Bastion turrets (yellow hexes with a barrel that turns to the last target) and Minefield
-// mines (purple diamonds that pulse slowly and blink fast when a virus is near) are pooled images keyed by id.
+// mines (purple diamonds that pulse slowly and blink fast when a virus is near) are pooled images keyed by id, and
+// so are the Relay Stations (green hexagons in a slow orbit ring, an HP bar once hurt; rubble marks while destroyed).
 
 import Phaser from 'phaser';
 import type { GameData } from '../sim/data';
@@ -41,8 +42,16 @@ export class StructureView {
   /** The folded Bastion turret count and whether a Minefield is built, cached with the wall fold. */
   private turretCount = 0;
   private mineBuilt = false;
+  private stationCount = 0;
   private readonly turretPool: ImagePool;
   private readonly minePool: ImagePool;
+  private readonly stationPool: ImagePool;
+  /** Station HP bars and rubble marks, redrawn each frame while any is shown. */
+  private readonly marks: Phaser.GameObjects.Graphics;
+  private marksShown = false;
+  private readonly stationLive = new Map<number, Phaser.GameObjects.Image>();
+  /** Time until which station `id` flashes from a hit. */
+  private readonly stationFlash = new Map<number, number>();
   private readonly turretLive = new Map<number, Phaser.GameObjects.Image>();
   private readonly mineLive = new Map<number, Phaser.GameObjects.Image>();
   private readonly stamp = new Map<number, number>();
@@ -58,6 +67,13 @@ export class StructureView {
     this.g = scene.add.graphics().setDepth(DEPTH.wall).setBlendMode(Phaser.BlendModes.ADD);
     this.turretPool = new ImagePool(scene, 'st_turret', DEPTH.turret);
     this.minePool = new ImagePool(scene, 'st_mine', DEPTH.mine);
+    this.stationPool = new ImagePool(scene, 'st_station', DEPTH.turret);
+    this.marks = scene.add.graphics().setDepth(DEPTH.turret + 0.1);
+  }
+
+  /** A virus hit station `sid`. */
+  hitStation(sid: number, now: number): void {
+    this.stationFlash.set(sid, now + FLASH_MS);
   }
 
   /** Turret `sid` fired toward screen point (tx, ty). */
@@ -79,8 +95,13 @@ export class StructureView {
     this.g.clear();
     for (const img of this.turretLive.values()) this.turretPool.release(img);
     for (const img of this.mineLive.values()) this.minePool.release(img);
+    for (const img of this.stationLive.values()) this.stationPool.release(img);
     this.turretLive.clear();
     this.mineLive.clear();
+    this.stationLive.clear();
+    this.stationFlash.clear();
+    this.marks.clear();
+    this.marksShown = false;
     this.stamp.clear();
     this.aim.clear();
   }
@@ -93,18 +114,38 @@ export class StructureView {
       this.built = some && fusionStructure(w, this.data, 'wall') !== undefined;
       this.turretCount = some ? fusionStructure(w, this.data, 'turret')?.count ?? 0 : 0;
       this.mineBuilt = w.structs.length > 0 && fusionStructure(w, this.data, 'mine') !== undefined;
+      this.stationCount = some ? fusionStructure(w, this.data, 'station')?.count ?? 0 : 0;
     }
     this.drawWall(w, now);
     this.drawPieces(w, now);
   }
 
-  /** Turrets and mines: pooled images, positioned every frame (turrets turn and flash, mines pulse). */
+  /** Turrets, mines and stations: pooled images, positioned every frame (turrets turn and flash, mines pulse, stations orbit). */
   private drawPieces(w: World, now: number): void {
     this.frame += 1;
     const { cx, cy, scale } = this.L;
     const k = ps(scale);
+    if (this.marksShown) this.marks.clear();
+    this.marksShown = false;
     for (const s of w.structs) {
-      if (s.kind === 'turret' && s.slot < this.turretCount) {
+      if (s.kind === 'station' && s.slot < this.stationCount) {
+        const [sx, sy] = [cx + s.x * scale, cy + s.y * scale];
+        if (s.share > 0 && w.tick >= s.downUntilTick) {
+          let img = this.stationLive.get(s.id);
+          if (img === undefined) {
+            img = this.stationPool.get();
+            this.stationLive.set(s.id, img);
+          }
+          this.stamp.set(s.id, this.frame);
+          const flash = now < (this.stationFlash.get(s.id) ?? 0);
+          img.setPosition(sx, sy).setScale(k).setAlpha(0.85).setRotation(now / 2400 + s.id);
+          if (flash) img.setTintFill(WHITE);
+          else img.setTint(TAG_COLOR.mining);
+          if (s.share < 1) this.stationBar(sx, sy, scale, s.share);
+        } else {
+          this.rubble(sx, sy, scale);
+        }
+      } else if (s.kind === 'turret' && s.slot < this.turretCount) {
         let img = this.turretLive.get(s.id);
         if (img === undefined) {
           img = this.turretPool.get().setTint(TAG_COLOR.overload);
@@ -142,7 +183,35 @@ export class StructureView {
       this.mineLive.delete(id);
       this.stamp.delete(id);
     }
+    for (const [id, img] of this.stationLive) {
+      if (this.stamp.get(id) === this.frame) continue;
+      this.stationPool.release(img);
+      this.stationLive.delete(id);
+      this.stamp.delete(id);
+    }
+    if (this.stationFlash.size > 16) for (const id of this.stationFlash.keys()) if (!this.stationLive.has(id)) this.stationFlash.delete(id);
     if (this.aim.size > 16) for (const id of this.aim.keys()) if (!this.turretLive.has(id)) this.aim.delete(id);
+  }
+
+  /** A thin HP bar under a hurt station, as long as the HP that is left. */
+  private stationBar(x: number, y: number, scale: number, share: number): void {
+    const w = Math.max(14, 30 * scale);
+    const top = y + 20 * scale;
+    this.marksShown = true;
+    this.marks.fillStyle(0x000000, 0.5).fillRect(x - w / 2 - 1, top - 1, w + 2, 5);
+    this.marks.fillStyle(mixColor(CRIMSON, TAG_COLOR.mining, share), 0.95).fillRect(x - w / 2, top, w * share, 3);
+  }
+
+  /** What is left of a destroyed station: a few dim broken strokes where it stood. */
+  private rubble(x: number, y: number, scale: number): void {
+    const r = Math.max(5, 11 * scale);
+    this.marksShown = true;
+    this.marks.lineStyle(1.5, TAG_COLOR.mining, 0.28);
+    for (let i = 0; i < 4; i++) {
+      const a = 0.7 + i * 1.6;
+      const [c, s] = [Math.cos(a), Math.sin(a)];
+      this.marks.beginPath().moveTo(x + c * r * 0.4, y + s * r * 0.4).lineTo(x + c * r, y + s * r).strokePath();
+    }
   }
 
   /** A living virus within MINE_ALERT triggers of (x, y). */

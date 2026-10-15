@@ -96,8 +96,8 @@ export class SetTooltip {
     this.shownTag = tag;
   }
 
-  /** Shows a fusion's card: `links n / next` and its I / II / III ladder (each row: the links it needs). */
-  showFusion(key: string, links: number, reached: number, anchor: Rect): void {
+  /** Shows a fusion's card: `links n / next` and its I / II / III ladder (each row: the links it needs); `mod` adds a header (a structure's live line). */
+  showFusion(key: string, links: number, reached: number, anchor: Rect, mod?: ModuleInfo): void {
     const [ta, tb] = fusionTags(key);
     const ladder = fusionLadder(this.data, key, reached);
     const next = ladder.find((r) => !r.on);
@@ -111,6 +111,7 @@ export class SetTooltip {
         foot: this.fusionFoot,
       },
       anchor,
+      mod,
     );
     this.shownKey = key;
   }

@@ -82,7 +82,17 @@ function structureLine(data: GameData, e: Extract<Effect, { type: 'structure' }>
     }
     if (e.arcs !== undefined && e.arcs > 0) parts.push('blasts arc lightning');
   } else {
-    parts.push(`${e.kind} structure`);
+    const head = e.count !== undefined ? `${e.count} station${e.count === 1 ? '' : 's'}` : '';
+    if (e.energy !== undefined) {
+      // The first tier spells the rules out once; later tiers only say what they add.
+      const hp = e.hpFrac !== undefined ? ` (${pct(e.hpFrac)} Health)` : '';
+      const rebuild = e.rebuildWaves !== undefined ? `, rebuilds after ${e.rebuildWaves} waves` : '';
+      parts.push(`${head} inside the wall${hp}: +${round(e.energy)} Energy × wave growth at wave end while standing; viruses attack it${rebuild}`);
+    } else if (head !== '') {
+      parts.push(head);
+    }
+    if (e.streakStep !== undefined) parts.push(`survival streak: +${pct(e.streakStep)}/wave${e.streakMax !== undefined ? `, up to ×${round(e.streakMax)}` : ''}`);
+    if (e.bits !== undefined && e.bits > 0) parts.push(`each station also pays ${round(e.bits)} Bits × wave growth`);
   }
   const line = parts.join(e.kind === 'mine' ? ': ' : '; ');
   return line.charAt(0).toUpperCase() + line.slice(1);

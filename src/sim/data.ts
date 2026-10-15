@@ -251,6 +251,17 @@ export interface StructuresDef {
     /** Mines are planted this far outside the wall ring: [near, far] (world px). */
     band: [number, number];
   };
+  station: {
+    /**
+     * Stations stand this far inside the wall ring (world px). With the crystal at its biggest ring (maxRingCap) its corner
+     * cells reach out to about the station's distance: a drawn overlap only, nothing collides with the crystal.
+     */
+    inset: number;
+    /** Hit radius: a melee virus stops this far (plus its own radius) from the centre. */
+    radius: number;
+    /** A virus not held by a wall segment turns to the nearest station within this distance. */
+    aggro: number;
+  };
 }
 
 export interface GameData {
@@ -398,6 +409,10 @@ export function validateData(d: GameData): GameData {
   positive(d.structures.mine?.trigger, 'structures.mine.trigger');
   const band = d.structures.mine.band;
   check(Array.isArray(band) && band.length === 2 && Number.isFinite(band[0]) && Number.isFinite(band[1]) && band[0] >= 0 && band[0] <= band[1], 'structures.mine.band must be [near, far] with 0 ≤ near ≤ far');
+  positive(d.structures.station?.inset, 'structures.station.inset');
+  positive(d.structures.station.radius, 'structures.station.radius');
+  positive(d.structures.station.aggro, 'structures.station.aggro');
+  check(sw.minRadius - d.structures.station.inset > d.core.radius, 'structures.station.inset must keep stations outside the core');
   const mu = d.mutations;
   check(Number.isInteger(mu?.startWave) && mu.startWave >= 1, 'mutations.startWave must be a whole number ≥ 1');
   check(Number.isInteger(mu.every) && mu.every >= 1, 'mutations.every must be a whole number ≥ 1');

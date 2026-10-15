@@ -46,6 +46,18 @@ export class DamageNumbers {
     n.t.setText(formatNum(value)).setColor(crit ? '#ffe14a' : '#e8fbff').setPosition(n.x, n.y).setAlpha(1).setScale(1.25).setVisible(true);
   }
 
+  /** A labelled pop-up (station income): not throttled, since a wave end pays all stations at once. */
+  popup(x: number, y: number, label: string, color: string): void {
+    const now = this.scene.time.now;
+    const n = this.items[this.next]!;
+    this.next = (this.next + 1) % POOL;
+    n.x = x;
+    n.y = y - 14;
+    n.born = now;
+    n.live = true;
+    n.t.setText(label).setColor(color).setPosition(n.x, n.y).setAlpha(1).setScale(1.25).setVisible(true);
+  }
+
   update(now: number): void {
     for (const n of this.items) {
       if (!n.live) continue;

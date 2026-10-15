@@ -8,9 +8,10 @@ import { fusionStructure, grantPerk, perkProfile } from '../src/sim/perks';
 import { restore, snapshot } from '../src/sim/snapshot';
 import { createWorld, worldStats, type Struct, type World } from '../src/sim/state';
 import type { SimEvent } from '../src/sim/events';
-import { breakSegment, prepareStructures, wallMaxHp, wallRadius } from '../src/sim/structures';
+import { powInt } from '../src/sim/num';
+import { breakSegment, destroyStation, prepareStructures, wallMaxHp, wallRadius } from '../src/sim/structures';
 import { combatStats } from '../src/sim/step';
-import { spawnEnemy } from '../src/sim/waves';
+import { scaleForWave, spawnEnemy } from '../src/sim/waves';
 import { farMul, terrainFor } from '../src/sim/territory';
 import { effectLine } from '../src/ui/perkText';
 import { ofType, type StatBases, stepN, testData } from './helpers';
@@ -644,3 +645,337 @@ describe('structures: phase 2 data and text', () => {
     expect(mine).toMatch(/2 mines per wave \(up to 6\)/);
   });
 });
+
+const MINING = 'mining+firewall';
+const stations = (w: World) => w.structs.filter((s) => s.kind === 'station');
+/** Steps one tick at a time until wave `n` has just started; returns every event on the way. */
+function untilWave(w: World, data: ReturnType<typeof testData>, n: number): SimEvent[] {
+  const all: SimEvent[] = [];
+  while (w.wave < n) all.push(...stepN(w, data, 1));
+  return all;
+}
+/** A world point `d` from station `s`, straight out from the core. */
+const beyond = (s: Struct, d: number): [number, number] => {
+  const r = Math.hypot(s.x, s.y);
+  return [s.x + (s.x / r) * d, s.y + (s.y / r) * d];
+};
+
+describe('structures: Relay Stations (spec 2026-10-15, phase 3)', () => {
+  it('one mining-firewall link builds a station on the first wave tick, inside the ring; three stand 120° apart', () => {
+    const { data, w } = setupFusion(MINING, 1);
+    expect(stations(w)).toHaveLength(1);
+    expect(Math.hypot(stations(w)[0]!.x, stations(w)[0]!.y)).toBeCloseTo(w.wallR - data.structures.station.inset, 6);
+    const ids = stations(w).map((s) => s.id);
+    stepN(w, data, 5);
+    expect(stations(w).map((s) => s.id)).toEqual(ids);
+    const big = setupFusion(MINING, 5);
+    const [a, b, c] = stations(big.w);
+    expect(stations(big.w)).toHaveLength(3);
+    const d = (p: Struct, q: Struct) => Math.hypot(p.x - q.x, p.y - q.y);
+    expect(d(a!, b!)).toBeCloseTo(d(b!, c!), 6);
+    expect(d(b!, c!)).toBeCloseTo(d(a!, c!), 6);
+    // No link, no station.
+    expect(setupFusion(MINING, 1).w.structs.every((s) => s.kind === 'station')).toBe(true);
+    const none = setup(0);
+    expect(none.w.structs).toEqual([]);
+  });
+
+  it('a melee virus within aggro turns to the station, stops at its radius, hits it (Defense, Thorns); the core is left alone', () => {
+    const { data, w } = setupFusion(MINING, 1, { damage: 0, health: 1000, defense: 0, thorns: 0.5 });
+    const s = stations(w)[0]!;
+    const [x, y] = beyond(s, 50);
+    const e = spawnEnemy(w, data, 'basic', x, y, []);
+    const events = stepN(w, data, 120);
+    const hits = ofType(events, 'structHit');
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits[0]).toMatchObject({ kind: 'station', sid: s.id, enemyId: e.id, ranged: false });
+    expect(Math.hypot(e.x - s.x, e.y - s.y)).toBeCloseTo(data.structures.station.radius + e.radius, 6);
+    expect(ofType(events, 'coreHit')).toHaveLength(0);
+    expect(w.core.hp).toBe(1000);
+    expect(s.share).toBeCloseTo(1 - (hits.length * e.damage) / (1000 * 0.1), 6);
+    expect(e.hp).toBeLessThan(e.maxHp);
+  });
+
+  it('a virus outside the aggro distance walks on to the core', () => {
+    const { data, w } = setupFusion(MINING, 1, { damage: 0, health: 1000, defense: 0 });
+    const s = stations(w)[0]!;
+    const [x, y] = onAxis(3, w.wallR); // the far side of the ring from a station at 30°
+    expect(Math.hypot(x - s.x, y - s.y)).toBeGreaterThan(data.structures.station.aggro);
+    const e = spawnEnemy(w, data, 'basic', x, y, []);
+    const before = Math.hypot(e.x, e.y);
+    const events = stepN(w, data, 60);
+    expect(ofType(events, 'structHit')).toHaveLength(0);
+    expect(Math.hypot(e.x, e.y)).toBeLessThan(before);
+    expect(e.y).toBeCloseTo(0, 6);
+  });
+
+  it('a ranged virus within aggro shoots the station', () => {
+    const { data, w } = setupFusion(MINING, 1, { damage: 0, health: 1000, defense: 0 });
+    const s = stations(w)[0]!;
+    const [x, y] = beyond(s, 60);
+    const e = spawnEnemy(w, data, 'ranged', x, y, []);
+    const hits = ofType(stepN(w, data, 60), 'structHit');
+    expect(hits[0]).toMatchObject({ kind: 'station', sid: s.id, enemyId: e.id, ranged: true });
+    expect(w.core.hp).toBe(1000);
+  });
+
+  it('an intact wall segment holds the virus first: the station behind it is untouched; a broken one lets it through to the station', () => {
+    const { data, w } = setupFusion(MINING, 1, { damage: 0, health: 1000, defense: 0 });
+    w.fusionTiers['cryo+firewall'] = 1;
+    stepN(w, data, 1);
+    const s = stations(w)[0]!;
+    const sector = sectorOf(s.x, s.y);
+    const [x, y] = onAxis(sector, w.wallR + 14 + 3);
+    spawnEnemy(w, data, 'basic', x, y, []);
+    const first = ofType(stepN(w, data, 60), 'structHit');
+    expect(first.length).toBeGreaterThan(0);
+    expect(first.every((h) => h.kind === 'wall')).toBe(true);
+    expect(s.share).toBe(1);
+    // Break the segment: the next virus at the same spot walks through the gap and is drawn to the station.
+    seg(w, sector).share = 0;
+    seg(w, sector).downUntilTick = w.tick + 100000;
+    const [x2, y2] = beyond(s, 40);
+    spawnEnemy(w, data, 'basic', x2, y2, []);
+    const second = ofType(stepN(w, data, 120), 'structHit');
+    expect(second.some((h) => h.kind === 'station' && h.sid === s.id)).toBe(true);
+  });
+
+  it('a station that runs out of HP is destroyed: rubble, streak lost, and the virus walks on to the core', () => {
+    const { data, w } = setupFusion(MINING, 1, { damage: 0, health: 10, defense: 0, thorns: 0 });
+    const s = stations(w)[0]!;
+    s.streak = 4;
+    const [x, y] = beyond(s, 50);
+    spawnEnemy(w, data, 'basic', x, y, []);
+    const events = stepN(w, data, 400);
+    const down = ofType(events, 'structDown');
+    expect(down[0]).toMatchObject({ kind: 'station', sid: s.id });
+    expect(s.share).toBe(0);
+    expect(s.streak).toBe(0);
+    expect(s.downUntilTick).toBeGreaterThan(w.tick);
+    expect(ofType(events, 'coreHit').length).toBeGreaterThan(0);
+  });
+
+  it('rubble lasts rebuildWaves full waves: lost mid wave 1, still down through wave 4, rebuilt at the start of wave 5', () => {
+    const { data, w } = setupFusion(MINING, 1, { health: 1000 });
+    stepN(w, data, 10);
+    const prof = perkProfile(w, data);
+    const events: SimEvent[] = [];
+    destroyStation(w, data, prof, stations(w)[0]!, events);
+    expect(ofType(events, 'structDown')).toHaveLength(1);
+    untilWave(w, data, 4);
+    expect(stations(w)[0]!.share).toBe(0);
+    const up = untilWave(w, data, 5);
+    expect(stations(w)[0]!.share).toBe(1);
+    expect(ofType(up, 'structUp').map((e) => e.sid)).toEqual([stations(w)[0]!.id]);
+  });
+
+  it('a damaged station that still stands is repaired at the next wave start', () => {
+    const { data, w } = setupFusion(MINING, 1, { health: 1000 });
+    stations(w)[0]!.share = 0.4;
+    untilWave(w, data, 2);
+    expect(stations(w)[0]!.share).toBe(1);
+  });
+
+  it('pays Energy at wave end: energy × energyGrowth^wave × Energy bonus, once, and nothing before', () => {
+    const { data, w } = setupFusion(MINING, 1);
+    const st = worldStats(w, data);
+    const expected = 12 * powInt(data.config.energyGrowth, 1) * (1 + st.energyBonus);
+    const mid = stepN(w, data, 700);
+    expect(ofType(mid, 'stationPay')).toHaveLength(0);
+    const pay = ofType(stepN(w, data, 100), 'stationPay');
+    expect(pay).toHaveLength(1);
+    expect(pay[0]!.energy).toBeCloseTo(expected, 9);
+    expect(pay[0]!.bits).toBe(0);
+    expect(pay[0]).toMatchObject({ sid: stations(w)[0]!.id });
+    expect(stations(w)[0]!.powered).toBe(0);
+    expect(stations(w)[0]!.streak).toBe(1);
+  });
+
+  it('pays only for the share of the wave it was powered: unlinking for half the wave halves the pay', () => {
+    const full = setupFusion(MINING, 1);
+    const fullPay = ofType(stepN(full.w, full.data, 800), 'stationPay')[0]!.energy;
+    const { data, w } = setupFusion(MINING, 1);
+    w.fusionTiers[MINING] = 0;
+    stepN(w, data, 389);
+    w.fusionTiers[MINING] = 1;
+    const pay = ofType(stepN(w, data, 410), 'stationPay');
+    expect(pay).toHaveLength(1);
+    expect(pay[0]!.energy / fullPay).toBeGreaterThan(0.49);
+    expect(pay[0]!.energy / fullPay).toBeLessThan(0.52);
+  });
+
+  it('a destroyed station pays nothing that wave', () => {
+    const { data, w } = setupFusion(MINING, 1);
+    destroyStation(w, data, perkProfile(w, data), stations(w)[0]!, []);
+    expect(ofType(stepN(w, data, 800), 'stationPay')).toHaveLength(0);
+  });
+
+  it('streak (tier II): +10 % per wave survived up to the cap; a loss resets it', () => {
+    const { data, w } = setupFusion(MINING, 3);
+    const st = worldStats(w, data);
+    const base = (wave: number) => 12 * powInt(data.config.energyGrowth, wave) * (1 + st.energyBonus);
+    const one = ofType(untilWaveEnd(w, data, 1), 'stationPay');
+    expect(one.map((e) => e.energy)).toEqual([base(1), base(1)].map((v) => expect.closeTo(v, 9)));
+    const two = ofType(untilWaveEnd(w, data, 2), 'stationPay');
+    expect(two[0]!.energy).toBeCloseTo(base(2) * 1.1, 9);
+    for (const s of stations(w)) s.streak = 50;
+    const capped = ofType(untilWaveEnd(w, data, 3), 'stationPay');
+    expect(capped[0]!.energy).toBeCloseTo(base(3) * 2, 9);
+    // Tier I has no streak at all.
+    const t1 = setupFusion(MINING, 1);
+    stations(t1.w)[0]!.streak = 50;
+    expect(ofType(untilWaveEnd(t1.w, t1.data, 1), 'stationPay')[0]!.energy).toBeCloseTo(12 * 1.02 * (1 + worldStats(t1.w, t1.data).energyBonus), 9);
+  });
+
+  it('tier III also pays Bits like a kill: scaleForWave of the tier', () => {
+    const { data, w } = setupFusion(MINING, 5);
+    const pay = ofType(untilWaveEnd(w, data, 1), 'stationPay');
+    expect(pay).toHaveLength(3);
+    expect(pay[0]!.bits).toBeCloseTo(scaleForWave(4, data.tiers[0]!.bitsMul, data.config.bitsGrowth, 1), 9);
+    expect(w.bits).toBeCloseTo(3 * pay[0]!.bits, 6);
+  });
+
+  it('unlinking: a damaged station counts as destroyed (rubble, streak 0), an undamaged one returns intact', () => {
+    const { data, w } = setupFusion(MINING, 3);
+    const [a, b] = stations(w);
+    a!.share = 0.5;
+    a!.streak = 3;
+    b!.streak = 3;
+    w.fusionTiers[MINING] = 0;
+    const events = stepN(w, data, 2);
+    expect(ofType(events, 'structDown').map((e) => e.sid)).toEqual([a!.id]);
+    expect(a!.share).toBe(0);
+    expect(a!.downUntilTick).toBeGreaterThan(w.tick);
+    expect([a!.streak, b!.streak]).toEqual([0, 0]);
+    expect(b!.share).toBe(1);
+    // Dormant: a virus next to it is left to walk to the core.
+    const [x, y] = beyond(b!, 40);
+    spawnEnemy(w, data, 'basic', x, y, []);
+    expect(ofType(stepN(w, data, 30), 'structHit')).toHaveLength(0);
+    w.fusionTiers[MINING] = 3;
+    stepN(w, data, 1);
+    expect(b!.share).toBe(1);
+    expect(a!.share).toBe(0);
+    expect(stations(w)).toHaveLength(2);
+  });
+
+  it('a tier drop that lowers the count leaves the surplus station inert', () => {
+    const { data, w } = setupFusion(MINING, 5);
+    w.fusionTiers[MINING] = 3;
+    const third = stations(w)[2]!;
+    const [x, y] = beyond(third, 40);
+    spawnEnemy(w, data, 'basic', x, y, []);
+    const hits = ofType(stepN(w, data, 30), 'structHit');
+    expect(hits.every((h) => h.sid !== third.id)).toBe(true);
+  });
+
+  it('revive rebuilds a station in rubble (event only while linked) and repairs a damaged one', () => {
+    const { data, w } = setupFusion(MINING, 3, { health: 100 });
+    const [a, b] = stations(w);
+    destroyStation(w, data, perkProfile(w, data), a!, []);
+    b!.share = 0.3;
+    w.dead = true;
+    const events: SimEvent[] = [];
+    applyCommands(w, data, [{ type: 'revive' }], events);
+    expect([a!.share, b!.share]).toEqual([1, 1]);
+    expect(a!.downUntilTick).toBe(0);
+    expect(ofType(events, 'structUp').map((e) => e.sid)).toEqual([a!.id]);
+  });
+
+  it('a snapshot with damaged, down and streaking stations restores exactly and keeps stepping identically', () => {
+    const { data, w } = setupFusion(MINING, 5);
+    const [a, b, c] = stations(w);
+    a!.share = 0.5;
+    a!.powered = 7;
+    b!.streak = 2;
+    destroyStation(w, data, perkProfile(w, data), c!, []);
+    stepN(w, data, 40);
+    const back = restore(snapshot(w));
+    expect(back.structs).toEqual(w.structs);
+    stepN(back, data, 900);
+    stepN(w, data, 900);
+    expect(hashWorld(back)).toBe(hashWorld(w));
+  });
+
+  it('Insurance is gone: tier I still carries the 5 % shield, no run-end Bits rule is left on the ladder', () => {
+    const { data, w } = setupFusion(MINING, 5);
+    expect(perkProfile(w, data).shieldFrac).toBeCloseTo(0.05, 9);
+    expect(perkProfile(w, data).rules.runEndBits).toBe(1);
+    expect(data.sets.fusions[MINING]!.name).toBe('Relay Stations');
+  });
+
+  it('with several stations in aggro a virus goes for the nearest, whatever its id', () => {
+    // A wide aggro so one virus reaches two stations (they stand ~357 px apart).
+    const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 }, structures: { station: { aggro: 400 } } }, { damage: 0, regen: 0, thorns: 0, health: 1000, defense: 0 });
+    for (const [near, far] of [[1, 0], [0, 1]] as const) {
+      const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
+      w.fusionTiers[MINING] = 3;
+      stepN(w, data, 1);
+      const [a, b] = [stations(w)[near]!, stations(w)[far]!];
+      expect(a.id).not.toBe(b.id);
+      const k = 40 / Math.hypot(b.x - a.x, b.y - a.y);
+      spawnEnemy(w, data, 'basic', a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, []);
+      const hits = ofType(stepN(w, data, 200), 'structHit');
+      expect(hits.length).toBeGreaterThan(0);
+      expect(hits.every((h) => h.sid === a.id)).toBe(true);
+    }
+  });
+
+  it('a ranged virus parked at its standoff from the core is drawn to a station within aggro, not the core', () => {
+    const { data, w } = setupFusion(MINING, 1, { damage: 0, health: 1000, defense: 0 });
+    const s = stations(w)[0]!;
+    const standoff = data.enemies.ranged.standoff;
+    const r = Math.hypot(s.x, s.y);
+    spawnEnemy(w, data, 'ranged', (s.x / r) * standoff, (s.y / r) * standoff, []);
+    expect(standoff - r).toBeLessThanOrEqual(data.structures.station.aggro);
+    const events = stepN(w, data, 240);
+    expect(ofType(events, 'structHit')[0]).toMatchObject({ kind: 'station', sid: s.id, ranged: true });
+    expect(ofType(events, 'coreHit')).toHaveLength(0);
+  });
+
+  it('the rewarded boost multiplies the station pay like any wave Energy', () => {
+    const plain = setupFusion(MINING, 1);
+    const base = ofType(untilWaveEnd(plain.w, plain.data, 1), 'stationPay')[0]!.energy;
+    const { data, w } = setupFusion(MINING, 1);
+    w.boost = { from: 1, until: 3 };
+    const boosted = ofType(untilWaveEnd(w, data, 1), 'stationPay')[0]!.energy;
+    expect(data.perks.boost.energyMul).toBeGreaterThan(1);
+    expect(boosted).toBeCloseTo(base * data.perks.boost.energyMul, 9);
+  });
+
+  it('the ladder is validated: a station without its required fields at tier I is rejected', () => {
+    const { data } = setup(0);
+    const bad = structuredClone(data.sets);
+    bad.fusions[MINING]!.tiers['1'] = [{ type: 'structure', kind: 'station', count: 1, hpFrac: 0.1 }];
+    expect(() => validateSets(bad)).toThrow(/energy/);
+    const lowered = structuredClone(data.sets);
+    lowered.fusions[MINING]!.tiers['3'] = [{ type: 'structure', kind: 'station', count: 0 }];
+    expect(() => validateSets(lowered)).toThrow(/count/);
+    // A streak step without a cap would leave the multiplier at 1 for ever.
+    const uncapped = structuredClone(data.sets);
+    uncapped.fusions[MINING]!.tiers['3'] = [{ type: 'structure', kind: 'station', count: 2, streakStep: 0.1 }];
+    expect(() => validateSets(uncapped)).toThrow(/streakMax/);
+  });
+
+  it('effectLine reads each station ladder step as what it adds', () => {
+    const { data } = setup(0);
+    expect(effectLine(data, { type: 'structure', kind: 'station', count: 1, hpFrac: 0.1, energy: 12, rebuildWaves: 3, bits: 0 })).toBe(
+      '1 station inside the wall (10% Health): +12 Energy × wave growth at wave end while standing; viruses attack it, rebuilds after 3 waves',
+    );
+    expect(effectLine(data, { type: 'structure', kind: 'station', count: 2, streakStep: 0.1, streakMax: 2 })).toBe(
+      '2 stations; survival streak: +10%/wave, up to ×2',
+    );
+    expect(effectLine(data, { type: 'structure', kind: 'station', count: 3, bits: 4 })).toBe('3 stations; each station also pays 4 Bits × wave growth');
+  });
+});
+
+/** Steps until the end of wave `n` (its waveEnd event) and returns every event on the way. */
+function untilWaveEnd(w: World, data: ReturnType<typeof testData>, n: number): SimEvent[] {
+  const all: SimEvent[] = [];
+  for (let guard = 0; guard < 5000; guard++) {
+    const ev = stepN(w, data, 1);
+    all.push(...ev);
+    if (ev.some((e) => e.type === 'waveEnd' && e.wave === n)) return all;
+  }
+  throw new Error('wave did not end');
+}

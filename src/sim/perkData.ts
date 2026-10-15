@@ -23,7 +23,7 @@ export type Rules = Record<RuleId, number>;
 export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'structure'] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
-/** Battlefield structures a firewall fusion builds (spec 2026-10-15). The wall, turret and mine are simulated; the station is phase 3. */
+/** Battlefield structures a firewall fusion builds (spec 2026-10-15). The wall, turret, mine and station are simulated. */
 export const STRUCTURE_KINDS = ['wall', 'turret', 'mine', 'station'] as const;
 export type StructureKind = (typeof STRUCTURE_KINDS)[number];
 
@@ -387,6 +387,8 @@ function validateStructureLadder(key: string, f: FusionDef, tiers: readonly numb
       }
       if (first) for (const [k, d] of Object.entries(STRUCTURE_FIELDS[e.kind])) check(!d.req || acc[k] !== undefined, `${at}: ${e.kind} is missing "${k}" at its first tier`);
       if (acc.perWave !== undefined && acc.max !== undefined) check(acc.perWave <= acc.max, `${at}: mine perWave must be ≤ max`);
+      // The streak multiplier is min(streakMax, 1 + streakStep × streak): without a cap ≥ 1 it would silently stay at 1.
+      if (acc.streakStep !== undefined) check(acc.streakMax !== undefined && acc.streakMax >= 1, `${at}: station streakStep needs a streakMax ≥ 1`);
     });
   }
 }

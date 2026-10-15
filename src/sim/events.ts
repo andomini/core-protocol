@@ -29,6 +29,8 @@ export type SimEvent =
   | { type: 'mineBlast'; x: number; y: number; r: number }
   /** A destroyed structure was rebuilt (regrow, wave-start repair, revive). */
   | { type: 'structUp'; sid: number; kind: StructureKind; x: number; y: number }
+  /** A Relay Station paid out at a wave end (after the powered share, streak and bonuses). */
+  | { type: 'stationPay'; sid: number; x: number; y: number; energy: number; bits: number }
   /** A protocol offer opened (or was rerolled). */
   | { type: 'pickOffer'; pick: number; wave: number; offer: string[]; rerolls: number }
   /** `module`: the crystal hex of the perk's module ([q, r]), when it has one. */

@@ -4,23 +4,24 @@
 import Phaser from 'phaser';
 import type { Command } from '../../sim/commands';
 import { DEFAULT_DATA, type EnemyKind, type GameData, STAT_IDS, type StatId } from '../../sim/data';
-import type { RunOptions } from '../../sim/state';
+import type { RunOptions, Struct, World } from '../../sim/state';
 import type { SimEvent } from '../../sim/events';
 import { DeathOverlay } from '../../ui/DeathOverlay';
 import { labEffects } from '../../meta/labs';
 import { DEFAULT_META_DATA } from '../../meta/metaData';
 import { buildRunOptions } from '../../meta/runOptions';
 import { enterPick } from '../../sim/perks';
-import { fusionKeys, TAGS, type Tag } from '../../sim/perkData';
+import { fusionKeys, type StructureKind, TAGS, type Tag } from '../../sim/perkData';
 import { showToast } from '../../portal/toast';
 import { clusterCounts, freeSlots, fusionLinkCounts, fusionLinks, moduleCluster, needsPlacement, sectorTags } from '../../sim/crystal';
 import { arenaRadius } from '../../sim/territory';
-import { formatPrice } from '../../ui/format';
+import { formatNum, formatPrice } from '../../ui/format';
 import { CrystalEditor } from '../../ui/CrystalEditor';
 import { GenomeStrip } from '../../ui/GenomeStrip';
 import { CrystalView } from '../CrystalView';
 import { StructureView } from '../StructureView';
 import { worldStats } from '../../sim/state';
+import { sectorOf } from '../../sim/hex';
 import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleRun } from '../../meta/runEnd';
 import { Button } from '../../ui/kit';
@@ -33,7 +34,7 @@ import { Hints } from '../../ui/Hints';
 import { quoteFor } from '../../sim/commands';
 import { ProtocolsPanel } from '../../ui/ProtocolsPanel';
 import { SetChips } from '../../ui/SetChips';
-import { nextFusionTier, tagCounts } from '../../sim/perks';
+import { fusionStructure, nextFusionTier, tagCounts } from '../../sim/perks';
 import type { RewardedPlacement } from '../../portal/ads';
 import { Hud } from '../../ui/Hud';
 import { text } from '../../ui/kit';
@@ -55,6 +56,8 @@ import { autoBuy, autoBuyOn, autoPick, loadAutoStats, saveAutoStats, setAutoBuy,
 
 const OFFLINE_TOAST_MS = 2600;
 const MAX_TICKS_PER_FRAME = 4;
+/** `modTipAt` for a structure tooltip is this + the structure id (a crystal module is its index, below it). */
+const STRUCT_TIP = 1_000_000;
 const ENEMY_TEX: Record<EnemyKind, string> = { basic: 'e_basic', fast: 'e_fast', tank: 'e_tank', ranged: 'e_ranged', boss: 'e_boss_head' };
 const STRESS_KINDS: EnemyKind[] = ['basic', 'fast', 'tank', 'ranged'];
 /** Player-facing speeds; up to maxSpeed only through dev hooks / stress (labs unlock ×3–×5 in M4). */
@@ -227,8 +230,8 @@ export class BattleScene extends Phaser.Scene {
     this.crystal = new CrystalView(this, this.L, this.gd);
     this.modTip = new SetTooltip(this, this.L, this.gd, DEPTH.overlay - 2);
     // Mouse hover (or a tap on touch) over a crystal module: what it does and whether its cluster counts.
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.hoverModule(p.worldX, p.worldY));
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.hoverModule(p.worldX, p.worldY));
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.hoverModule(p.worldX, p.worldY, false));
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.hoverModule(p.worldX, p.worldY, true));
     this.genome = new GenomeStrip(this, this.L);
     this.editor = new CrystalEditor(this, this.L, this.gd, this.crystal, () => this.session.world, {
       place: (slot) => this.placeModule(slot),
@@ -444,7 +447,7 @@ export class BattleScene extends Phaser.Scene {
     this.tiersBeforeEditor = { sets: { ...w.setTiers }, fusions: { ...w.fusionTiers } };
     this.paused = true;
     this.life.hold('editor', true);
-    if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6);
+    if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
     this.bannerUntil = 0;
     this.banner.setVisible(false);
     this.bannerSub.setVisible(false);
@@ -515,12 +518,79 @@ export class BattleScene extends Phaser.Scene {
     this.paused = this.pausedBeforePanel;
   }
 
-  private hoverModule(x: number, y: number): void {
+  /** The wall segment, turret or station under a screen point (the mines are too small to tap), or null. Only what the fusion ladders build right now. */
+  private structureAt(w: World, x: number, y: number): Struct | null {
+    if (w.wallR <= 0 || w.structs.length === 0) return null;
+    const L = this.L;
+    const dx = (x - L.cx) / L.scale;
+    const dy = (y - L.cy) / L.scale;
+    const d = Math.hypot(dx, dy);
+    const sd = this.gd.structures;
+    let best: Struct | null = null;
+    let bestD = Infinity;
+    for (const s of w.structs) {
+      if (s.share <= 0 || s.kind === 'mine') continue;
+      const v = fusionStructure(w, this.gd, s.kind);
+      if (v === undefined || s.slot >= (s.kind === 'wall' ? sd.wall.segments : v.count ?? 0)) continue;
+      // A wall segment is the ring band of its sector; turrets and stations are discs.
+      if (s.kind === 'wall') {
+        if (Math.abs(d - w.wallR) <= 16 && sectorOf(dx, dy) === s.slot && Math.abs(d - w.wallR) < bestD) [best, bestD] = [s, Math.abs(d - w.wallR)];
+        continue;
+      }
+      const hit = (s.kind === 'station' ? sd.station.radius : 14) + 10;
+      const dist = Math.hypot(dx - s.x, dy - s.y);
+      if (dist <= hit && dist < bestD) [best, bestD] = [s, dist];
+    }
+    return best;
+  }
+
+  /** The fusion that builds structures of `kind`. */
+  private fusionOfKind(kind: StructureKind): string | undefined {
+    return Object.keys(this.gd.sets.fusions).find((k) => Object.values(this.gd.sets.fusions[k]!.tiers).some((es) => es.some((e) => e.type === 'structure' && e.kind === kind)));
+  }
+
+  /** Tap on a structure: its fusion's ladder plus a live line (segment HP, station streak). */
+  private showStructureTip(w: World, s: Struct): void {
+    const key = this.fusionOfKind(s.kind);
+    if (key === undefined) return;
+    const pct = Math.round(s.share * 100);
+    let live: string;
+    if (s.kind === 'wall') live = `Segment ${s.slot + 1}: ${pct} %`;
+    else if (s.kind === 'turret') live = `Turret ${s.slot + 1}`;
+    else {
+      const v = fusionStructure(w, this.gd, 'station');
+      const mul = v?.streakStep !== undefined ? Math.min(v.streakMax ?? 1, 1 + v.streakStep * s.streak) : 1;
+      live = `Station ${s.slot + 1}: streak ×${(Math.round(mul * 100) / 100).toString()}${s.share < 1 ? `, HP ${pct} %` : ''}`;
+    }
+    const L = this.L;
+    const [sx, sy] = [L.cx + s.x * L.scale, L.cy + s.y * L.scale];
+    const R = 20 * L.scale;
+    const tier = w.fusionTiers[key] ?? 0;
+    const links = fusionLinkCounts(w, this.gd)[key] ?? 0;
+    this.modTip.showFusion(key, links, tier, { x: sx - R, y: sy - R, w: R * 2, h: R * 2 }, {
+      title: this.gd.sets.fusions[key]!.name,
+      titleColor: TEXT,
+      lines: [live],
+      note: '',
+      noteColor: TEXT,
+    });
+  }
+
+  private hoverModule(x: number, y: number, tap = false): void {
     const w = this.session.world;
     const blocked = w.dead || w.phase === 'pick' || this.editor.visible || this.protocols.visible || this.statsPanel.visible;
-    const i = blocked ? -1 : this.crystal.moduleAt(w, x, y);
+    const mod = blocked ? -1 : this.crystal.moduleAt(w, x, y);
+    // A structure is only opened by a tap and stays up until the next tap elsewhere (or a module hover).
+    const struct = mod < 0 && tap && !blocked ? this.structureAt(w, x, y) : null;
+    if (mod < 0 && !tap && !blocked && this.modTipAt >= STRUCT_TIP) return;
+    const i = struct !== null ? STRUCT_TIP + struct.id : mod;
     if (i === this.modTipAt) return;
     this.modTipAt = i;
+    if (struct !== null) {
+      this.crystal.hover = [];
+      this.showStructureTip(w, struct);
+      return;
+    }
     if (i < 0) {
       this.modTip.hide();
       this.crystal.hover = [];
@@ -897,7 +967,8 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
       case 'structHit': {
-        this.structures.hit(this.session.world.structs.find((x) => x.id === e.sid)?.slot ?? -1, now);
+        if (e.kind === 'station') this.structures.hitStation(e.sid, now);
+        else this.structures.hit(this.session.world.structs.find((x) => x.id === e.sid)?.slot ?? -1, now);
         const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
         this.fx.hit(sx, sy);
         if (e.ranged && this.screenOf(e.enemyId)) this.fx.beam(this.tmp.x, this.tmp.y, sx, sy, 0);
@@ -905,7 +976,7 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
       case 'structDown':
-        this.fx.pulse(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 34 * L.scale, TAG_COLOR.cryo);
+        this.fx.pulse(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 34 * L.scale, e.kind === 'station' ? TAG_COLOR.mining : TAG_COLOR.cryo);
         sfx.play('kill');
         this.shake(120, 0.003);
         break;
@@ -931,8 +1002,15 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
       case 'structUp':
-        this.fx.waveRing(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 26 * L.scale, TAG_COLOR.cryo);
+        this.fx.waveRing(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 26 * L.scale, e.kind === 'station' ? TAG_COLOR.mining : TAG_COLOR.cryo);
         break;
+      case 'stationPay': {
+        // A green "+E" rising from the station (Bits ride along when a tier pays them).
+        const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
+        this.fx.pulse(sx, sy, 22 * L.scale, TAG_COLOR.mining);
+        this.numbers.popup(sx, sy, `+${formatNum(e.energy)} E${e.bits > 0 ? ` +${formatNum(e.bits)} B` : ''}`, TAG_CSS.mining);
+        break;
+      }
       case 'waveStart':
         this.saveRun();
         if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? 4 : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
@@ -1110,7 +1188,7 @@ export class BattleScene extends Phaser.Scene {
     // Overlays cover the chips without a pointerout: drop a hover card left open under them.
     if (w.dead || w.phase === 'pick' || this.editor.visible || this.protocols.visible || this.statsPanel.visible) {
       this.chips.hideTip();
-      if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6);
+      if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
     }
     this.numbers.update(time);
     this.updateHints(time);

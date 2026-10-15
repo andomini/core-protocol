@@ -1,4 +1,5 @@
 import { ENEMY_KINDS, type EnemyKind, type GameData } from './data';
+import { pauseTicks, scaleForWave, waveTicks } from './economy';
 import type { SimEvent } from './events';
 import { clampValue, powInt } from './num';
 import { mutate } from './mutations';
@@ -6,19 +7,14 @@ import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile, tagC
 import { chance, createStream, nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
 import type { CoreStats } from './stats';
-import { prepareStructures, wallRadius } from './structures';
+import { payStations, prepareStructures, wallRadius } from './structures';
 import { arenaRadius, arenaSpeed, crystalRing, terrainFor } from './territory';
+
+// Wave timing and wave scaling live in economy.ts (structures.ts needs them too); re-exported for the existing importers.
+export { pauseTicks, scaleForWave, waveTicks };
 
 /** Regular spawns are spread over this share of the wave, so the last ones still arrive in time. */
 const SPAWN_WINDOW = 0.8;
-
-export function waveTicks(data: GameData): number {
-  return data.config.waveSeconds * data.config.tickHz;
-}
-
-export function pauseTicks(data: GameData): number {
-  return data.config.pauseSeconds * data.config.tickHz;
-}
 
 export function enemiesPerWave(data: GameData, wave: number): number {
   const c = data.config;
@@ -29,11 +25,6 @@ export function enemiesPerWave(data: GameData, wave: number): number {
 export function isBossWave(data: GameData, wave: number, tier = 1): boolean {
   const every = data.tiers[tier - 1]?.bossEvery ?? data.config.bossEvery;
   return wave > 0 && wave % every === 0;
-}
-
-/** base × mul × growth^(wave − 1), clamped to MAX_VALUE. */
-export function scaleForWave(base: number, mul: number, growth: number, wave: number): number {
-  return clampValue(base * mul * powInt(growth, wave - 1));
 }
 
 function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
@@ -211,6 +202,7 @@ export function advanceWave(w: World, data: GameData, st: CoreStats, prof: PerkP
     w.phaseTick = 0;
     events.push({ type: 'waveEnd', wave: w.wave });
     payWaveRewards(w, data, st, events);
+    payStations(w, data, st, prof, events);
     if (w.protocols && w.wave >= 2 && isPickWave(data, w.wave, w.lab.pickEvery)) enterPick(w, data, events);
   }
 }

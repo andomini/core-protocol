@@ -212,16 +212,17 @@
       }
     },
     "mining+firewall": {
-      "name": "Insurance",
+      "name": "Relay Stations",
       "tiers": {
         "1": [
+          { "type": "structure", "kind": "station", "count": 1, "hpFrac": 0.1, "energy": 12, "rebuildWaves": 3, "bits": 0 },
           { "type": "shield", "frac": 0.05 }
         ],
         "3": [
-          { "type": "ruleChange", "rule": "runEndBits", "op": "mul", "value": 1.15 }
+          { "type": "structure", "kind": "station", "count": 2, "streakStep": 0.1, "streakMax": 2 }
         ],
         "5": [
-          { "type": "shield", "frac": 0.15 }
+          { "type": "structure", "kind": "station", "count": 3, "bits": 4 }
         ]
       }
     }

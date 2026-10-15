@@ -1,15 +1,17 @@
 // Firewall-fusion structures (spec 2026-10-15): buildings on the battlefield that follow the fusion tiers
 // live. The Ice Wall: six segments on a ring around the core (one per 60° sector); viruses hit the first thing
 // in their way, a standing segment, else the core. The Bastion: indestructible turrets on the ring. The
-// Minefield: mines planted each wave just outside it. Everything is derived from the perk profile every tick;
-// the World only stores each entry's HP share, cooldown and down timer.
+// Minefield: mines planted each wave just outside it. The Relay Stations: decoys inside the ring that pay Energy
+// at every wave end while they stand. Everything is derived from the perk profile every tick; the World only
+// stores each entry's HP share, cooldown, streak and down timer.
 
 import { ENEMY_KINDS, type GameData } from './data';
+import { pauseTicks, scaleForWave, waveTicks } from './economy';
 import type { SimEvent } from './events';
 import { SECTOR_DIRS, sectorOf } from './hex';
-import { clampValue, dsqrt } from './num';
+import { clampValue, dsqrt, powInt } from './num';
 import type { StructureKind, StructureValues } from './perkData';
-import type { PerkProfile } from './perks';
+import { boostActive, type PerkProfile } from './perks';
 import { hitEnemy, lightning } from './projectiles';
 import { createStream, nextInt } from './rng';
 import { gridFor } from './spatial';
@@ -24,6 +26,8 @@ export interface StructGeometry {
   segments: number;
   /** Turrets in play (same condition: they stand on the ring). */
   turrets: number;
+  /** Relay Stations in play (inside the ring, same condition). */
+  stations: number;
 }
 
 /** Where the structures are right now. `built` = the folded values per kind (the profile's, or fusionStructure() per kind for the renderer). */
@@ -33,11 +37,43 @@ export function structureGeometry(w: World, data: GameData, built: Partial<Recor
     wallR: w.wallR,
     segments: built.wall !== undefined && ring ? data.structures.wall.segments : 0,
     turrets: built.turret !== undefined && ring ? built.turret.count ?? 0 : 0,
+    stations: built.station !== undefined && ring ? built.station.count ?? 0 : 0,
   };
 }
 
 /** The sector turret `slot` stands in: a fixed order, so a turret never moves when the Bastion grows (1 → 0; 2 → 0, 2; 3 → 0, 2, 4). */
 export const TURRET_SECTORS: readonly number[] = [0, 2, 4, 1, 3, 5];
+
+/** The sector pair a station stands between (its midpoint): a fixed order, 120° apart for up to three (0|1, 2|3, 4|5, then 1|2, 3|4, 5|0). */
+export const STATION_SECTORS: readonly number[] = [0, 2, 4, 1, 3, 5];
+
+/** Fills `out` with the standing stations in id order (empty when none); returns how many. */
+export function activeStations(w: World, prof: PerkProfile, out: Struct[]): number {
+  out.length = 0;
+  const station = prof.structures.station;
+  if (station === undefined || w.wallR <= 0) return 0;
+  const count = station.count ?? 0;
+  for (const s of w.structs) {
+    if (s.kind === 'station' && s.slot < count && s.share > 0 && w.tick >= s.downUntilTick) out.push(s);
+  }
+  return out.length;
+}
+
+/** Ticks of one full wave plus its pause: the unit rubble is counted in. */
+function cycleTicks(data: GameData): number {
+  return waveTicks(data) + pauseTicks(data);
+}
+
+/** The most waves any ladder tier makes a destroyed station wait (an unlinked station has no profile entry to ask). */
+function maxRebuildWaves(data: GameData): number {
+  let n = 1;
+  for (const f of Object.values(data.sets.fusions)) {
+    for (const effects of Object.values(f.tiers)) {
+      for (const e of effects) if (e.type === 'structure' && e.kind === 'station') n = Math.max(n, e.rebuildWaves ?? 0);
+    }
+  }
+  return n;
+}
 
 /**
  * The wall ring for `wave`: grows with the crystal's rings past their base, never beyond Range minus a
@@ -49,10 +85,12 @@ export function wallRadius(data: GameData, st: CoreStats, wave: number): number 
   return clampValue(Math.max(data.core.radius + 1, Math.min(st.range - c.rangeMargin, grown)));
 }
 
-/** Max HP of one wall segment: a share of the core's Health, so every Health purchase upgrades the wall. */
-export function wallMaxHp(st: CoreStats, wall: StructureValues): number {
-  return clampValue(st.health * (wall.hpFrac ?? 0));
+/** Max HP of a wall segment or station: a share of the core's Health, so every Health purchase upgrades it. */
+export function structMaxHp(st: CoreStats, v: StructureValues): number {
+  return clampValue(st.health * (v.hpFrac ?? 0));
 }
+
+export const wallMaxHp = structMaxHp;
 
 /** Fills `out[sector]` with the standing wall segment of that sector (null = none); true when any stands. */
 export function activeWalls(w: World, prof: PerkProfile, out: (Struct | null)[]): boolean {
@@ -72,6 +110,7 @@ const have: boolean[] = [false, false, false, false, false, false];
 const haveTurret: boolean[] = [false, false, false, false, false, false];
 const standing: (Struct | null)[] = [null, null, null, null, null, null];
 const contested: boolean[] = [false, false, false, false, false, false];
+const haveStation: boolean[] = [false, false, false, false, false, false];
 const nearS: Enemy[] = [];
 /** Wall segments that broke this tick with Shatter on; updateStructures resolves them against the fresh grid. */
 const shatterX: number[] = [];
@@ -90,10 +129,11 @@ export function clearShatter(): void {
  */
 export function syncStructures(w: World, data: GameData, prof: PerkProfile, events: SimEvent[]): void {
   const geo = structureGeometry(w, data, prof.structures);
-  for (let i = 0; i < 6; i++) have[i] = haveTurret[i] = false;
+  for (let i = 0; i < 6; i++) have[i] = haveTurret[i] = haveStation[i] = false;
   for (const s of w.structs) {
     if (s.kind === 'wall') have[s.slot] = true;
     else if (s.kind === 'turret') haveTurret[s.slot] = true;
+    else if (s.kind === 'station') haveStation[s.slot] = true;
   }
   for (let i = 0; i < geo.segments; i++) {
     if (!have[i]) w.structs.push({ id: w.nextId++, kind: 'wall', slot: i, x: 0, y: 0, share: 1, cd: 0, streak: 0, powered: 0, downUntilTick: 0 });
@@ -101,7 +141,34 @@ export function syncStructures(w: World, data: GameData, prof: PerkProfile, even
   for (let i = 0; i < geo.turrets; i++) {
     if (!haveTurret[i]) w.structs.push({ id: w.nextId++, kind: 'turret', slot: i, x: 0, y: 0, share: 1, cd: 0, streak: 0, powered: 0, downUntilTick: 0 });
   }
+  for (let i = 0; i < geo.stations; i++) {
+    if (!haveStation[i]) w.structs.push({ id: w.nextId++, kind: 'station', slot: i, x: 0, y: 0, share: 1, cd: 0, streak: 0, powered: 0, downUntilTick: 0 });
+  }
+  const standingNow = w.phase === 'wave';
   for (const s of w.structs) {
+    if (s.kind === 'station') {
+      // Between the two sectors of its pair, `inset` inside the ring (the midpoint of two unit vectors, renormalised: no trig).
+      const a = SECTOR_DIRS[STATION_SECTORS[s.slot]!]!;
+      const b = SECTOR_DIRS[(STATION_SECTORS[s.slot]! + 1) % 6]!;
+      const mx = a[0] + b[0];
+      const my = a[1] + b[1];
+      const len = dsqrt(mx * mx + my * my);
+      const r = w.wallR - data.structures.station.inset;
+      s.x = (mx / len) * r;
+      s.y = (my / len) * r;
+      if (s.slot >= geo.stations) {
+        // Unlinked: inert, the streak is gone, and anything damaged counts as destroyed (it waits out the rubble time).
+        s.streak = 0;
+        if (s.share > 0 && s.share < 1) {
+          s.share = 0;
+          s.downUntilTick = w.tick + maxRebuildWaves(data) * cycleTicks(data);
+          events.push({ type: 'structDown', sid: s.id, kind: s.kind, x: s.x, y: s.y });
+        }
+      } else if (standingNow && s.share > 0 && w.tick >= s.downUntilTick) {
+        s.powered += 1;
+      }
+      continue;
+    }
     if (s.kind === 'turret') {
       // Render cache only (a dormant or surplus turret is not drawn or fired).
       const dir = SECTOR_DIRS[TURRET_SECTORS[s.slot]!]!;
@@ -135,6 +202,7 @@ export function prepareStructures(w: World, data: GameData, st: CoreStats, prof:
   w.wallR = wallRadius(data, st, w.wave);
   syncStructures(w, data, prof, events);
   plantMines(w, data, prof);
+  repairStations(w, prof, events);
   if (prof.structures.wall === undefined) return;
   const reach = w.wallR + data.structures.wall.contestDist;
   for (let i = 0; i < 6; i++) contested[i] = false;
@@ -159,6 +227,24 @@ export function prepareStructures(w: World, data: GameData, st: CoreStats, prof:
     const dir = d > 0 ? [e.x / d, e.y / d] : SECTOR_DIRS[0]!;
     e.x = dir[0]! * out;
     e.y = dir[1]! * out;
+  }
+}
+
+/**
+ * Wave start: every station whose rubble time is over stands again at full HP (a damaged one is repaired too),
+ * and this wave's powered count starts fresh, with the first tick credited to the stations that stand.
+ */
+function repairStations(w: World, prof: PerkProfile, events: SimEvent[]): void {
+  const count = prof.structures.station?.count ?? 0;
+  for (const s of w.structs) {
+    if (s.kind !== 'station') continue;
+    if (s.share < 1 && w.tick >= s.downUntilTick) {
+      const wasDown = s.share <= 0;
+      s.share = 1;
+      s.downUntilTick = 0;
+      if (wasDown && s.slot < count) events.push({ type: 'structUp', sid: s.id, kind: s.kind, x: s.x, y: s.y });
+    }
+    s.powered = s.slot < count && s.share > 0 && w.tick >= s.downUntilTick ? 1 : 0;
   }
 }
 
@@ -192,6 +278,40 @@ export function breakSegment(w: World, data: GameData, prof: PerkProfile, s: Str
   if (wall.shatterRadius !== undefined) {
     shatterX.push(s.x);
     shatterY.push(s.y);
+  }
+}
+
+/** A station's HP ran out: rubble for `rebuildWaves` full waves, and its streak is lost. */
+export function destroyStation(w: World, data: GameData, prof: PerkProfile, s: Struct, events: SimEvent[]): void {
+  s.share = 0;
+  s.streak = 0;
+  s.downUntilTick = w.tick + Math.round((prof.structures.station?.rebuildWaves ?? maxRebuildWaves(data)) * cycleTicks(data));
+  events.push({ type: 'structDown', sid: s.id, kind: s.kind, x: s.x, y: s.y });
+}
+
+/**
+ * Wave end (after the wave rewards): every station still standing pays Energy that grows with the wave like a
+ * nest's, scaled by the share of the wave it was powered, its survival streak and the usual Energy bonuses, and
+ * from tier III Bits as a kill would. Survivors extend their streak; powered counts restart.
+ */
+export function payStations(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
+  const station = prof.structures.station;
+  const ticks = waveTicks(data);
+  const boost = boostActive(w) ? data.perks.boost.energyMul : 1;
+  for (const s of w.structs) {
+    if (s.kind !== 'station') continue;
+    const standing = station !== undefined && s.slot < (station.count ?? 0) && s.share > 0 && w.tick >= s.downUntilTick;
+    if (standing) {
+      const powered = Math.min(1, s.powered / ticks);
+      const streak = station.streakStep !== undefined ? Math.min(station.streakMax ?? 1, 1 + station.streakStep * s.streak) : 1;
+      const energy = clampValue((station.energy ?? 0) * powInt(data.config.energyGrowth, w.wave) * (1 + st.energyBonus) * boost * prof.geneEnergy * streak * powered);
+      const bits = clampValue(scaleForWave(station.bits ?? 0, data.tiers[w.tier - 1]!.bitsMul, data.config.bitsGrowth, w.wave) * powered);
+      w.energy = clampValue(w.energy + energy);
+      w.bits = clampValue(w.bits + bits);
+      s.streak += 1;
+      if (energy > 0 || bits > 0) events.push({ type: 'stationPay', sid: s.id, x: s.x, y: s.y, energy, bits });
+    }
+    s.powered = 0;
   }
 }
 

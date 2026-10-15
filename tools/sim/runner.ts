@@ -36,6 +36,8 @@ export interface RunResult {
   keys: number;
   /** Virus damage that landed on wall segments / on the core over the run (after Defense; structHit / coreHit events, blocked hits excluded). */
   wallTaken: number;
+  /** Virus damage that landed on Relay Stations (structHit events of kind station): the decoy share beside wallTaken / coreTaken. */
+  stationTaken: number;
   coreTaken: number;
   /** Kills (and their Energy) whose killing hit came from a Bastion turret / a Minefield blast, against all kills and all kill Energy. */
   turretKills: number;
@@ -43,6 +45,8 @@ export interface RunResult {
   turretEnergy: number;
   mineEnergy: number;
   killEnergy: number;
+  /** Energy the Relay Stations paid over the run (stationPay events), against all kill Energy above. */
+  stationEnergy: number;
 }
 
 export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, maxMinutes = 60, pick: PickPolicyName = 'greedy-pick'): RunResult {
@@ -61,12 +65,14 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
   let spent = 0;
   let buys = 0;
   let wallTaken = 0;
+  let stationTaken = 0;
   let coreTaken = 0;
   let turretKills = 0;
   let mineKills = 0;
   let turretEnergy = 0;
   let mineEnergy = 0;
   let killEnergy = 0;
+  let stationEnergy = 0;
   // The source of each enemy's latest hit this tick: the kill event follows its killing hit.
   const lastHit = new Map<number, string>();
   while (!w.dead && w.tick < maxTicks) {
@@ -89,7 +95,10 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
           mineKills += 1;
           mineEnergy += e.energy;
         }
-      } else if (e.type === 'structHit') wallTaken += e.damage;
+      } else if (e.type === 'structHit') {
+        if (e.kind === 'wall') wallTaken += e.damage;
+        else if (e.kind === 'station') stationTaken += e.damage;
+      } else if (e.type === 'stationPay') stationEnergy += e.energy;
       else if (e.type === 'coreHit') coreTaken += e.blocked ? 0 : e.damage;
       else if (e.type === 'waveStart') waveStartS[e.wave] = w.tick / data.config.tickHz;
       else if (e.type === 'setTier') {
@@ -117,12 +126,14 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
     set2Tag,
     keys: w.keys,
     wallTaken,
+    stationTaken,
     coreTaken,
     turretKills,
     mineKills,
     turretEnergy,
     mineEnergy,
     killEnergy,
+    stationEnergy,
     seed: opts.seed,
     wave: w.wave,
     dead: w.dead,

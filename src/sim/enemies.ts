@@ -5,7 +5,7 @@ import type { PerkProfile } from './perks';
 import { hitEnemy, inAura, isFrozen } from './projectiles';
 import { sectorOf } from './hex';
 import type { Enemy, Struct, World } from './state';
-import { activeWalls, breakSegment, clearShatter, wallMaxHp } from './structures';
+import { activeStations, activeWalls, breakSegment, clearShatter, destroyStation, structMaxHp } from './structures';
 import { groundAt } from './territory';
 import type { CoreStats } from './stats';
 
@@ -14,6 +14,27 @@ const ARRIVE_EPS = 1e-6;
 
 /** Scratch: the standing wall segment per sector for this tick (null = open). */
 const walls: (Struct | null)[] = [null, null, null, null, null, null];
+/** Scratch: the standing stations for this tick, in id order. */
+const stations: Struct[] = [];
+
+/** The nearest standing station within `aggro2` (squared distance) of `e`; ties go to the lower id (the list is in id order). */
+function nearestStation(e: Enemy, n: number, aggro2: number): Struct | null {
+  let best: Struct | null = null;
+  let bestD2 = aggro2;
+  for (let i = 0; i < n; i++) {
+    const s = stations[i]!;
+    // One destroyed earlier this tick is no target any more.
+    if (s.share <= 0) continue;
+    const dx = e.x - s.x;
+    const dy = e.y - s.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 <= bestD2 && (best === null || d2 < bestD2)) {
+      best = s;
+      bestD2 = d2;
+    }
+  }
+  return best;
+}
 
 /**
  * Movement slow for `e` this tick: on-hit slow, Cold Aura (each + the 🧊 bonus) and a 🧊 cell, shrunk by
@@ -60,17 +81,20 @@ function reflectThorns(w: World, data: GameData, st: CoreStats, prof: PerkProfil
   }
 }
 
-/** A virus hits the wall segment in its way: Defense applies, Thorns answer, and at 0 HP the segment goes down. */
-function attackWall(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e: Enemy, seg: Struct, walls: (Struct | null)[], events: SimEvent[]): void {
+/** A virus hits the structure in its way (wall segment or station): Defense applies, Thorns answer, and at 0 HP it goes down. */
+function attackStruct(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e: Enemy, target: Struct, events: SimEvent[]): void {
   const ranged = e.standoff > 0;
   const damage = clampValue(e.damage * (1 - st.defense));
-  const maxHp = wallMaxHp(st, prof.structures.wall!);
-  seg.share = maxHp > 0 ? Math.max(0, seg.share - damage / maxHp) : 0;
-  events.push({ type: 'structHit', sid: seg.id, kind: seg.kind, x: seg.x, y: seg.y, enemyId: e.id, damage, ranged });
+  const maxHp = structMaxHp(st, prof.structures[target.kind]!);
+  target.share = maxHp > 0 ? Math.max(0, target.share - damage / maxHp) : 0;
+  events.push({ type: 'structHit', sid: target.id, kind: target.kind, x: target.x, y: target.y, enemyId: e.id, damage, ranged });
   reflectThorns(w, data, st, prof, e, damage, ranged, events);
-  if (seg.share <= 0) {
-    walls[seg.slot] = null;
-    breakSegment(w, data, prof, seg, events);
+  if (target.share > 0) return;
+  if (target.kind === 'station') {
+    destroyStation(w, data, prof, target, events);
+  } else {
+    walls[target.slot] = null;
+    breakSegment(w, data, prof, target, events);
   }
 }
 
@@ -79,7 +103,8 @@ function attackWall(w: World, data: GameData, st: CoreStats, prof: PerkProfile, 
  * movement and the attack cadence; frozen enemies neither move nor attack. Defense % reduces the damage taken; an immunity window blocks
  * it; Thorns reflect a share of melee damage (and ranged with the 🛡 4-set) back at the attacker.
  * Structures (spec 2026-10-15): a virus outside a standing wall segment of its sector stops at the wall and hits it
- * instead of the core (ranged too); once the segment is down, or for a virus already inside the ring, the way is open.
+ * instead of the core (ranged too); once the segment is down, or for a virus already inside the ring, the way is open:
+ * it turns to the nearest standing Relay Station within `station.aggro`, else walks on to the core.
  */
 export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
   const perTick = 1 / data.config.tickHz;
@@ -89,6 +114,8 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
   const regen = (data.tiers[w.tier - 1]?.enemyRegen ?? 0) * perTick;
   clearShatter();
   const anyWall = activeWalls(w, prof, walls);
+  const nStations = activeStations(w, prof, stations);
+  const aggro2 = data.structures.station.aggro * data.structures.station.aggro;
   for (const e of w.enemies) {
     if (e.hp <= 0) continue;
     if (regen > 0 && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * regen);
@@ -99,27 +126,35 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
     const seg = anyWall ? walls[sectorOf(e.x, e.y)] ?? null : null;
     const wallStop = w.wallR + e.radius;
     const atWall = seg !== null && dist >= wallStop - ARRIVE_EPS;
+    // Not held by a wall: a station close enough draws the virus off its way to the core.
+    const station = !atWall && nStations > 0 ? nearestStation(e, nStations, aggro2) : null;
+    // The point the virus walks to ((0, 0) = the core) and how far from it it stops.
+    const tx = station !== null ? station.x : 0;
+    const ty = station !== null ? station.y : 0;
+    const tdist = station !== null ? dsqrt((e.x - tx) * (e.x - tx) + (e.y - ty) * (e.y - ty)) : dist;
     const stopAt = atWall
       ? Math.max(e.standoff, wallStop)
-      : e.standoff > 0
-        ? Math.max(e.standoff, reach + e.radius)
-        : reach + e.radius;
+      : station !== null
+        ? Math.max(e.standoff, data.structures.station.radius + e.radius)
+        : e.standoff > 0
+          ? Math.max(e.standoff, reach + e.radius)
+          : reach + e.radius;
     const ground = groundAt(w, data, prof.shape.sectors, e.x, e.y);
     // Cryo slows both movement and the attack cadence (a slowed virus also hits less often).
     const pace = 1 - slowFactor(w, e, st, prof, data);
-    if (dist > stopAt + ARRIVE_EPS) {
-      // dist > stopAt > 0 here, so the division is safe. Infected ground speeds viruses up.
+    if (tdist > stopAt + ARRIVE_EPS) {
+      // tdist > stopAt > 0 here, so the division is safe. Infected ground speeds viruses up.
       const haste = ground === 'infected' ? data.territory.infectedSpeed : 1;
-      const move = Math.min(e.speed * pace * haste * prof.rules.enemySpeed * perTick, dist - stopAt);
-      e.x -= (e.x / dist) * move;
-      e.y -= (e.y / dist) * move;
+      const move = Math.min(e.speed * pace * haste * prof.rules.enemySpeed * perTick, tdist - stopAt);
+      e.x -= ((e.x - tx) / tdist) * move;
+      e.y -= ((e.y - ty) / tdist) * move;
       continue;
     }
     e.attackCd -= pace;
     if (e.attackCd <= 0) {
       e.attackCd += e.attackIntervalTicks;
-      if (atWall) {
-        attackWall(w, data, st, prof, e, seg, walls, events);
+      if (atWall || station !== null) {
+        attackStruct(w, data, st, prof, e, (atWall ? seg : station)!, events);
         continue;
       }
       const ranged = e.standoff > 0;
