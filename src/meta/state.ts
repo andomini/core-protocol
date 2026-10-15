@@ -50,6 +50,8 @@ export interface MetaState {
   /** Lifetime statistics (The Tower-style Stats). */
   lifetime: LifetimeStats;
   settings: Settings;
+  /** Workshop price version the levels were paid at (meta.json workshop.refund; 0 = a fresh save, 1 = before refunds). */
+  economy: number;
 }
 
 export function defaultMeta(): MetaState {
@@ -74,6 +76,7 @@ export function defaultMeta(): MetaState {
     starterGiven: false,
     lifetime: emptyLifetime(),
     settings: { sound: true, music: true, reduceMotion: false, autoPlace: false, editorSeen: false, autoStats: [] },
+    economy: 0,
   };
 }
 
@@ -115,6 +118,7 @@ export function validateMeta(raw: unknown, data: GameData, md: MetaData): MetaSt
   m.freePackAt = num(raw.freePackAt, 0);
   m.starterGiven = raw.starterGiven === true;
   m.lifetime = validateLifetime(raw.lifetime);
+  m.economy = int(raw.economy, 1);
   if (isObj(raw.settings)) {
     m.settings.sound = raw.settings.sound !== false;
     m.settings.music = raw.settings.music !== false;

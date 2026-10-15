@@ -8,6 +8,7 @@ import type { RunOptions, World } from '../sim/state';
 import type { MetaData } from './metaData';
 import { type RunStats, validateRunStats } from './runStats';
 import { defaultMeta, type MetaState, validateMeta } from './state';
+import { migrateEconomy } from './workshop';
 
 export const META_KEY = 'core-protocol.meta';
 export const RUN_KEY = 'core-protocol.run';
@@ -29,6 +30,8 @@ export interface SavedRun {
 export class MetaStore {
   meta: MetaState;
   readonly status: LoadStatus;
+  /** Bits refunded on load for workshop levels bought at older, higher prices (Home announces it once). */
+  refunded = 0;
   private readonly slot: SaveSlot<MetaState>;
   private readonly runSlot: SaveSlot<RunSave | null>;
 
@@ -42,6 +45,7 @@ export class MetaStore {
     const r = this.slot.load();
     this.meta = r.data;
     this.status = r.status;
+    this.refunded = migrateEconomy(this.meta, md);
     this.runSlot = new SaveSlot<RunSave | null>(kv, {
       key: RUN_KEY,
       version: 1,

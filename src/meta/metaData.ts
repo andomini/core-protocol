@@ -12,6 +12,15 @@ export interface Mastery {
   mul: Partial<Record<StatId, number>>;
 }
 
+/**
+ * Price-change refund: a save made before `economy` paid its workshop levels on the `from` curve; on load
+ * it gets back what it paid above today's prices (MetaState.economy records the version).
+ */
+export interface Refund {
+  economy: number;
+  from: PriceCurve;
+}
+
 export type LabEffect =
   | { type: 'speed'; value: number }
   | { type: 'unlock'; stat: StatId }
@@ -36,7 +45,7 @@ export interface LabNode {
 }
 
 export interface MetaData {
-  workshop: { default: PriceCurve; stats: Partial<Record<StatId, PriceCurve>>; mastery?: Mastery };
+  workshop: { default: PriceCurve; stats: Partial<Record<StatId, PriceCurve>>; mastery?: Mastery; refund?: Refund };
   /** Wave to reach on tier t to unlock tier t+1: `unlockWaves[t-1]`, else `unlockWave`. */
   tiers: { unlockWave: number; unlockWaves?: number[] };
   milestones: { waves: number[]; keys: number[]; keysPerTier: number };
@@ -66,6 +75,11 @@ export function validateMetaData(d: MetaData): MetaData {
       check((STAT_IDS as readonly string[]).includes(id), `workshop.mastery.mul.${id} is not a stat`);
       check(typeof x === 'number' && Number.isFinite(x) && x >= 1, `workshop.mastery.mul.${id} must be ≥ 1`);
     }
+  }
+  const rf = d.workshop.refund;
+  if (rf !== undefined) {
+    check(Number.isInteger(rf.economy) && rf.economy >= 2, 'workshop.refund.economy must be a whole number ≥ 2');
+    curve(rf.from, 'workshop.refund.from');
   }
   check(d.milestones.waves.length === d.milestones.keys.length, 'milestones.waves and keys differ in length');
   const ids = new Set<string>();

@@ -1,7 +1,7 @@
 // Workshop (spec §3.1): permanent stat levels bought with Bits; they set each stat's starting value in a run.
 import type { GameData, StatId } from '../sim/data';
 import { labEffects } from './labs';
-import type { MetaData } from './metaData';
+import type { MetaData, PriceCurve } from './metaData';
 import type { MetaState } from './state';
 
 export function workshopCurve(md: MetaData, stat: StatId) {
@@ -10,10 +10,31 @@ export function workshopCurve(md: MetaData, stat: StatId) {
 
 /** Bits for the next workshop level of `stat` (geometric; past the curve's knee it grows by growthAfter). */
 export function workshopCost(m: MetaState, md: MetaData, stat: StatId): number {
-  const c = workshopCurve(md, stat);
-  const lvl = m.workshop[stat] ?? 0;
+  return curveCost(workshopCurve(md, stat), m.workshop[stat] ?? 0);
+}
+
+function curveCost(c: PriceCurve, lvl: number): number {
   if (c.knee === undefined || lvl <= c.knee) return Math.ceil(c.base * Math.pow(c.growth, lvl));
   return Math.ceil(c.base * Math.pow(c.growth, c.knee) * Math.pow(c.growthAfter!, lvl - c.knee));
+}
+
+/**
+ * Brings a save from before the current workshop prices up to date (meta.json workshop.refund): every level
+ * it owns is repriced, and what it paid above today's price comes back as Bits. Returns the refund.
+ */
+export function migrateEconomy(m: MetaState, md: MetaData): number {
+  const rf = md.workshop.refund;
+  if (rf === undefined || m.economy >= rf.economy) return 0;
+  let refund = 0;
+  if (m.economy >= 1) {
+    for (const [id, lvl] of Object.entries(m.workshop) as [StatId, number][]) {
+      const now = workshopCurve(md, id);
+      for (let l = 0; l < lvl; l++) refund += Math.max(0, curveCost(rf.from, l) - curveCost(now, l));
+    }
+  }
+  m.bits += refund;
+  m.economy = rf.economy;
+  return refund;
 }
 
 /** Mastery multiplier on `stat` from its workshop level: mul^⌊level/every⌋ (1 when the stat has none). */

@@ -7,6 +7,13 @@
       "growthAfter": 1.008
     },
     "stats": {},
+    "refund": {
+      "economy": 2,
+      "from": {
+        "base": 16,
+        "growth": 1.12
+      }
+    },
     "mastery": {
       "every": 10,
       "mul": {

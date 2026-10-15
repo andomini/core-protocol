@@ -14,6 +14,7 @@ import { drawTagIcon } from '../../ui/tagIcon';
 import { offlineReward } from '../../meta/offline';
 import { settleRun } from '../../meta/runEnd';
 import { buyWorkshop, masteryAt, workshopCost, workshopMax, workshopUnlocked } from '../../meta/workshop';
+import { showToast } from '../../portal/toast';
 import { services } from '../../services';
 import { DEFAULT_DATA, type GameData, STAT_IDS, type StatId, type TabId } from '../../sim/data';
 import { statValue } from '../../sim/stats';
@@ -78,6 +79,11 @@ export class HomeScene extends Phaser.Scene {
     this.G = homeGeometry(this.L, TABS.length);
     this.cameras.main.setZoom(RS).centerOn(this.L.w / 2, this.L.h / 2);
     this.drawBackdrop();
+    if (services.meta.refunded > 0) {
+      showToast(`Workshop prices dropped: +${formatNum(services.meta.refunded)} Bits refunded`, 6000);
+      services.meta.refunded = 0;
+      services.meta.save();
+    }
     this.drawTopBar();
     // Five tabs do not fit full names on a phone: short labels there.
     const SHORT: Record<string, string> = { battle: 'RUN', workshop: 'SHOP', labs: 'LABS', cards: 'CARDS', settings: 'SETUP' };

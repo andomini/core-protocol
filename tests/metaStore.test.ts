@@ -24,6 +24,29 @@ describe('MetaStore', () => {
     expect(b.meta.lastSeen).toBe(1000);
   });
 
+  it('refunds workshop levels bought at the old prices once, and not for a fresh save', () => {
+    const kv = memoryKV();
+    const a = new MetaStore(kv, D, M, () => 0);
+    expect(a.refunded).toBe(0);
+    expect(a.meta.economy).toBe(M.workshop.refund!.economy);
+    a.meta.economy = 1;
+    a.meta.workshop.damage = 100;
+    a.meta.workshop.health = 40;
+    a.meta.bits = 5;
+    a.save();
+    const b = new MetaStore(kv, D, M, () => 0);
+    let old = 0, now = 0;
+    for (let l = 0; l < 100; l++) {
+      old += Math.ceil(16 * Math.pow(1.12, l));
+      now += Math.ceil(16 * Math.pow(1.12, Math.min(l, 60)) * Math.pow(1.008, Math.max(0, l - 60)));
+    }
+    expect(b.refunded).toBe(old - now); // health 40 is below the knee: same price, nothing back
+    expect(b.meta.bits).toBe(5 + old - now);
+    expect(b.meta.workshop.damage).toBe(100);
+    b.save();
+    expect(new MetaStore(kv, D, M, () => 0).refunded).toBe(0);
+  });
+
   it('keeps a run snapshot (with its options) until cleared; a corrupt one is dropped', () => {
     const kv = memoryKV();
     const s = new MetaStore(kv, D, M, () => 0);
