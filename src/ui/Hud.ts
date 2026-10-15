@@ -148,7 +148,7 @@ export class Hud {
     if (secs !== L.secs) this.secsText.setText((L.secs = secs));
     const energy = formatNum(w.energy);
     if (energy !== L.energy) this.energyText.setText((L.energy = energy));
-    const hp = `${formatNum(Math.ceil(w.core.hp))} / ${formatNum(st.health)}`;
+    const hp = `${formatNum(Math.ceil(w.core.hp - 1e-6))} / ${formatNum(st.health)}`;
     if (hp !== L.hp) this.hpText.setText((L.hp = hp));
     if (speed !== L.speed) {
       L.speed = speed;

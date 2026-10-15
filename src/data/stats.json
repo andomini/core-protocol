@@ -85,9 +85,9 @@
       "tab": "atk",
       "name": "Range",
       "base": 300,
-      "per": 2,
+      "per": 5,
       "mode": "add",
-      "maxLevel": 10,
+      "maxLevel": 48,
       "cost": {
         "base": 12,
         "growth": 1.12
@@ -113,7 +113,7 @@
       "tab": "def",
       "name": "Health",
       "base": 100,
-      "per": 10,
+      "per": 12,
       "mode": "add",
       "cost": {
         "base": 5,
@@ -125,8 +125,8 @@
     "regen": {
       "tab": "def",
       "name": "Regen",
-      "base": 0.5,
-      "per": 0.25,
+      "base": 1,
+      "per": 0.6,
       "mode": "add",
       "cost": {
         "base": 6,
@@ -137,12 +137,13 @@
     },
     "defense": {
       "tab": "def",
-      "name": "Defense %",
+      "name": "Defense",
       "base": 0,
-      "per": 0.01,
+      "per": 0.02,
       "mode": "add",
-      "maxLevel": 50,
+      "maxLevel": 38,
       "cap": 0.75,
+      "capMax": 0.9,
       "cost": {
         "base": 10,
         "growth": 1.1

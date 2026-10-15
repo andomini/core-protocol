@@ -11,6 +11,7 @@ import { createWorld, type Enemy, type RunOptions, type World, worldStats } from
 import type { CoreStats } from '../sim/stats';
 import { step } from '../sim/step';
 import { spawnEnemy } from '../sim/waves';
+import { arenaRadius } from '../sim/territory';
 
 export interface Vec {
   x: number;
@@ -107,7 +108,7 @@ export class RunSession {
    *  (or starting at direction index `dir`, 0 = +x, 16 = +y). */
   spawn(kind: EnemyKind, n: number, onEvent: EventSink, dir?: number): void {
     const dirs = this.data.directions;
-    const r = this.data.config.spawnRadius;
+    const r = arenaRadius(this.data, this.world.wave);
     for (let i = 0; i < n; i++) {
       const at = dir === undefined ? this.world.nextId * 23 + i * 7 : dir + i * 3;
       const [dx, dy] = dirs[((at % dirs.length) + dirs.length) % dirs.length]!;

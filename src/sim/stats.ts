@@ -9,10 +9,11 @@ export type Levels = Record<StatId, number>;
 /** What a modifier can target: any stat, plus the Interest cap (Compound perk, 💰 6-set). */
 export type ModTarget = StatId | 'interestCap';
 
-/** A flat (`add`) or multiplicative (`mul`) change from a perk, set, card… (M3/M5 append these). */
+/** A flat (`add`) or multiplicative (`mul`) change from a perk, set, card… (M3/M5 append these), or a
+ * raise of the stat's cap (`cap`, up to its `capMax`). */
 export interface Modifier {
   stat: ModTarget;
-  op: 'add' | 'mul';
+  op: 'add' | 'mul' | 'cap';
   value: number;
   /** Who granted it (for the UI and debugging); has no effect on the value. */
   source: string;
@@ -64,11 +65,19 @@ export function effectiveStats(data: GameData, inputs: StatInputs): CoreStats {
     for (const m of inputs.mods) if (m.op === 'mul') out[m.stat] = clampValue(out[m.stat] * m.value);
   }
   for (const id of STAT_IDS) {
-    const cap = defs[id].cap;
+    const cap = effectiveCap(defs[id], id, inputs.mods);
     if (cap !== undefined && out[id] > cap) out[id] = cap;
     if (out[id] < 0) out[id] = 0;
   }
   return out;
+}
+
+/** The stat's cap after `cap` modifiers (bounded by `capMax`); undefined for an uncapped stat. */
+export function effectiveCap(def: StatDef, id: StatId, mods: readonly Modifier[]): number | undefined {
+  if (def.cap === undefined) return undefined;
+  let cap = def.cap;
+  for (const m of mods) if (m.op === 'cap' && m.stat === id) cap += m.value;
+  return Math.min(cap, def.capMax ?? def.cap);
 }
 
 /** Price of the next level when the stat is at `level`. */

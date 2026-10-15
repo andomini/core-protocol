@@ -1,12 +1,16 @@
 // Protocols (spec §2.4): pick schedule, offers (rarity, pity, tag weighting, locked perks), picks, rerolls,
-// the rewarded boost, tag counting (perks + card tags), set tiers, and the derived perk profile that the
-// combat code reads. Stat effects become World.mods once (at pick / set activation); everything else is
-// derived from the perk stacks and set tiers by perkProfile(), never stored.
+// the rewarded boost, tag counting (perks + card tags), set and fusion tiers, and the derived perk profile
+// that the combat code reads. Stat effects become World.mods once (at pick / tier activation; a tier that
+// switches off takes its mods back); everything else is derived from the perk stacks and tiers by
+// perkProfile(), never stored.
 
 import type { GameData, StatId } from './data';
 import type { SimEvent } from './events';
+import { clusterCounts, type CrystalShape, crystalShape, freeSlots, fusionLinkCounts, fusionLinks, isSlot, ladderTier, moveModule, placeModule } from './crystal';
+import { geneKeep } from './mutations';
 import { clampValue, powInt } from './num';
-import { type Effect, RARITIES, type Rarity, RULE_IDS, type Rules, TAGS, type Tag } from './perkData';
+import { ownedShare } from './territory';
+import { type Effect, fusionKeys, RARITIES, type Rarity, RULE_IDS, type Rules, TAGS, type Tag } from './perkData';
 import { createStream, nextInt, pickWeighted } from './rng';
 import type { World } from './state';
 import { effectiveStats, type Modifier } from './stats';
@@ -33,8 +37,8 @@ export function isPickWave(data: GameData, wave: number, everyOverride = 0): boo
   return wave > last && (wave - last) % every === 0;
 }
 
-/** Count toward each tag: 1 per perk stack plus 1 per card tag. */
-export function tagCounts(w: World, data: GameData): Record<Tag, number> {
+/** Raw count per tag: 1 per perk stack plus 1 per card tag (what the run "holds", for offers). */
+export function rawTagCounts(w: World, data: GameData): Record<Tag, number> {
   const out = {} as Record<Tag, number>;
   for (const t of TAGS) out[t] = 0;
   for (const id of perkIds(data)) {
@@ -45,21 +49,40 @@ export function tagCounts(w: World, data: GameData): Record<Tag, number> {
   return out;
 }
 
+/**
+ * Set count per tag (spec 2026-10-14 §A): the stacks of the largest connected cluster of that tag's
+ * crystal modules, plus 1 per card tag.
+ */
+export function tagCounts(w: World, data: GameData): Record<Tag, number> {
+  const out = clusterCounts(w, data);
+  for (const t of w.cardTags) out[t] += 1;
+  return out;
+}
+
 export function heldTags(w: World, data: GameData): Tag[] {
-  const c = tagCounts(w, data);
+  const c = rawTagCounts(w, data);
   return TAGS.filter((t) => c[t] > 0);
 }
 
 /** Highest set tier reached with `count` (0 if none). */
 export function tierFor(data: GameData, count: number): number {
-  let tier = 0;
-  for (const t of data.sets.tiers) if (count >= t) tier = t;
-  return tier;
+  return ladderTier(data.sets.tiers, count);
 }
 
 /** Next tier above `count`, or 0 when the top tier is reached. */
 export function nextTier(data: GameData, count: number): number {
   for (const t of data.sets.tiers) if (count < t) return t;
+  return 0;
+}
+
+/** Highest fusion tier reached with `links` (0 if none; tiers are link counts, sets.fusionTiers). */
+export function fusionTierFor(data: GameData, links: number): number {
+  return ladderTier(data.sets.fusionTiers, links);
+}
+
+/** Next fusion tier above `links`, or 0 when the top tier is reached. */
+export function nextFusionTier(data: GameData, links: number): number {
+  for (const t of data.sets.fusionTiers) if (links < t) return t;
   return 0;
 }
 
@@ -149,38 +172,82 @@ function maxHealth(w: World, data: GameData): number {
 /** Appends an effect list's stat changes to World.mods, `stacks` times each. */
 export function appendStatMods(w: World, effects: readonly Effect[], stacks: number, source: string): void {
   for (const e of effects) {
-    if (e.type !== 'statAdd' && e.type !== 'statMul') continue;
+    if (e.type !== 'statAdd' && e.type !== 'statMul' && e.type !== 'capAdd') continue;
     for (let i = 0; i < stacks; i++) {
-      const m: Modifier = { stat: e.stat, op: e.type === 'statAdd' ? 'add' : 'mul', value: e.value, source };
+      const m: Modifier = { stat: e.stat, op: e.type === 'statAdd' ? 'add' : e.type === 'statMul' ? 'mul' : 'cap', value: e.value, source };
       w.mods.push(m);
     }
   }
 }
 
-/** Raises tiers reached by the current counts: stat mods once, periodic timers armed, `setTier` events. */
-export function applySetTiers(w: World, data: GameData, events: SimEvent[] | null): void {
-  const counts = tagCounts(w, data);
-  for (const tag of TAGS) {
-    const reached = tierFor(data, counts[tag]);
-    for (const t of data.sets.tiers) {
-      if (t <= w.setTiers[tag] || t > reached) continue;
-      const effects = data.sets.sets[tag][String(t)]!;
-      const source = `set:${tag}:${t}`;
+/**
+ * Moves one ladder (a set's or a fusion's) from tier `prev` to `next`: tiers newly reached add their stat
+ * mods and arm their periodic timers (source `<prefix>:<t>`, timers `<source>:<i>`); tiers no longer reached
+ * take both back. Tiers in between are untouched, so a ladder that drops and comes back never doubles up.
+ * Wave-charged (immunity) timers outlive a drop: they are inert while the tier is off (only the profile's
+ * periodic list reads them), and rebuilding the tier must not recharge a spent window.
+ */
+function shiftTier(w: World, data: GameData, prefix: string, ladder: readonly number[], effectsAt: (t: number) => readonly Effect[], prev: number, next: number): void {
+  for (const t of ladder) {
+    const source = `${prefix}:${t}`;
+    if (t > prev && t <= next) {
+      const effects = effectsAt(t);
       appendStatMods(w, effects, 1, source);
       effects.forEach((e, i) => {
         if (e.type !== 'periodic') return;
-        // Seconds-based effects first fire one period after activation; wave-charged ones start charged.
-        w.timers[`${source}:${i}`] = { next: e.action === 'immunity' ? 0 : w.tick + Math.round(e.everySec * data.config.tickHz), until: -1 };
+        // Seconds-based effects first fire one period after activation; wave-charged ones start charged
+        // (unless an earlier activation of this tier already spent the charge).
+        const key = `${source}:${i}`;
+        if (e.action === 'immunity') w.timers[key] ??= { next: 0, until: -1 };
+        else w.timers[key] = { next: w.tick + Math.round(e.everySec * data.config.tickHz), until: -1 };
       });
-      events?.push({ type: 'setTier', tag, tier: t });
+    } else if (t > next && t <= prev) {
+      w.mods = w.mods.filter((m) => m.source !== source);
+      const effects = effectsAt(t);
+      effects.forEach((e, i) => {
+        if (e.type === 'periodic' && e.action !== 'immunity') delete w.timers[`${source}:${i}`];
+      });
     }
-    if (reached > w.setTiers[tag]) w.setTiers[tag] = reached;
+  }
+}
+
+/**
+ * Brings set and fusion tiers in line with the crystal now (spec 2026-10-15 §3): called after every crystal
+ * change (pick, move, run start). Tiers are live: a move that breaks a cluster or a contact switches the
+ * tier off. `setTier` / `fusion` events only for tiers that changed.
+ */
+export function refreshCrystal(w: World, data: GameData, events: SimEvent[] | null): void {
+  keepHealthShare(w, data, () => refreshTiers(w, data, events));
+}
+
+function refreshTiers(w: World, data: GameData, events: SimEvent[] | null): void {
+  const counts = tagCounts(w, data);
+  for (const tag of TAGS) {
+    const prev = w.setTiers[tag];
+    const tier = tierFor(data, counts[tag]);
+    if (tier === prev) continue;
+    shiftTier(w, data, `set:${tag}`, data.sets.tiers, (t) => data.sets.sets[tag][String(t)]!, prev, tier);
+    w.setTiers[tag] = tier;
+    events?.push({ type: 'setTier', tag, tier, prev });
+  }
+  const links = fusionLinkCounts(w, data);
+  for (const key of fusionKeys()) {
+    const prev = w.fusionTiers[key] ?? 0;
+    const tier = fusionTierFor(data, links[key] ?? 0);
+    if (tier === prev) continue;
+    shiftTier(w, data, `fusion:${key}`, data.sets.fusionTiers, (t) => data.sets.fusions[key]!.tiers[String(t)]!, prev, tier);
+    if (tier > 0) w.fusionTiers[key] = tier;
+    else delete w.fusionTiers[key];
+    const l = fusionLinks(w, data).find((f) => f.key === key);
+    const a = l ? w.crystal[l.a]! : null;
+    const b = l ? w.crystal[l.b]! : null;
+    events?.push({ type: 'fusion', key, tier, prev, a: a ? [a.q, a.r] : null, b: b ? [b.q, b.r] : null });
   }
 }
 
 /** Run start: sets completed by card tags alone, then the opening (wave-1) pick. */
 export function initProtocols(w: World, data: GameData): void {
-  applySetTiers(w, data, null);
+  refreshCrystal(w, data, null);
   if (w.protocols && isPickWave(data, 1)) enterPick(w, data, null);
 }
 
@@ -193,31 +260,68 @@ function withHealth(w: World, data: GameData, fn: () => void): void {
   if (w.core.hp > after) w.core.hp = after;
 }
 
-/** Adds one stack of `id` (stat mods once, set tiers). Used by the pick command and by tests. */
-export function grantPerk(w: World, data: GameData, id: string, events: SimEvent[] | null): void {
-  withHealth(w, data, () => {
-    w.perks[id] = (w.perks[id] ?? 0) + 1;
-    appendStatMods(w, data.perks.perks[id]!.effects, 1, `perk:${id}`);
-    events?.push({ type: 'perkPicked', id, stacks: w.perks[id]! });
-    applySetTiers(w, data, events);
-  });
+/**
+ * Crystal moves keep the HP share instead: switching a Health bonus off and back on with free moves must
+ * not heal (a full core stays full, a core at 30 % stays at 30 %).
+ */
+function keepHealthShare(w: World, data: GameData, fn: () => void): void {
+  const before = maxHealth(w, data);
+  fn();
+  const after = maxHealth(w, data);
+  if (after === before) return;
+  w.core.hp = w.core.hp >= before ? after : clampValue((w.core.hp * after) / before);
 }
 
-export type ProtocolReject = 'dead' | 'phase' | 'index' | 'noReroll' | 'cooldown' | 'used';
+/**
+ * Adds one stack of `id` (crystal module, stat mods once, set tiers). Used by the pick command and by
+ * tests. `slot` places a new module there (it must be free; check with crystal.freeSlots), else auto.
+ */
+export function grantPerk(w: World, data: GameData, id: string, events: SimEvent[] | null, slot?: [number, number]): void {
+  withHealth(w, data, () => {
+    w.perks[id] = (w.perks[id] ?? 0) + 1;
+    placeModule(w, data, id, slot);
+    appendStatMods(w, data.perks.perks[id]!.effects, 1, `perk:${id}`);
+    const m = w.crystal.find((c) => c.perk === id);
+    events?.push({ type: 'perkPicked', id, stacks: w.perks[id]!, module: m ? [m.q, m.r] : null });
+  });
+  withHealth(w, data, () => refreshTiers(w, data, events));
+}
 
-/** Takes card `index` of the open offer; the world resumes into the between-waves pause. */
-export function pickPerk(w: World, data: GameData, index: unknown, events: SimEvent[]): ProtocolReject | null {
+export type ProtocolReject = 'dead' | 'phase' | 'index' | 'noReroll' | 'cooldown' | 'used' | 'slot' | 'empty' | 'link';
+
+/**
+ * The moveModule command (spec 2026-10-15 §2): moves (or swaps) a crystal module while the core is alive,
+ * then refreshes set and fusion tiers. When it is offered is the UI's call (picks and the pause menu).
+ */
+export function moveCrystalModule(w: World, data: GameData, from: unknown, to: unknown, events: SimEvent[]): ProtocolReject | null {
+  if (w.dead) return 'dead';
+  const r = moveModule(w, data, from, to);
+  if (r !== null) return r;
+  refreshCrystal(w, data, events);
+  return null;
+}
+
+/**
+ * Takes card `index` of the open offer; the world resumes into the between-waves pause. `slot` ([q, r])
+ * places a new module there; without it the module goes to the auto slot. A bad slot rejects the pick.
+ */
+export function pickPerk(w: World, data: GameData, index: unknown, events: SimEvent[], slot?: unknown): ProtocolReject | null {
   if (w.dead) return 'dead';
   if (w.phase !== 'pick') return 'phase';
   if (!Number.isInteger(index) || (index as number) < 0 || (index as number) >= w.offer.length) return 'index';
   const offer = w.offer;
   const id = offer[index as number]!;
+  let at: [number, number] | undefined;
+  if (slot !== undefined && slot !== null && !w.crystal.some((m) => m.perk === id)) {
+    if (!isSlot(slot) || !freeSlots(w, data).some(([q, r]) => q === slot[0] && r === slot[1])) return 'slot';
+    at = [slot[0], slot[1]];
+  }
   w.pity = offerHasRarePlus(data, offer) ? 0 : w.pity + 1;
   w.picks += 1;
   w.offer = [];
   w.rerolls = 0;
   w.phase = 'pause';
-  grantPerk(w, data, id, events);
+  grantPerk(w, data, id, events, at);
   return null;
 }
 
@@ -298,6 +402,23 @@ export interface PerkProfile {
   shieldFrac: number;
   /** Wave Skip chance per regular wave. */
   waveSkip: number;
+  /** Fusions: kill Energy × by how the kill happened; lightning freezes; Thorns slow; core hits strike back. */
+  critKillMul: number;
+  frozenKillMul: number;
+  chainKillMul: number;
+  lightningFreezeTicks: number;
+  thornsSlow: number;
+  thornsSlowTicks: number;
+  retaliateMul: number;
+  /** The crystal's sectors, reach and muzzles this tick (spec 2026-10-14 §A). */
+  shape: CrystalShape;
+  /** Share of the territory that is ours (§B). */
+  owned: number;
+  /** Gene keeps (§C): crit bonus, slows, kill Energy, Defense/Thorns (lightning/bounce/freeze go into rules). */
+  geneCrit: number;
+  geneSlow: number;
+  geneEnergy: number;
+  geneGuard: number;
 }
 
 function blankProfile(data: GameData): PerkProfile {
@@ -326,10 +447,23 @@ function blankProfile(data: GameData): PerkProfile {
     coreHpBelowMul: 1,
     shieldFrac: 0,
     waveSkip: 0,
+    critKillMul: 1,
+    frozenKillMul: 1,
+    chainKillMul: 1,
+    lightningFreezeTicks: 0,
+    thornsSlow: 0,
+    thornsSlowTicks: 0,
+    retaliateMul: 0,
+    shape: { sectors: [null, null, null, null, null, null], reach: [0, 0, 0, 0, 0, 0], tips: [] },
+    owned: 0,
+    geneCrit: 1,
+    geneSlow: 1,
+    geneEnergy: 1,
+    geneGuard: 1,
   };
 }
 
-/** Folds every held perk (× stacks) and every reached set tier into one profile. Pure; O(perks + sets). */
+/** Folds every held perk (× stacks), every reached set and fusion tier and the cards into one profile. Pure; O(perks + sets). */
 export function perkProfile(w: World, data: GameData): PerkProfile {
   const p = blankProfile(data);
   const hz = data.config.tickHz;
@@ -340,6 +474,7 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
     switch (e.type) {
       case 'statAdd':
       case 'statMul':
+      case 'capAdd':
         return; // already in World.mods
       case 'onHit':
         if (e.action === 'slow') {
@@ -393,6 +528,23 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
       case 'waveSkip':
         p.waveSkip += e.chance * n;
         return;
+      case 'killBonus': {
+        const m = 1 + (e.energyMul - 1) * n;
+        if (e.when === 'crit') p.critKillMul *= m;
+        else if (e.when === 'frozen') p.frozenKillMul *= m;
+        else p.chainKillMul *= m;
+        return;
+      }
+      case 'lightningFreeze':
+        p.lightningFreezeTicks = Math.max(p.lightningFreezeTicks, Math.round(e.seconds * hz));
+        return;
+      case 'thornsSlow':
+        p.thornsSlow = Math.max(p.thornsSlow, e.strength);
+        p.thornsSlowTicks = Math.max(p.thornsSlowTicks, Math.round(e.seconds * hz));
+        return;
+      case 'retaliate':
+        p.retaliateMul += e.damageMul * n;
+        return;
     }
   };
   const pd = data.perks.perks;
@@ -408,8 +560,27 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
       data.sets.sets[tag][String(t)]!.forEach((e, i) => fold(e, 1, `set:${tag}:${t}:${i}`));
     }
   }
+  for (const key of fusionKeys()) {
+    const tier = w.fusionTiers[key] ?? 0;
+    if (tier === 0) continue;
+    for (const t of data.sets.fusionTiers) {
+      if (t > tier) break;
+      data.sets.fusions[key]!.tiers[String(t)]!.forEach((e, i) => fold(e, 1, `fusion:${key}:${t}:${i}`));
+    }
+  }
   for (const c of w.cards) c.effects.forEach((e, i) => fold(e, 1, `card:${c.id}:${i}`));
   for (const r of RULE_IDS) p.rules[r] = clampValue((p.rules[r] + (add[r] ?? 0)) * (mul[r] ?? 1));
+  // Genes (spec 2026-10-14 §C): Antifreeze shortens every freeze, Insulation weakens bounces and lightning.
+  const chain = geneKeep(w, data, 'chain');
+  p.rules.lightningDamage = clampValue(p.rules.lightningDamage * chain);
+  p.rules.bounceDamage = clampValue(p.rules.bounceDamage * chain);
+  p.geneSlow = geneKeep(w, data, 'cryo');
+  p.rules.freezeSeconds = clampValue(p.rules.freezeSeconds * p.geneSlow);
+  p.geneCrit = geneKeep(w, data, 'overload');
+  p.geneEnergy = geneKeep(w, data, 'mining');
+  p.geneGuard = geneKeep(w, data, 'firewall');
+  p.shape = crystalShape(w, data);
+  p.owned = ownedShare(w, data);
   p.freezeTicks = Math.max(1, Math.round(freezeSeconds * p.rules.freezeSeconds * hz));
   return p;
 }

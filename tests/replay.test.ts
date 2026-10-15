@@ -12,7 +12,7 @@ interface Golden {
   opts: RunOptions;
   ticks: number;
   hashEvery: number;
-  final: { wave: number; dead: boolean; energy: number; levels: Record<string, number>; perks: Record<string, number>; setTiers: Record<string, number> };
+  final: { wave: number; dead: boolean; energy: number; levels: Record<string, number>; perks: Record<string, number>; setTiers: Record<string, number>; fusionTiers: Record<string, number> };
   log: LoggedCommand[];
   hashes: string[];
 }
@@ -31,7 +31,7 @@ describe('golden replay (tests/replays/golden-01.json)', () => {
     expect(buys.length).toBeGreaterThanOrEqual(12);
     expect(new Set(buys.map((c) => c.stat)).size).toBeGreaterThanOrEqual(10);
     const types = new Set(golden.log.map((l) => (l.cmd.type === 'reroll' ? `reroll:${l.cmd.via}` : l.cmd.type)));
-    for (const t of ['pickPerk', 'reroll:ad', 'reroll:free', 'boost']) expect(types, t).toContain(t);
+    for (const t of ['pickPerk', 'reroll:ad', 'reroll:free', 'boost', 'moveModule']) expect(types, t).toContain(t);
   });
 
   it('replays to the recorded hash every 100 ticks and the recorded final state', () => {
@@ -43,6 +43,7 @@ describe('golden replay (tests/replays/golden-01.json)', () => {
     expect(r.world.levels).toEqual(golden.final.levels);
     expect(r.world.perks).toEqual(golden.final.perks);
     expect(r.world.setTiers).toEqual(golden.final.setTiers);
+    expect(r.world.fusionTiers).toEqual(golden.final.fusionTiers);
   });
 
   it('rejects a log that is out of tick order', () => {

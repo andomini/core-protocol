@@ -7,6 +7,7 @@ import { clampValue } from './num';
 import { type PerkProfile, periodicTicks, perkProfile } from './perks';
 import { hitEnemy, updateProjectiles } from './projectiles';
 import { gridFor } from './spatial';
+import { updateTerritory } from './territory';
 import { type World, worldStats } from './state';
 import type { CoreStats } from './stats';
 import { advanceWave } from './waves';
@@ -51,13 +52,19 @@ export function combatStats(w: World, data: GameData, prof: PerkProfile): CoreSt
     if (e.action === 'damageBoost' && on) st.damage = clampValue(st.damage * e.value);
   }
   if (prof.coreHpBelowFrac > 0 && w.core.hp < st.health * prof.coreHpBelowFrac) st.damage = clampValue(st.damage * prof.coreHpBelowMul);
+  // Genes (spec 2026-10-14 §C): Armor shrinks the crit bonus, Piercing shrinks Defense and Thorns.
+  if (prof.geneCrit < 1) st.critFactor = clampValue(1 + (st.critFactor - 1) * prof.geneCrit);
+  if (prof.geneGuard < 1) {
+    st.defense = clampValue(st.defense * prof.geneGuard);
+    st.thorns = clampValue(st.thorns * prof.geneGuard);
+  }
   return st;
 }
 
 /**
  * Advances the world by one tick (1/tickHz s). A dead world, or one waiting for a protocol pick, does not
  * change (beyond the commands).
- * Order: commands → [pick? stop] → periodic effects → waves/spawns → enemies move & attack → death check →
+ * Order: commands → [pick? stop] → periodic effects → waves/spawns → enemies move & attack → infection → death check →
  * spatial hash → core regen & fire → projectiles (hits, procs, bounces).
  * Commands come first, before anything else touches the world, so applying them between two steps is
  * exactly the same as passing them to the next step (RunSession relies on this while paused or picking).
@@ -72,6 +79,7 @@ export function step(w: World, data: GameData, commands: readonly Command[], eve
   if (w.core.hp > st.health) w.core.hp = st.health;
   advanceWave(w, data, st, prof, events);
   updateEnemies(w, data, st, prof, events);
+  updateTerritory(w, data);
   if (w.core.hp <= 0) {
     w.core.hp = 0;
     w.dead = true;

@@ -95,8 +95,10 @@ describe('layout', () => {
       for (const r of rects) expect(inside(r, L.w, L.h), JSON.stringify(r)).toBe(true);
       expect(rects.reduce((s, r) => s + area(r), 0)).toBe(L.w * L.h);
       const maxRange = statValue(range, range.maxLevel!);
-      expect(maxRange * L.scale).toBeLessThan(Math.min(L.arena.w, L.arena.h) / 2);
-      expect(maxRange).toBeLessThan(DEFAULT_DATA.config.spawnRadius);
+      // At the widest breach the camera has pulled back to scale × spawnRadius / arenaMaxRadius.
+      const c = DEFAULT_DATA.config;
+      expect((maxRange * L.scale * c.spawnRadius) / c.arenaMaxRadius).toBeLessThan(Math.min(L.arena.w, L.arena.h) / 2);
+      expect(maxRange).toBeLessThan(c.arenaMaxRadius);
     });
   }
 

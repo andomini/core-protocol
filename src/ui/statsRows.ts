@@ -1,12 +1,18 @@
 // The STATS screen's content (pure): tabs → sections → rows of [label, value, accent?].
 import { DAMAGE_SOURCES, type DamageSource, type LifetimeStats, type RunStats, totalDamage, totalKills } from '../meta/runStats';
 import { ENEMY_KINDS, type EnemyKind, type GameData, STAT_IDS } from '../sim/data';
-import { TAGS } from '../sim/perkData';
+import { fusionKeys, TAGS } from '../sim/perkData';
 import type { World } from '../sim/state';
 import type { CoreStats } from '../sim/stats';
 import { type StatFormatKind, formatNum, formatStat } from './format';
+import { fusionLevel } from './perkText';
 
 export type StatRow = [label: string, value: string, accent?: string];
+
+/** A list value one item per row (label on the first), so it never outgrows the single-line value column. */
+function listRows(label: string, items: readonly string[]): StatRow[] {
+  return items.length ? items.map((v, i): StatRow => [i === 0 ? label : '', v]) : [[label, 'none']];
+}
 export interface StatSection {
   title: string;
   rows: StatRow[];
@@ -87,6 +93,9 @@ export function runTabs(v: RunView): StatTab[] {
     },
   ];
   const tagsOn = TAGS.filter((t) => w.setTiers[t] > 0).map((t) => `${data.sets.tags[t].name} ×${w.setTiers[t]}`);
+  const fused = fusionKeys()
+    .filter((k) => (s.fusionMax[k] ?? 0) > 0)
+    .map((k) => `${data.sets.fusions[k]!.name} ${fusionLevel(data, s.fusionMax[k]!)}`);
   const economy: StatSection[] = [
     {
       title: 'ENERGY',
@@ -115,7 +124,8 @@ export function runTabs(v: RunView): StatTab[] {
         ['Installed', n(s.picks)],
         ['Rerolls', n(s.rerolls)],
         ['Boosts', n(s.boosts)],
-        ['Sets online', tagsOn.length ? tagsOn.join(', ') : 'none'],
+        ...listRows('Sets online', tagsOn),
+        ...listRows('Fusions reached', fused),
         ['Freezes applied', n(s.freezes)],
         ['Lightning bolts', n(s.bolts)],
       ],

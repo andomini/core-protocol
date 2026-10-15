@@ -1,5 +1,5 @@
 // UI smoke for the battle view (M2a), the upgrade panel (M2b) and the portal layer (M6). Starts its own Vite dev server (or uses UI_BASE) and drives the
-// dev-only window.__cp hooks. Usage: npm run ui [-- --only portrait|landscape|stress|portal]
+// dev-only window.__cp hooks. Usage: npm run ui [-- --only portrait|landscape|stress|portal (comma-separated)]
 // Screenshots: reports/screens/*.jpg (committed), full PNGs in .superpowers/screens/ (for review).
 import { writeFileSync } from 'node:fs';
 import { check, launch, open, startServer } from './harness.mjs';
@@ -78,8 +78,19 @@ async function bootChecks(h, label, orientation) {
   await h.p.waitForTimeout(400);
   const cards = (await h.call('ui')).pick.cards;
   await h.tapLogical(...centre(cards[0]));
+  // Crystal placement step (spec 2026-10-14 §A): free hexes light up; a tap on the pulsing auto hex bolts it on.
+  const placing = await h.waitFor((s) => s.placing, 1500, 50);
+  const pl = (await h.call('ui')).place;
+  check(results, `${label}: a new protocol asks where to place its crystal module`, placing.ok && pl !== null && pl.free.length > 0 && pl.autoSlot !== null, pl);
+  await h.p.waitForTimeout(250);
+  if (pl?.autoSlot) await h.tapLogical(pl.autoSlot[0], pl.autoSlot[1]);
   const took = await h.waitFor((s) => !s.pickOpen, 1500, 50);
-  check(results, `${label}: tapping a card installs it and resumes`, took.ok && took.s.picks === 1 && Object.keys(took.s.perks).length === 1, took.s);
+  check(results, `${label}: tapping a hex bolts the module there`, took.ok && took.s.crystal.length === 1, took.s.crystal);
+  check(results, `${label}: tapping a card installs it`, took.ok && took.s.picks === 1 && Object.keys(took.s.perks).length === 1, took.s);
+  // The editor stays open in Arrange mode until DONE; then the battle resumes.
+  const ed = await h.call('editor');
+  check(results, `${label}: the editor switches to Arrange after placing`, ed?.open && ed.mode === 'arrange', ed);
+  await tapDone(h);
   await minTextCheck(h, label);
   const vis = await h.waitFor((s) => s.visible > 0, 2500, 50);
   // Sim seconds since the wave-1 start (tick 1) when the first enemy was on screen.
@@ -100,7 +111,26 @@ async function firstInput(h) {
   await h.p.waitForTimeout(400);
   const cards = (await h.call('ui')).pick.cards;
   await h.tapLogical(cards[0].x + cards[0].w / 2, cards[0].y + cards[0].h / 2);
+  await placeAuto(h);
   await h.p.waitForTimeout(100);
+}
+
+/** If a card opened the crystal placement step, taps its AUTO button, then DONE in the editor. */
+async function placeAuto(h) {
+  const st = await h.waitFor((s) => s.placing || !s.pickOpen, 1500, 50);
+  if (!st.s.placing) return;
+  await h.p.waitForTimeout(250);
+  await h.tapLogical(...centre((await h.call('ui')).place.auto));
+  await tapDone(h);
+}
+
+/** Taps the editor's DONE (after its 150 ms tap guard) and waits for it to close. */
+async function tapDone(h) {
+  await h.p.waitForTimeout(200);
+  const r = (await h.call('ui')).editor;
+  if (!r) return;
+  await h.tapLogical(...centre(r.done));
+  await h.p.waitForFunction(() => !window.__cp.editor().open, null, { timeout: 2000 }).catch(() => {});
 }
 
 const count = (xs, name) => xs.filter((x) => x === name).length;
@@ -186,7 +216,20 @@ async function upgradeChecks(h, label) {
   await h.tapLogical(...centre(ui.amountRect));
   await h.tapLogical(...centre(ui.amountRect));
   ui = await h.call('ui');
-  check(results, `${label}: amount toggle cycles back to ×1`, ui.amount === 1, ui.amount);
+  check(results, `${label}: amount toggle MAX → AUTO`, ui.autoMode === true, ui);
+  {
+    const hp = ui.rows.find((r) => r.stat === 'health');
+    const a0 = await h.state();
+    await h.tapLogical(...centre(hp.rect));
+    const on = (await h.call('ui')).rows.find((r) => r.stat === 'health').auto;
+    await h.tapLogical(...centre(hp.rect));
+    const off = (await h.call('ui')).rows.find((r) => r.stat === 'health').auto;
+    const a1 = await h.state();
+    check(results, `${label}: in AUTO mode a row tap toggles auto-buy, buys nothing`, on && !off && a1.levels.health === a0.levels.health, { on, off });
+  }
+  await h.tapLogical(...centre(ui.amountRect));
+  ui = await h.call('ui');
+  check(results, `${label}: amount toggle cycles back to ×1`, ui.amount === 1 && !ui.autoMode, ui.amount);
 
   // A locked row (Lifesteal on DEF) is a no-op.
   const ls = ui.rows.find((r) => r.stat === 'lifesteal');
@@ -476,6 +519,7 @@ const scenarios = {
       check(results, `${label} protocols: BOOST (rewarded) arms ×Energy for the next waves`, b.from === 1 && b.until > b.from, b);
       await h.p.waitForTimeout(400); // the refreshed overlay ignores taps for 150 ms (double-tap guard)
       await h.tapLogical(...centre(ui.cards[1]));
+      await placeAuto(h);
       const t = await h.waitFor((s) => !s.pickOpen && s.picks === 1, 1500, 50);
       check(results, `${label} protocols: the second card installs`, t.ok, t.s);
       // Chips + panel: grant a full Overload set through picks until a tier is on, then open the panel.
@@ -486,6 +530,25 @@ const scenarios = {
       await h.call('setSpeed', 5);
       const set = await h.waitFor((s) => Object.values(s.setTiers).some((v) => v >= 2), 40000, 150);
       check(results, `${label} protocols: a 2-set comes online within the first picks`, set.ok, set.s.setTiers);
+      // Fusion chips: bolt on the showcase crystal (fusions I and II), then a pair chip shows its ladder card.
+      await h.call('demoCrystal');
+      await h.p.waitForTimeout(250);
+      const fc = await h.call('fusionChips');
+      const pairKeys = Object.keys(fc?.pairs ?? {});
+      check(results, `${label} protocols: fusion chips are shown`, pairKeys.length > 0, fc);
+      if (pairKeys.length > 0 && label === 'landscape') {
+        // Paused between picks, so no pick overlay drops the card mid-check.
+        await h.waitFor((s) => !s.pickOpen, 8000, 100);
+        await h.call('pause', true);
+        const r = (await h.call('fusionChips')).pairs[pairKeys[0]];
+        await h.hoverLogical(...centre(r));
+        await h.p.waitForTimeout(200);
+        const tip = await h.call('fusionChips');
+        check(results, `${label} protocols: hovering a fusion chip shows its ladder`, tip?.tip === pairKeys[0], tip);
+        await h.shot(`fusion-tip-${label}`);
+        await h.hoverLogical(4, 4);
+        await h.call('pause', false);
+      }
       const chips = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').chips.rect);
       check(results, `${label} protocols: set chips are shown`, chips.w > 0 && chips.h > 0, chips);
       await h.tapLogical(...centre(chips));
@@ -496,10 +559,123 @@ const scenarios = {
       check(results, `${label} protocols: the panel opens and pauses the battle`, p1.paused && p2.tick === p1.tick, { p1: p1.tick, p2: p2.tick });
       await minTextCheck(h, `${label} protocols panel`);
       await h.shot(`protocols-${label}`);
+      // A big crystal scrolls between the title and RESUME.
+      const sc = await h.p.evaluate(() => {
+        const pp = window.__cp.game.scene.getScene('Battle').protocols;
+        pp.scrollTo(-1e6);
+        return pp.scroll;
+      });
+      if (sc.max > 0) {
+        check(results, `${label} protocols: the panel content scrolls to its end`, sc.y === -sc.max, sc);
+        await h.p.waitForTimeout(100);
+        await h.shot(`protocols-scrolled-${label}`);
+      }
       await h.call('closeProtocols');
       const p3 = await h.state();
       check(results, `${label} protocols: RESUME restores the previous pause state`, !p3.paused, p3.paused);
+      // Crystal module: hover (desktop) / tap (phone) shows the module + set card and outlines its cluster.
+      // Unpaused at ×1: the portrait pause menu would cover the arena.
+      h.autoPick = false;
+      await h.call('setSpeed', 1);
+      const mod = await h.p.evaluate(() => {
+        const b = window.__cp.game.scene.getScene('Battle');
+        const m = b.session.world.crystal[0];
+        return m ? b.crystal.hexScreen(m.q, m.r) : null;
+      });
+      if (mod) {
+        if (label === 'portrait') await h.tapLogical(...mod);
+        else await h.hoverLogical(...mod);
+        await h.p.waitForTimeout(120);
+        const tip = await h.p.evaluate(() => {
+          const b = window.__cp.game.scene.getScene('Battle');
+          return { at: b.modTipAt, tag: b.modTip.shownTag, hover: b.crystal.hover.length };
+        });
+        check(results, `${label} protocols: a crystal module shows its card on ${label === 'portrait' ? 'tap' : 'hover'}`, tip.at === 0 && tip.tag !== null && tip.hover > 0, tip);
+        await h.shot(`module-tip-${label}`);
+      } else check(results, `${label} protocols: the crystal has a module to inspect`, false, null);
       check(results, `${label} protocols: no console errors`, h.errors.length === 0, h.errors);
+      await h.close();
+    }
+  },
+
+  async editor() {
+    for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
+      const h = await open(browser, srv.base, device, '?seed=3');
+      h.autoPick = false;
+      await h.waitFor((s) => s.pickOpen, 3000, 50);
+      await h.p.waitForTimeout(450);
+      // Place: the first card adds a module, so the editor opens in Place mode with a readout.
+      await h.tapLogical(...centre((await h.call('ui')).pick.cards[0]));
+      await h.waitFor((s) => s.placing, 1500, 50);
+      await h.p.waitForTimeout(250);
+      const e0 = await h.call('editor');
+      check(results, `${label} editor: a new-module card opens the editor in Place mode with a readout`, e0?.open && e0.mode === 'place' && e0.readout.length > 0 && e0.strip.length >= 5, e0);
+      await minTextCheck(h, `${label} editor (place)`);
+      await h.shot(`editor-place-${label}`);
+      // A tap on a free hex (not the auto one) bolts the module there.
+      const pl = (await h.call('ui')).place;
+      const auto = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').crystal.placing.auto);
+      const slot = pl.free.find(([q, r]) => !auto || q !== auto[0] || r !== auto[1]) ?? pl.free[0];
+      const pt = await h.call('slotScreen', slot[0], slot[1]);
+      await h.tapLogical(pt[0], pt[1]);
+      const placed = await h.waitFor((s) => !s.pickOpen && s.crystal.length === 1, 1500, 50);
+      const e1 = await h.call('editor');
+      check(results, `${label} editor: a slot tap places the module there and switches to Arrange`, placed.ok && placed.s.crystal[0][0] === slot[0] && placed.s.crystal[0][1] === slot[1] && e1.mode === 'arrange', { slot, crystal: placed.s.crystal, e1 });
+      await tapDone(h);
+      const run = await h.state();
+      check(results, `${label} editor: DONE closes it and the battle resumes`, !(await h.call('editor')).open && !run.paused, run.paused);
+      // Arrange from the pause menu: a showcase crystal, then CRYSTAL.
+      await h.call('demoCrystal');
+      await h.call('pause', true);
+      await h.p.waitForTimeout(150);
+      await h.tapLogical(...centre((await h.call('ui')).crystalBtn));
+      await h.p.waitForTimeout(250);
+      const e2 = await h.call('editor');
+      check(results, `${label} editor: the pause menu's CRYSTAL opens Arrange`, e2?.open && e2.mode === 'arrange', e2);
+      const before = await h.state();
+      // Tap a module, then a target that changes a tier (coloured, not cyan or white).
+      const pick = await h.p.evaluate(() => {
+        const b = window.__cp.game.scene.getScene('Battle');
+        return b.session.world.crystal.map((m) => [m.q, m.r]);
+      });
+      let moved = null;
+      for (const [q, r] of pick) {
+        const p0 = await h.call('slotScreen', q, r);
+        await h.tapLogical(p0[0], p0[1]);
+        await h.p.waitForTimeout(80);
+        const t = await h.p.evaluate(() => {
+          const b = window.__cp.game.scene.getScene('Battle');
+          const e = b.crystal.edit;
+          return e ? e.targets.find((x) => x.color !== 0x22e5ff && x.color !== 0xffffff) ?? null : null;
+        });
+        if (t) {
+          moved = { from: [q, r], to: [t.q, t.r] };
+          break;
+        }
+        await h.tapLogical(p0[0], p0[1]); // deselect
+        await h.p.waitForTimeout(80);
+      }
+      check(results, `${label} editor: a selected module shows coloured targets`, moved !== null, moved);
+      if (moved) {
+        const p1 = await h.call('slotScreen', moved.to[0], moved.to[1]);
+        await h.tapLogical(p1[0], p1[1]);
+        await h.p.waitForTimeout(150);
+        const e3 = await h.call('editor');
+        const after = await h.state();
+        check(results, `${label} editor: a move changes the bonus strip`, e3.strip.join() !== e2.strip.join() && after.crystal.join() !== before.crystal.join(), { before: e2.strip, after: e3.strip });
+        await minTextCheck(h, `${label} editor (arrange)`);
+        await h.shot(`editor-arrange-${label}`);
+        await h.p.waitForTimeout(100);
+        await h.tapLogical(...centre((await h.call('ui')).editor.undo));
+        await h.p.waitForTimeout(150);
+        const e4 = await h.call('editor');
+        const undone = await h.state();
+        check(results, `${label} editor: UNDO restores the crystal and the strip`, e4.strip.join() === e2.strip.join() && undone.crystal.join() === before.crystal.join(), { strip: e4.strip, crystal: undone.crystal });
+      }
+      await tapDone(h);
+      const back = await h.state();
+      check(results, `${label} editor: DONE returns to the pause menu`, !(await h.call('editor')).open && back.paused, back.paused);
+      check(results, `${label} editor: no console errors`, h.errors.length === 0, h.errors);
       await h.close();
     }
   },
@@ -688,7 +864,7 @@ const scenarios = {
 
 try {
   for (const [name, fn] of Object.entries(scenarios)) {
-    if (only && only !== name) continue;
+    if (only && !only.split(',').includes(name)) continue;
     try {
       await fn();
     } catch (err) {

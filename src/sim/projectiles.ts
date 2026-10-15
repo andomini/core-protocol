@@ -5,13 +5,14 @@ import { boostActive, type PerkProfile } from './perks';
 import { chance } from './rng';
 import { gridFor } from './spatial';
 import type { Enemy, Projectile, World } from './state';
+import { arenaRadius, cleanse, farMul, groundAt } from './territory';
 import type { CoreStats } from './stats';
 
 /** Below this distance from the core the outward direction is undefined; knockback uses directions[0]. */
 const CENTER_EPS = 1e-9;
 
 /** Pushes `e` away from the core by `dist` world px, never past the spawn ring (nor inward). */
-export function knockBack(e: Enemy, data: GameData, dist: number): void {
+export function knockBack(e: Enemy, data: GameData, dist: number, wave: number): void {
   if (!(dist > 0)) return;
   const d = dsqrt(e.x * e.x + e.y * e.y);
   let ux: number;
@@ -22,7 +23,7 @@ export function knockBack(e: Enemy, data: GameData, dist: number): void {
     ux = e.x / d;
     uy = e.y / d;
   }
-  const to = Math.max(d, Math.min(d + dist, data.config.spawnRadius));
+  const to = Math.max(d, Math.min(d + dist, arenaRadius(data, wave)));
   e.x = ux * to;
   e.y = uy * to;
 }
@@ -72,6 +73,10 @@ export function hitEnemy(
   events: SimEvent[],
 ): void {
   if (e.hp <= 0 || !(damage > 0)) return;
+  // Ground under the target (spec 2026-10-14 §B): ⚡ cells amplify every hit, 🔗 cells bounces and lightning.
+  const ground = groundAt(w, data, prof.shape.sectors, e.x, e.y);
+  if (ground === 'overload') damage = clampValue(damage * data.territory.overloadDamage);
+  else if (ground === 'chain' && (source === 'bounce' || source === 'lightning')) damage = clampValue(damage * data.territory.chainDamage);
   const dealt = Math.min(damage, e.hp);
   e.hp = clampValue(e.hp - damage);
   const projectile = source === 'shot' || source === 'bounce';
@@ -85,19 +90,29 @@ export function hitEnemy(
   if (e.hp <= 0) {
     const boss = e.kind === 'boss';
     const boost = boostActive(w) ? data.perks.boost.energyMul : 1;
-    const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost);
-    const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1));
+    // Territory income: the owned share scales kill Energy; 💰 ground pays extra; Encryption (gene) takes a cut.
+    const t = data.territory;
+    const land = (t.energyBase + t.energyPerOwned * prof.owned) * (ground === 'mining' ? t.miningEnergy : 1) * prof.geneEnergy;
+    const far = farMul(data, e.x, e.y);
+    // Fusions: crit kills, frozen kills and bounce/lightning kills pay more Energy.
+    let how = 1;
+    if (crit) how *= prof.critKillMul;
+    if (isFrozen(w, e)) how *= prof.frozenKillMul;
+    if (source === 'bounce' || source === 'lightning' || source === 'tesla') how *= prof.chainKillMul;
+    const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how);
+    const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far);
     const keys = data.enemies[e.kind].keys + (boss ? prof.bossKeys : 0);
     w.energy = clampValue(w.energy + energy);
     w.bits = clampValue(w.bits + bits);
     w.keys = clampValue(w.keys + keys);
     w.kills += 1;
+    cleanse(w, data, e);
     events.push({ type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys });
     return;
   }
   // At most one knockback per enemy per cooldown: Multishot volleys must not pin the whole crowd.
   if (projectile && st.knockback > 0 && w.tick >= e.kbUntil) {
-    knockBack(e, data, st.knockback * data.enemies[e.kind].knockback);
+    knockBack(e, data, st.knockback * data.enemies[e.kind].knockback, w.wave);
     e.kbUntil = w.tick + Math.round(data.config.knockbackCooldown * data.config.tickHz);
   }
 }
@@ -124,7 +139,14 @@ export function lightning(w: World, data: GameData, st: CoreStats, prof: PerkPro
   if (targets.length === 0) return;
   events.push({ type: 'lightning', fromId: from.id, targets });
   const base = damage * prof.rules.lightningDamage;
-  for (const e of hit) hitEnemy(w, data, st, prof, e, clampValue(base * conditionalMul(w, e, st, prof)), false, 'lightning', events);
+  for (const e of hit) {
+    hitEnemy(w, data, st, prof, e, clampValue(base * conditionalMul(w, e, st, prof)), false, 'lightning', events);
+    // Superconductor (fusion): survivors freeze.
+    if (prof.lightningFreezeTicks > 0 && e.hp > 0) {
+      e.frozenUntil = Math.max(e.frozenUntil, w.tick + prof.lightningFreezeTicks);
+      events.push({ type: 'freeze', enemyId: e.id });
+    }
+  }
 }
 
 /** The nearest living enemy within bounce range of `from` that this projectile has not hit. */

@@ -1,10 +1,12 @@
 import { ENEMY_KINDS, type EnemyKind, type GameData } from './data';
 import type { SimEvent } from './events';
 import { clampValue, powInt } from './num';
-import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile } from './perks';
+import { mutate } from './mutations';
+import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile, tagCounts } from './perks';
 import { chance, createStream, nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
 import type { CoreStats } from './stats';
+import { arenaRadius, arenaSpeed, crystalRing, terrainFor } from './territory';
 
 /** Regular spawns are spread over this share of the wave, so the last ones still arrive in time. */
 const SPAWN_WINDOW = 0.8;
@@ -37,6 +39,16 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   w.wave += 1;
   w.phase = 'wave';
   w.phaseTick = 0;
+  // The virus learns the build's dominant tag (spec 2026-10-14 §C).
+  mutate(w, data, tagCounts(w, data), events);
+  // The breach widens (config.arenaGrowEvery): new ground with nests, and the crystal may gain a ring.
+  const radius = arenaRadius(data, w.wave);
+  const before = arenaRadius(data, w.wave - 1);
+  if (radius !== before) {
+    const ring = crystalRing(data, w.wave);
+    const nests = plantNests(w, data, before);
+    events.push({ type: 'arenaGrow', radius, ring, ringGrew: ring !== crystalRing(data, w.wave - 1), nests });
+  }
   const boss = isBossWave(data, w.wave, w.tier);
   const kinds = ENEMY_KINDS.filter((k) => k !== 'boss' && data.enemies[k].weight > 0 && data.enemies[k].firstWave <= w.wave);
   const weights = kinds.map((k) => data.enemies[k].weight);
@@ -94,7 +106,7 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
     hp,
     maxHp: hp,
     damage: clampValue(scaleForWave(def.damage, tier.damageMul, tier.damageGrowth, wave) * late),
-    speed: def.speed * (tier.speedMul ?? 1),
+    speed: def.speed * (tier.speedMul ?? 1) * arenaSpeed(data, wave),
     radius: def.radius,
     standoff: def.standoff,
     attackIntervalTicks: (def.attackInterval * c.tickHz) / (def.standoff > 0 ? (tier.rangedRateMul ?? 1) : 1),
@@ -109,6 +121,50 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
   w.enemies.push(e);
   events.push({ type: 'spawn', id: e.id, kind, x, y });
   return e;
+}
+
+/** Plants nests on infected cells just inside the old spawn ring `r0` (rng.spawn); returns how many. */
+function plantNests(w: World, data: GameData, r0: number): number {
+  const t = data.territory;
+  const g = terrainFor(data);
+  // The band just inside the old edge (now well within the wider ring), capped at nestMaxRadius.
+  const hi = Math.min(r0, t.nestMaxRadius);
+  const lo = Math.max(0, hi - 3 * t.cellSize);
+  const pool: number[] = [];
+  for (let i = 0; i < g.x.length; i++) {
+    if (w.terrain[i] === 0 && g.d2[i]! >= lo * lo && g.d2[i]! <= hi * hi && !w.nests.includes(i)) pool.push(i);
+  }
+  let n = 0;
+  while (n < t.nestsPerGrow && w.nests.length < t.maxNests && pool.length > 0) {
+    w.nests.push(pool.splice(nextInt(w.rng.spawn, pool.length), 1)[0]!);
+    n += 1;
+  }
+  return n;
+}
+
+/** A nest whose cell was reclaimed is destroyed and pays out; a living one spawns every nestEvery wave ticks. */
+function updateNests(w: World, data: GameData, events: SimEvent[], hpMul: number): void {
+  if (w.nests.length === 0) return;
+  const t = data.territory;
+  const g = terrainFor(data);
+  const spawnNow = w.phase === 'wave' && w.phaseTick > 0 && w.phaseTick % t.nestEvery === 0;
+  const wave = Math.max(1, w.wave);
+  const keep: number[] = [];
+  for (const id of w.nests) {
+    const x = g.x[id]!;
+    const y = g.y[id]!;
+    if (w.terrain[id] === 1) {
+      const energy = clampValue(t.nestEnergy * powInt(data.config.energyGrowth, wave));
+      const bits = clampValue(t.nestBits * powInt(data.config.bitsGrowth, wave));
+      w.energy = clampValue(w.energy + energy);
+      w.bits = clampValue(w.bits + bits);
+      events.push({ type: 'nestDestroyed', x, y, energy, bits });
+      continue;
+    }
+    keep.push(id);
+    if (spawnNow) spawnEnemy(w, data, t.nestKind, x, y, events, hpMul);
+  }
+  w.nests = keep;
 }
 
 /**
@@ -129,6 +185,7 @@ export function payWaveRewards(w: World, data: GameData, st: CoreStats, events: 
  * A wave end that is a pick wave (≥ 2; the wave-1 pick opens the run) opens a protocol pick.
  */
 export function advanceWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
+  updateNests(w, data, events, prof.rules.enemyHp);
   if (w.phase === 'pause') {
     if (w.phaseTick < pauseTicks(data)) {
       w.phaseTick += 1;
@@ -137,7 +194,7 @@ export function advanceWave(w: World, data: GameData, st: CoreStats, prof: PerkP
     startWave(w, data, st, prof, events);
   }
   w.phaseTick += 1;
-  const r = data.config.spawnRadius;
+  const r = arenaRadius(data, w.wave);
   while (w.spawnQueue.length > 0 && w.phaseTick >= w.nextSpawnTick) {
     const kind = w.spawnQueue.shift()!;
     const [dx, dy] = data.directions[nextInt(w.rng.spawn, data.directions.length)]!;

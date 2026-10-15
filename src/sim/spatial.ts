@@ -96,7 +96,7 @@ const grids = new WeakMap<GameData, SpatialHash>();
 export function gridFor(data: GameData): SpatialHash {
   let g = grids.get(data);
   if (g === undefined) {
-    g = new SpatialHash(data.config.spawnRadius + data.config.hashCell, data.config.hashCell);
+    g = new SpatialHash(data.config.arenaMaxRadius + data.config.hashCell, data.config.hashCell);
     grids.set(data, g);
   }
   return g;

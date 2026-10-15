@@ -6,12 +6,13 @@ import Phaser from 'phaser';
 import { CYAN, ENERGY, ENERGY_CSS, LOCKED, PANEL_FILL, RARITY_COLOR, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM } from '../render/palette';
 import { DEPTH } from '../render/WorldView';
 import type { GameData } from '../sim/data';
+import { slotGains } from '../sim/crystal';
 import { boostActive, boostAvailable, tagCounts } from '../sim/perks';
 import type { Tag } from '../sim/perkData';
 import type { World } from '../sim/state';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
-import { perkLines, setProgress } from './perkText';
+import { fusionLevel, fusionTags, perkLines, setProgress, upgradeLines } from './perkText';
 import { pickGeometry, type PickGeometry } from './pickLayout';
 import { drawTagIcon } from './tagIcon';
 
@@ -199,7 +200,7 @@ export class PickOverlay {
     const g = c.g.clear();
     const stacks = w.perks[id] ?? 0;
     const prog = setProgress(this.data, tag, counts[tag] + 1);
-    const line = perkLines(this.data, id).join('\n');
+    const line = stacks === 0 ? perkLines(this.data, id).join('\n') : upgradeLines(this.data, id, stacks).join('\n');
     const pad = geo.horizontal ? 26 : 20;
     if (geo.horizontal) {
       // Icon disc on the left, text on the right.
@@ -210,8 +211,11 @@ export class PickOverlay {
       drawTagIcon(g, tag, ix, iy, 52, tc);
       c.tag.setText(this.data.sets.tags[tag].name.toUpperCase()).setColor(TAG_CSS[tag]).setOrigin(0.5, 0).setPosition(ix, iy + 58);
       const tx = r.x + 150;
-      c.name.setText(def.name).setOrigin(0, 0).setPosition(tx, r.y + 18);
       c.rarity.setText(def.tradeoff ? `${def.rarity.toUpperCase()} · TRADE-OFF` : def.rarity.toUpperCase()).setColor(RARITY_CSS[def.rarity]).setOrigin(1, 0).setPosition(r.x + r.w - pad, r.y + 22);
+      // A long name next to a long rarity label shrinks (never below minFont) instead of running under it.
+      c.name.setText(def.name).setFontSize(geo.nameSize).setOrigin(0, 0).setPosition(tx, r.y + 18);
+      const room = c.rarity.x - c.rarity.width - 16 - tx;
+      if (c.name.width > room) c.name.setFontSize(Math.max(this.L.minFont, Math.floor((geo.nameSize * room) / c.name.width)));
       c.lines.setText(line).setColor(TEXT).setOrigin(0, 0).setPosition(tx, r.y + 18 + geo.nameSize + 14).setWordWrapWidth(r.w - 150 - pad);
       c.progress.setText(this.progressText(tag, prog)).setOrigin(0, 1).setPosition(tx, r.y + r.h - 16).setWordWrapWidth(r.w - 150 - pad);
     } else {
@@ -221,13 +225,16 @@ export class PickOverlay {
       g.lineStyle(3, tc, 0.9).strokeCircle(ix, iy, 44);
       drawTagIcon(g, tag, ix, iy, 46, tc);
       c.tag.setText(this.data.sets.tags[tag].name.toUpperCase()).setColor(TAG_CSS[tag]).setOrigin(0.5, 0).setPosition(ix, iy + 52);
-      c.name.setText(def.name).setOrigin(0.5, 0).setPosition(ix, iy + 52 + geo.smallSize + 14);
+      c.name.setText(def.name).setFontSize(geo.nameSize).setOrigin(0.5, 0).setPosition(ix, iy + 52 + geo.smallSize + 14);
       c.rarity.setText(def.tradeoff ? `${def.rarity.toUpperCase()} · TRADE-OFF` : def.rarity.toUpperCase()).setColor(RARITY_CSS[def.rarity]).setOrigin(0.5, 0).setPosition(ix, iy + 52 + geo.smallSize + 14 + geo.nameSize + 10);
       c.lines.setText(line).setColor(TEXT).setOrigin(0.5, 0).setAlign('center').setPosition(ix, c.rarity.y + geo.smallSize + 22).setWordWrapWidth(r.w - pad * 2);
       c.progress.setText(this.progressText(tag, prog)).setColor(TEXT_DIM).setOrigin(0.5, 1).setAlign('center').setPosition(ix, r.y + r.h - 18).setWordWrapWidth(r.w - pad * 2);
     }
+    // A new module that would raise a fusion tier at its auto slot: a second footer line.
+    const fuse = stacks === 0 ? this.fusionText(w, id) : '';
+    if (fuse) c.progress.setText(`${c.progress.text}\n${fuse}`);
     // Completes a tier → highlight the progress line in the tag colour.
-    const completes = prog.tier > 0 && this.data.sets.tiers.includes(prog.count);
+    const completes = (prog.tier > 0 && this.data.sets.tiers.includes(prog.count)) || fuse !== '';
     c.progress.setColor(completes ? TAG_CSS[tag] : TEXT_DIM);
     // Badge: NEW or LV n → n+1.
     const badge = stacks === 0 ? 'NEW' : `LV ${stacks}→${stacks + 1}`;
@@ -246,6 +253,15 @@ export class PickOverlay {
     if (p.next === 0) return `${name} ${p.count} · set complete`;
     if (this.data.sets.tiers.includes(p.count)) return `${name} ${p.count}/${p.count} → SET ON: ${p.tier === p.count ? this.tierText(tag, p.count) : ''}`;
     return `${name} ${p.count}/${p.next} → ${p.nextText}`;
+  }
+
+  /** `Cryo + Overload → THERMAL SHOCK I` when placing `id` at its auto slot raises a fusion tier, else ''. */
+  private fusionText(w: World, id: string): string {
+    const up = slotGains(w, this.data, id)?.fusions.find((f) => f.tierTo > f.tierFrom);
+    if (!up) return '';
+    const [a, b] = fusionTags(up.key);
+    const tags = this.data.sets.tags;
+    return `${tags[a].name} + ${tags[b].name} → ${this.data.sets.fusions[up.key]!.name.toUpperCase()} ${fusionLevel(this.data, up.tierTo)}`;
   }
 
   private tierText(tag: Tag, tier: number): string {

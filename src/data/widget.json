@@ -1,0 +1,6 @@
+{
+  "pickDelayMs": 5000,
+  "restartDelayMs": 8000,
+  "homeIdleMs": 120000,
+  "titleEveryMs": 1000
+}

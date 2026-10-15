@@ -25,8 +25,8 @@
     "bounty": {"name": "Bounty", "tag": "mining", "rarity": "rare", "maxStacks": 2, "effects": [{"type": "onKill", "kind": "boss", "energyMul": 2, "bitsMul": 2}]},
     "dataMine": {"name": "Data Mine", "tag": "mining", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "bitsPerKill", "value": 0.15}, {"type": "statAdd", "stat": "energyBonus", "value": 0.05}]},
     "greedyProtocol": {"name": "Greedy Protocol", "tag": "mining", "rarity": "epic", "maxStacks": 1, "tradeoff": true, "effects": [{"type": "statAdd", "stat": "energyBonus", "value": 0.6}, {"type": "ruleChange", "rule": "enemyHp", "op": "mul", "value": 1.15}]},
-    "patch": {"name": "Patch", "tag": "firewall", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "regen", "value": 0.6}]},
-    "hardening": {"name": "Hardening", "tag": "firewall", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "defense", "value": 0.04}]},
+    "patch": {"name": "Patch", "tag": "firewall", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "regen", "value": 1.5}]},
+    "hardening": {"name": "Hardening", "tag": "firewall", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "defense", "value": 0.06}, {"type": "capAdd", "stat": "defense", "value": 0.03}]},
     "reflect": {"name": "Reflect", "tag": "firewall", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "thorns", "value": 0.08}]},
     "leech": {"name": "Leech", "tag": "firewall", "rarity": "rare", "maxStacks": 3, "requires": "lifesteal", "effects": [{"type": "statAdd", "stat": "lifesteal", "value": 0.01}]},
     "bunker": {"name": "Bunker", "tag": "firewall", "rarity": "epic", "maxStacks": 1, "tradeoff": true, "effects": [{"type": "statMul", "stat": "health", "value": 1.4}, {"type": "statMul", "stat": "range", "value": 0.9}]}

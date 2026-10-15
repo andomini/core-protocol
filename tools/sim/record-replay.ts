@@ -47,6 +47,12 @@ while (w.tick < TICKS) {
     if (w.picks === 0) cmds.push({ type: 'boost' });
     if (w.picks === 1) cmds.push({ type: 'reroll', via: 'ad' }, { type: 'pickPerk', index: 9 });
     if (w.picks === 2) cmds.push({ type: 'reroll', via: 'free' });
+    // Pick 4: the first two modules swap places, then a move from an empty hex (rejected).
+    if (w.picks === 3 && w.crystal.length >= 2) {
+      const a = w.crystal[0]!;
+      const b = w.crystal[1]!;
+      cmds.push({ type: 'moveModule', from: [a.q, a.r], to: [b.q, b.r] }, { type: 'moveModule', from: [9, 9], to: [0, 2] });
+    }
     cmds.push({ type: 'pickPerk', index: picks++ % w.offer.length });
   }
   // Every 30 s, save up (≤ 30 s) for the next starred stat (they cost more), or for a ×10 batch.
@@ -89,7 +95,7 @@ const golden = {
   opts,
   ticks: TICKS,
   hashEvery: HASH_EVERY,
-  final: { wave: r.world.wave, dead: r.world.dead, energy: r.world.energy, levels: r.world.levels, perks: r.world.perks, setTiers: r.world.setTiers },
+  final: { wave: r.world.wave, dead: r.world.dead, energy: r.world.energy, levels: r.world.levels, perks: r.world.perks, setTiers: r.world.setTiers, fusionTiers: r.world.fusionTiers },
   log,
   hashes: r.hashes,
 };

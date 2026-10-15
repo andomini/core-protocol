@@ -20,7 +20,7 @@ export const RULE_IDS = [
 export type RuleId = (typeof RULE_IDS)[number];
 export type Rules = Record<RuleId, number>;
 
-export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip'] as const;
+export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'retaliate'] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
 export type Effect =
@@ -55,7 +55,17 @@ export type Effect =
   /** A shield worth `frac` of max HP at every wave start; it absorbs core damage first (Barrier). */
   | { type: 'shield'; frac: number }
   /** Chance that a regular wave is skipped: nothing spawns, its kill rewards are paid at once (Wave Skip). */
-  | { type: 'waveSkip'; chance: number };
+  | { type: 'waveSkip'; chance: number }
+  /** Raises a capped stat's cap by `value` per stack, up to the stat's `capMax` (Hardening). */
+  | { type: 'capAdd'; stat: StatId; value: number }
+  /** Kill Energy × (1 + (m − 1)·stacks) when the killing hit was a crit, the target was frozen, or it came from a bounce / lightning. */
+  | { type: 'killBonus'; when: 'crit' | 'frozen' | 'chain'; energyMul: number }
+  /** Lightning also freezes every enemy it hits for `seconds`. */
+  | { type: 'lightningFreeze'; seconds: number }
+  /** A Thorns hit slows its attacker by `strength` for `seconds`. */
+  | { type: 'thornsSlow'; strength: number; seconds: number }
+  /** Every virus attack on the core is answered by a bolt at the attacker for `damageMul` × Damage. */
+  | { type: 'retaliate'; damageMul: number };
 
 export interface PerkDef {
   name: string;
@@ -82,10 +92,32 @@ export interface PerksData {
 }
 
 export type SetTierKey = '2' | '4' | '6';
+/** A fusion's ladder: tier key (a link count from `fusionTiers`) → the effects it adds (tiers add up). */
+export interface FusionDef {
+  name: string;
+  tiers: Record<string, Effect[]>;
+}
+
 export interface SetsData {
   tags: Record<Tag, { name: string }>;
   tiers: number[];
   sets: Record<Tag, Record<string, Effect[]>>;
+  /** Fusion tiers (spec 2026-10-15 §1): links (shared edges between the pair's modules) each tier needs. */
+  fusionTiers: number[];
+  /** One fusion per tag pair, keyed "a+b" in TAGS order (fusionKey). */
+  fusions: Record<string, FusionDef>;
+}
+
+/** Canonical key of a tag pair: "a+b" with a before b in TAGS order. */
+export function fusionKey(x: Tag, y: Tag): string {
+  return TAGS.indexOf(x) < TAGS.indexOf(y) ? `${x}+${y}` : `${y}+${x}`;
+}
+
+/** Every tag pair's key, in TAGS order. */
+export function fusionKeys(): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < TAGS.length; i++) for (let j = i + 1; j < TAGS.length; j++) out.push(`${TAGS[i]}+${TAGS[j]}`);
+  return out;
 }
 
 function check(cond: boolean, msg: string): void {
@@ -112,6 +144,10 @@ export function validateEffect(e: Effect, at: string): void {
       check(MOD_TARGETS.includes(e.stat), `${at}.stat: unknown stat "${String(e.stat)}"`);
       check(finite(e.value), `${at}.value must be finite`);
       if (e.type === 'statMul') pos(e.value, `${at}.value`);
+      return;
+    case 'capAdd':
+      check((STAT_IDS as readonly string[]).includes(e.stat), `${at}.stat: unknown stat "${String(e.stat)}"`);
+      pos(e.value, `${at}.value`);
       return;
     case 'onHit':
       if (e.action === 'slow') {
@@ -173,6 +209,20 @@ export function validateEffect(e: Effect, at: string): void {
     case 'waveSkip':
       frac(e.chance, `${at}.chance`);
       return;
+    case 'killBonus':
+      check(e.when === 'crit' || e.when === 'frozen' || e.when === 'chain', `${at}.when must be crit|frozen|chain`);
+      pos(e.energyMul, `${at}.energyMul`);
+      return;
+    case 'lightningFreeze':
+      pos(e.seconds, `${at}.seconds`);
+      return;
+    case 'thornsSlow':
+      frac(e.strength, `${at}.strength`);
+      pos(e.seconds, `${at}.seconds`);
+      return;
+    case 'retaliate':
+      pos(e.damageMul, `${at}.damageMul`);
+      return;
   }
 }
 
@@ -227,6 +277,25 @@ export function validateSets(s: SetsData): void {
       const eff = set[String(t)];
       check(Array.isArray(eff) && eff.length > 0, `sets.sets.${tag}.${t} must list effects`);
       eff!.forEach((e, i) => validateEffect(e, `sets.sets.${tag}.${t}[${i}]`));
+    }
+  }
+  check(Array.isArray(s.fusionTiers) && s.fusionTiers.length > 0, 'sets.fusionTiers must be a non-empty list');
+  s.fusionTiers.forEach((t, i) => {
+    wholePos(t, `sets.fusionTiers[${i}]`);
+    if (i > 0) check(t > s.fusionTiers[i - 1]!, 'sets.fusionTiers must be increasing');
+  });
+  check(s.fusions !== null && typeof s.fusions === 'object', 'sets.fusions is missing');
+  const keys = fusionKeys();
+  for (const key of Object.keys(s.fusions)) check(keys.includes(key), `sets.fusions.${key} is not a tag pair "a+b" in tag order`);
+  for (const key of keys) {
+    const f = s.fusions[key];
+    check(f !== undefined && typeof f.name === 'string' && f.name.length > 0, `sets.fusions.${key}.name is missing`);
+    check(f!.tiers !== null && typeof f!.tiers === 'object', `sets.fusions.${key}.tiers is missing`);
+    for (const t of Object.keys(f!.tiers)) check(s.fusionTiers.includes(Number(t)), `sets.fusions.${key}.tiers.${t} is not a fusion tier`);
+    for (const t of s.fusionTiers) {
+      const eff = f!.tiers[String(t)];
+      check(Array.isArray(eff) && eff.length > 0, `sets.fusions.${key}.tiers.${t} must list effects`);
+      eff!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.tiers.${t}[${i}]`));
     }
   }
 }

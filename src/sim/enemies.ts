@@ -3,19 +3,25 @@ import type { SimEvent } from './events';
 import { clampValue, dsqrt } from './num';
 import type { PerkProfile } from './perks';
 import { hitEnemy, inAura, isFrozen } from './projectiles';
+import { sectorOf } from './hex';
 import type { World } from './state';
+import { groundAt } from './territory';
 import type { CoreStats } from './stats';
 
 /** Distance tolerance for "arrived": guards against endless sub-ulp moves at the stop point. */
 const ARRIVE_EPS = 1e-6;
 
-/** Movement slow for `e` this tick: on-hit slow and Cold Aura (each + the 🧊 bonus), capped. */
-export function slowFactor(w: World, e: World['enemies'][number], st: CoreStats, prof: PerkProfile): number {
+/**
+ * Movement slow for `e` this tick: on-hit slow, Cold Aura (each + the 🧊 bonus) and a 🧊 cell, shrunk by
+ * the Antifreeze gene, capped.
+ */
+export function slowFactor(w: World, e: World['enemies'][number], st: CoreStats, prof: PerkProfile, data: GameData): number {
   const r = prof.rules;
   let s = 0;
   if (w.tick <= e.slowUntil && e.slow > 0) s += e.slow + r.slowBonus;
   if (inAura(e, st, prof)) s += prof.auraSlow + r.slowBonus;
-  return Math.min(r.slowCap, s);
+  if (groundAt(w, data, prof.shape.sectors, e.x, e.y) === 'cryo') s += data.territory.cryoSlow;
+  return Math.min(r.slowCap, s * prof.geneSlow);
 }
 
 /** True while a 🛡 immunity window is active. */
@@ -53,13 +59,17 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
     if (e.hp <= 0) continue;
     if (regen > 0 && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * regen);
     if (isFrozen(w, e)) continue;
-    const stopAt = e.standoff > 0 ? e.standoff : coreRadius + e.radius;
+    // Melee viruses crash into the crystal: they stop at its reach in their sector (spec 2026-10-14 §A).
+    const reach = Math.max(coreRadius, prof.shape.reach[sectorOf(e.x, e.y)] ?? 0);
+    const stopAt = e.standoff > 0 ? Math.max(e.standoff, reach + e.radius) : reach + e.radius;
     const dist = dsqrt(e.x * e.x + e.y * e.y);
+    const ground = groundAt(w, data, prof.shape.sectors, e.x, e.y);
     // Cryo slows both movement and the attack cadence (a slowed virus also hits less often).
-    const pace = 1 - slowFactor(w, e, st, prof);
+    const pace = 1 - slowFactor(w, e, st, prof, data);
     if (dist > stopAt + ARRIVE_EPS) {
-      // dist > stopAt > 0 here, so the division is safe.
-      const move = Math.min(e.speed * pace * prof.rules.enemySpeed * perTick, dist - stopAt);
+      // dist > stopAt > 0 here, so the division is safe. Infected ground speeds viruses up.
+      const haste = ground === 'infected' ? data.territory.infectedSpeed : 1;
+      const move = Math.min(e.speed * pace * haste * prof.rules.enemySpeed * perTick, dist - stopAt);
       e.x -= (e.x / dist) * move;
       e.y -= (e.y / dist) * move;
       continue;
@@ -68,7 +78,8 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
     if (e.attackCd <= 0) {
       e.attackCd += e.attackIntervalTicks;
       const ranged = e.standoff > 0;
-      let damage = clampValue(e.damage * taken);
+      // A virus standing on 🛡 ground hits softer.
+      let damage = clampValue(e.damage * taken * (ground === 'firewall' ? data.territory.firewallDamage : 1));
       const blocked = immune(w, prof) || tryImmunity(w, data, st, prof, damage, events);
       if (blocked) damage = 0;
       // Barrier (card) absorbs first.
@@ -81,7 +92,19 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
       w.core.hp = clampValue(w.core.hp - damage);
       events.push({ type: 'coreHit', enemyId: e.id, damage, ranged, blocked, absorbed });
       const reflects = !ranged || prof.rules.thornsRanged > 0;
-      if (reflects && st.thorns > 0 && damage > 0) hitEnemy(w, data, st, prof, e, clampValue(damage * st.thorns), false, 'thorns', events);
+      if (reflects && st.thorns > 0 && damage > 0) {
+        hitEnemy(w, data, st, prof, e, clampValue(damage * st.thorns), false, 'thorns', events);
+        // Frostbite (fusion): Thorns also slow the attacker.
+        if (prof.thornsSlow > 0 && e.hp > 0) {
+          e.slow = Math.max(w.tick <= e.slowUntil ? e.slow : 0, prof.thornsSlow);
+          e.slowUntil = Math.max(e.slowUntil, w.tick + prof.thornsSlowTicks);
+        }
+      }
+      // Grounding (fusion): every attack on the core is answered by a bolt from the core.
+      if (prof.retaliateMul > 0 && e.hp > 0) {
+        events.push({ type: 'lightning', fromId: 0, targets: [e.id] });
+        hitEnemy(w, data, st, prof, e, clampValue(st.damage * prof.retaliateMul), false, 'lightning', events);
+      }
     }
   }
 }

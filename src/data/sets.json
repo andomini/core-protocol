@@ -24,138 +24,203 @@
   "sets": {
     "overload": {
       "2": [
-        {
-          "type": "statMul",
-          "stat": "damage",
-          "value": 1.1
-        }
+        { "type": "statMul", "stat": "damage", "value": 1.1 }
       ],
       "4": [
-        {
-          "type": "statMul",
-          "stat": "critFactor",
-          "value": 1.5
-        }
+        { "type": "statMul", "stat": "critFactor", "value": 1.5 }
       ],
       "6": [
-        {
-          "type": "periodic",
-          "action": "overdrive",
-          "everySec": 30,
-          "seconds": 8,
-          "value": 2
-        }
+        { "type": "periodic", "action": "overdrive", "everySec": 30, "seconds": 8, "value": 2 }
       ]
     },
     "cryo": {
       "2": [
-        {
-          "type": "ruleChange",
-          "rule": "slowBonus",
-          "op": "add",
-          "value": 0.15
-        }
+        { "type": "ruleChange", "rule": "slowBonus", "op": "add", "value": 0.15 }
       ],
       "4": [
-        {
-          "type": "conditional",
-          "when": "targetFrozen",
-          "damageMul": 2
-        }
+        { "type": "conditional", "when": "targetFrozen", "damageMul": 2 }
       ],
       "6": [
-        {
-          "type": "periodic",
-          "action": "freezeAll",
-          "everySec": 15,
-          "seconds": 3
-        }
+        { "type": "periodic", "action": "freezeAll", "everySec": 15, "seconds": 3 }
       ]
     },
     "chain": {
       "2": [
-        {
-          "type": "ruleChange",
-          "rule": "bounceDamage",
-          "op": "mul",
-          "value": 1.2
-        }
+        { "type": "ruleChange", "rule": "bounceDamage", "op": "mul", "value": 1.2 }
       ],
       "4": [
-        {
-          "type": "onCrit",
-          "action": "lightning"
-        }
+        { "type": "onCrit", "action": "lightning" }
       ],
       "6": [
-        {
-          "type": "ruleChange",
-          "rule": "lightningTargets",
-          "op": "mul",
-          "value": 1.5
-        },
-        {
-          "type": "ruleChange",
-          "rule": "bossLightning",
-          "op": "add",
-          "value": 1
-        }
+        { "type": "ruleChange", "rule": "lightningTargets", "op": "mul", "value": 1.5 },
+        { "type": "ruleChange", "rule": "bossLightning", "op": "add", "value": 1 }
       ]
     },
     "mining": {
       "2": [
-        {
-          "type": "statAdd",
-          "stat": "energyBonus",
-          "value": 0.2
-        }
+        { "type": "statAdd", "stat": "energyBonus", "value": 0.2 }
       ],
       "4": [
-        {
-          "type": "ruleChange",
-          "rule": "runEndBits",
-          "op": "mul",
-          "value": 1.25
-        }
+        { "type": "ruleChange", "rule": "runEndBits", "op": "mul", "value": 1.25 }
       ],
       "6": [
-        {
-          "type": "statMul",
-          "stat": "interestCap",
-          "value": 2
-        },
-        {
-          "type": "onKill",
-          "kind": "boss",
-          "keys": 1
-        }
+        { "type": "statMul", "stat": "interestCap", "value": 2 },
+        { "type": "onKill", "kind": "boss", "keys": 1 }
       ]
     },
     "firewall": {
       "2": [
-        {
-          "type": "statMul",
-          "stat": "health",
-          "value": 1.1
-        }
+        { "type": "statMul", "stat": "health", "value": 1.1 }
       ],
       "4": [
-        {
-          "type": "ruleChange",
-          "rule": "thornsRanged",
-          "op": "add",
-          "value": 1
-        }
+        { "type": "ruleChange", "rule": "thornsRanged", "op": "add", "value": 1 }
       ],
       "6": [
-        {
-          "type": "periodic",
-          "action": "immunity",
-          "everyWaves": 3,
-          "seconds": 3,
-          "hpBelow": 0.5
-        }
+        { "type": "periodic", "action": "immunity", "everyWaves": 3, "seconds": 3, "hpBelow": 0.5 }
       ]
+    }
+  },
+  "fusionTiers": [1, 3, 5],
+  "fusions": {
+    "overload+cryo": {
+      "name": "Thermal Shock",
+      "tiers": {
+        "1": [
+          { "type": "conditional", "when": "targetSlowed", "damageMul": 1.2 }
+        ],
+        "3": [
+          { "type": "conditional", "when": "targetFrozen", "damageMul": 1.5 }
+        ],
+        "5": [
+          { "type": "onHit", "action": "freeze", "chance": 0.1, "seconds": 1 }
+        ]
+      }
+    },
+    "overload+chain": {
+      "name": "Overcharge",
+      "tiers": {
+        "1": [
+          { "type": "ruleChange", "rule": "lightningDamage", "op": "mul", "value": 1.3 }
+        ],
+        "3": [
+          { "type": "ruleChange", "rule": "lightningTargets", "op": "add", "value": 1 }
+        ],
+        "5": [
+          { "type": "periodic", "action": "tesla", "everySec": 10, "seconds": 1, "value": 3 }
+        ]
+      }
+    },
+    "overload+mining": {
+      "name": "Headhunter",
+      "tiers": {
+        "1": [
+          { "type": "killBonus", "when": "crit", "energyMul": 1.5 }
+        ],
+        "3": [
+          { "type": "statAdd", "stat": "critChance", "value": 0.05 }
+        ],
+        "5": [
+          { "type": "onKill", "kind": "boss", "energyMul": 2 }
+        ]
+      }
+    },
+    "overload+firewall": {
+      "name": "Berserk",
+      "tiers": {
+        "1": [
+          { "type": "conditional", "when": "coreHpBelow", "frac": 0.5, "damageMul": 1.3 }
+        ],
+        "3": [
+          { "type": "statMul", "stat": "regen", "value": 1.5 }
+        ],
+        "5": [
+          { "type": "conditional", "when": "coreHpBelow", "frac": 0.5, "damageMul": 1.5 }
+        ]
+      }
+    },
+    "cryo+chain": {
+      "name": "Superconductor",
+      "tiers": {
+        "1": [
+          { "type": "lightningFreeze", "seconds": 0.5 }
+        ],
+        "3": [
+          { "type": "ruleChange", "rule": "lightningRange", "op": "mul", "value": 1.3 }
+        ],
+        "5": [
+          { "type": "ruleChange", "rule": "freezeSeconds", "op": "mul", "value": 1.5 }
+        ]
+      }
+    },
+    "cryo+mining": {
+      "name": "Cold Storage",
+      "tiers": {
+        "1": [
+          { "type": "killBonus", "when": "frozen", "energyMul": 1.5 }
+        ],
+        "3": [
+          { "type": "statAdd", "stat": "energyBonus", "value": 0.1 }
+        ],
+        "5": [
+          { "type": "ruleChange", "rule": "slowBonus", "op": "add", "value": 0.15 }
+        ]
+      }
+    },
+    "cryo+firewall": {
+      "name": "Frostbite",
+      "tiers": {
+        "1": [
+          { "type": "thornsSlow", "strength": 0.3, "seconds": 2 }
+        ],
+        "3": [
+          { "type": "statAdd", "stat": "thorns", "value": 0.25 }
+        ],
+        "5": [
+          { "type": "ruleChange", "rule": "slowCap", "op": "add", "value": 0.1 }
+        ]
+      }
+    },
+    "chain+mining": {
+      "name": "Network",
+      "tiers": {
+        "1": [
+          { "type": "killBonus", "when": "chain", "energyMul": 1.5 }
+        ],
+        "3": [
+          { "type": "ruleChange", "rule": "bounceRange", "op": "mul", "value": 1.3 }
+        ],
+        "5": [
+          { "type": "ruleChange", "rule": "bounces", "op": "add", "value": 1 }
+        ]
+      }
+    },
+    "chain+firewall": {
+      "name": "Grounding",
+      "tiers": {
+        "1": [
+          { "type": "retaliate", "damageMul": 0.5 }
+        ],
+        "3": [
+          { "type": "statAdd", "stat": "defense", "value": 0.05 }
+        ],
+        "5": [
+          { "type": "retaliate", "damageMul": 1 }
+        ]
+      }
+    },
+    "mining+firewall": {
+      "name": "Insurance",
+      "tiers": {
+        "1": [
+          { "type": "shield", "frac": 0.05 }
+        ],
+        "3": [
+          { "type": "ruleChange", "rule": "runEndBits", "op": "mul", "value": 1.15 }
+        ],
+        "5": [
+          { "type": "shield", "frac": 0.15 }
+        ]
+      }
     }
   }
 }

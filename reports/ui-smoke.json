@@ -1,11 +1,11 @@
 {
-  "date": "2026-10-06T00:46:01.531Z",
+  "date": "2026-10-15T11:59:59.637Z",
   "metrics": {
-    "portrait.firstPickMs": 5,
+    "portrait.firstPickMs": 1,
     "portrait.firstVisibleSimS": 0.03,
-    "landscape 1280×720.firstPickMs": 3,
+    "landscape 1280×720.firstPickMs": 1,
     "landscape 1280×720.firstVisibleSimS": 0,
-    "landscape 907×510.firstPickMs": 4,
+    "landscape 907×510.firstPickMs": 2,
     "landscape 907×510.firstVisibleSimS": 0.03,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
@@ -77,6 +77,8 @@
           "amount": 1,
           "commands": 0,
           "pickOpen": true,
+          "placing": false,
+          "crystal": [],
           "offer": [
             "permafrost",
             "hardening",
@@ -91,6 +93,7 @@
             "mining": 0,
             "firewall": 0
           },
+          "fusionTiers": {},
           "keys": 0,
           "portal": "local",
           "adRunning": false,
@@ -150,7 +153,7 @@
         "dead": true,
         "overlay": true,
         "kills": 1,
-        "energy": 497,
+        "energy": 497.2240687679083,
         "bits": 1,
         "coreHp": 0,
         "speed": 5,
@@ -182,6 +185,13 @@
         "amount": 1,
         "commands": 2,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -194,6 +204,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -244,24 +255,24 @@
         {
           "seed": 3,
           "tier": 1,
-          "deviceId": "ap9my4odf9gijhsh",
+          "deviceId": "50jem0hwbc7oqx3w",
           "runIndex": 1,
-          "t": 1791247295927,
+          "t": 1792065323755,
           "type": "run_start",
-          "runId": "yy55oj1x",
-          "sessionId": "0xd74nj3",
-          "build": "local-202610060041"
+          "runId": "2lupu7bl",
+          "sessionId": "ckfdtgjx",
+          "build": "local-202610151155"
         },
         {
-          "seed": 1843012992,
+          "seed": 1118069749,
           "tier": 1,
-          "deviceId": "ap9my4odf9gijhsh",
+          "deviceId": "50jem0hwbc7oqx3w",
           "runIndex": 2,
-          "t": 1791247299994,
+          "t": 1792065328323,
           "type": "run_start",
-          "runId": "2gmmhqdw",
-          "sessionId": "0xd74nj3",
-          "build": "local-202610060041"
+          "runId": "yntvmpc1",
+          "sessionId": "ckfdtgjx",
+          "build": "local-202610151155"
         }
       ]
     },
@@ -329,6 +340,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -341,6 +359,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -398,6 +417,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -410,6 +436,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": true,
@@ -467,6 +494,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -479,6 +513,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": true,
@@ -536,6 +571,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -548,6 +590,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": true,
@@ -579,7 +622,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 853276706,
+        "seed": 748121179,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -605,10 +648,12 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
-          "dataMine",
+          "hotBarrel",
           "coldAura",
-          "frostShot"
+          "permafrost"
         ],
         "picks": 0,
         "perks": {},
@@ -619,6 +664,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -636,7 +682,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 7,
+        "tick": 10,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -650,7 +696,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 853276706,
+        "seed": 748121179,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -676,18 +722,26 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
-          "dataMine": 1
+          "hotBarrel": 1
         },
         "setTiers": {
-          "overload": 0,
+          "overload": 2,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -718,24 +772,24 @@
         {
           "kind": "midgame",
           "placement": "restart",
-          "t": 1791247303426,
+          "t": 1792065332130,
           "type": "ad_request",
-          "runId": "1djw551f",
-          "sessionId": "s28r26mt",
-          "deviceId": "szitk10slyzp096f",
-          "build": "local-202610060041"
+          "runId": "5ewc26ls",
+          "sessionId": "q5n8fjyf",
+          "deviceId": "2gigg9iibh3dccin",
+          "build": "local-202610151155"
         },
         {
           "kind": "midgame",
           "placement": "restart",
           "result": "completed",
           "ms": 2302,
-          "t": 1791247305727,
+          "t": 1792065334432,
           "type": "ad_result",
-          "runId": "1djw551f",
-          "sessionId": "s28r26mt",
-          "deviceId": "szitk10slyzp096f",
-          "build": "local-202610060041"
+          "runId": "5ewc26ls",
+          "sessionId": "q5n8fjyf",
+          "deviceId": "2gigg9iibh3dccin",
+          "build": "local-202610151155"
         }
       ]
     },
@@ -782,7 +836,7 @@
         "coreHp": 5,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 63,
         "seed": 3,
         "levels": {
           "damage": 0,
@@ -809,6 +863,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "permafrost",
           "hardening",
@@ -823,6 +879,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "crazygames",
         "adRunning": false,
@@ -890,6 +947,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -902,6 +966,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "crazygames",
         "adRunning": false,
@@ -959,6 +1024,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -971,6 +1043,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "crazygames",
         "adRunning": true,
@@ -1028,6 +1101,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -1040,6 +1120,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "crazygames",
         "adRunning": true,
@@ -1097,6 +1178,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -1109,6 +1197,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "crazygames",
         "adRunning": true,
@@ -1140,7 +1229,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 445702572,
+        "seed": 1831918463,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1166,10 +1255,12 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
-          "hardening",
-          "shatter",
-          "dataMine"
+          "energySiphon",
+          "critSpike",
+          "reflect"
         ],
         "picks": 0,
         "perks": {},
@@ -1180,6 +1271,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "crazygames",
         "adRunning": false,
@@ -1197,7 +1289,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 7,
+        "tick": 10,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1211,7 +1303,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 445702572,
+        "seed": 1831918463,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1237,18 +1329,26 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
-          "hardening": 1
+          "energySiphon": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
           "chain": 0,
-          "mining": 0,
+          "mining": 2,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "crazygames",
         "adRunning": false,
@@ -1369,6 +1469,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -1381,6 +1488,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "poki",
         "adRunning": false,
@@ -1438,6 +1546,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -1450,6 +1565,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "poki",
         "adRunning": true,
@@ -1507,6 +1623,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -1519,6 +1642,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "poki",
         "adRunning": true,
@@ -1576,6 +1700,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -1588,6 +1719,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "poki",
         "adRunning": true,
@@ -1619,7 +1751,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1085015436,
+        "seed": 1121683066,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1645,10 +1777,12 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
-          "overchargeLink",
-          "frostShot",
-          "conductive"
+          "conductive",
+          "reflect",
+          "hotBarrel"
         ],
         "picks": 0,
         "perks": {},
@@ -1659,6 +1793,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "poki",
         "adRunning": false,
@@ -1676,10 +1811,10 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 8,
+        "tick": 7,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -1690,7 +1825,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1085015436,
+        "seed": 1121683066,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1716,10 +1851,17 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
-          "overchargeLink": 1
+          "conductive": 1
         },
         "setTiers": {
           "overload": 0,
@@ -1728,6 +1870,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "poki",
         "adRunning": false,
@@ -1818,6 +1961,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -1830,6 +1980,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -1862,7 +2013,7 @@
           "speed": 5,
           "paused": false,
           "fps": 60,
-          "seed": 1268253757,
+          "seed": 2012919723,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -1888,10 +2039,12 @@
           "amount": 1,
           "commands": 0,
           "pickOpen": true,
+          "placing": false,
+          "crystal": [],
           "offer": [
-            "bounty",
-            "frostShot",
-            "critSpike"
+            "permafrost",
+            "deepFreeze",
+            "frostShot"
           ],
           "picks": 0,
           "perks": {},
@@ -1902,6 +2055,7 @@
             "mining": 0,
             "firewall": 0
           },
+          "fusionTiers": {},
           "keys": 0,
           "portal": "local",
           "adRunning": false,
@@ -1942,7 +2096,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 19,
+        "tick": 20,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1955,8 +2109,8 @@
         "coreHp": 5,
         "speed": 5,
         "paused": false,
-        "fps": 59,
-        "seed": 1268253757,
+        "fps": 58,
+        "seed": 2012919723,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1982,18 +2136,26 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
-          "bounty": 1
+          "permafrost": 1
         },
         "setTiers": {
           "overload": 0,
-          "cryo": 0,
+          "cryo": 2,
           "chain": 0,
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -2030,8 +2192,8 @@
           "coreHp": 100,
           "speed": 1,
           "paused": false,
-          "fps": 67,
-          "seed": 320763459,
+          "fps": 64,
+          "seed": 733485729,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2057,10 +2219,12 @@
           "amount": 1,
           "commands": 0,
           "pickOpen": true,
+          "placing": false,
+          "crystal": [],
           "offer": [
-            "deepFreeze",
+            "patch",
             "shatter",
-            "burstFire"
+            "coldAura"
           ],
           "picks": 0,
           "perks": {},
@@ -2071,6 +2235,7 @@
             "mining": 0,
             "firewall": 0
           },
+          "fusionTiers": {},
           "keys": 0,
           "portal": "local",
           "adRunning": false,
@@ -2147,6 +2312,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "dataMine",
           "burstFire",
@@ -2161,6 +2328,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -2218,6 +2386,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "dataMine",
           "burstFire",
@@ -2232,6 +2402,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -2243,25 +2414,125 @@
       }
     },
     {
-      "name": "portrait pick overlay: all 120 texts ≥ 28 px",
+      "name": "portrait pick overlay: all 183 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 120,
+        "count": 183,
         "bad": []
       }
     },
     {
-      "name": "portrait: tapping a card installs it and resumes",
+      "name": "portrait: a new protocol asks where to place its crystal module",
+      "ok": true,
+      "detail": {
+        "auto": {
+          "x": 253.33333333333334,
+          "y": 1458,
+          "w": 213.33333333333334,
+          "h": 76
+        },
+        "back": {
+          "x": 24,
+          "y": 1458,
+          "w": 213.33333333333334,
+          "h": 76
+        },
+        "always": {
+          "x": 482.6666666666667,
+          "y": 1458,
+          "w": 213.33333333333334,
+          "h": 76
+        },
+        "undo": {
+          "x": 24,
+          "y": 1458,
+          "w": 328,
+          "h": 76
+        },
+        "done": {
+          "x": 368,
+          "y": 1458,
+          "w": 328,
+          "h": 76
+        },
+        "autoSlot": [
+          281.5061487217439,
+          659.9553384956948
+        ],
+        "free": [
+          [
+            -2,
+            2
+          ],
+          [
+            -1,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            -1
+          ],
+          [
+            2,
+            -2
+          ],
+          [
+            1,
+            -2
+          ],
+          [
+            0,
+            -2
+          ],
+          [
+            -1,
+            -1
+          ],
+          [
+            -2,
+            0
+          ],
+          [
+            -2,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "portrait: tapping a hex bolts the module there",
+      "ok": true,
+      "detail": [
+        [
+          -2,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "portrait: tapping a card installs it",
       "ok": true,
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -2270,8 +2541,8 @@
         "bits": 0,
         "coreHp": 100,
         "speed": 1,
-        "paused": false,
-        "fps": 62,
+        "paused": true,
+        "fps": 61,
         "seed": 7,
         "levels": {
           "damage": 0,
@@ -2296,8 +2567,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -2310,22 +2588,43 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
         "adAudioMuted": false,
         "soundMuted": false,
-        "gameplay": true,
+        "gameplay": false,
         "adsAvailable": true,
         "restarting": false
       }
     },
     {
-      "name": "portrait: all 120 texts ≥ 28 px",
+      "name": "portrait: the editor switches to Arrange after placing",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "arrange",
+        "selected": -1,
+        "readout": [
+          "Mining 0 → 1",
+          "south-west wedge: empty → Mining"
+        ],
+        "strip": [
+          "Overload 0·0",
+          "Cryo 0·0",
+          "Chain 0·0",
+          "Mining 1·0",
+          "Firewall 0·0"
+        ]
+      }
+    },
+    {
+      "name": "portrait: all 188 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 120,
+        "count": 188,
         "bad": []
       }
     },
@@ -2349,7 +2648,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 61,
         "seed": 7,
         "levels": {
           "damage": 0,
@@ -2374,8 +2673,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -2388,6 +2694,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -2400,211 +2707,6 @@
     },
     {
       "name": "portrait: speed button toggles ×1 → ×2",
-      "ok": true,
-      "detail": {
-        "scene": "Battle",
-        "orientation": "portrait",
-        "wave": 1,
-        "tick": 2,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
-        "projectiles": 0,
-        "dead": false,
-        "overlay": false,
-        "kills": 0,
-        "energy": 0,
-        "bits": 0,
-        "coreHp": 100,
-        "speed": 2,
-        "paused": false,
-        "fps": 62,
-        "seed": 7,
-        "levels": {
-          "damage": 0,
-          "attackSpeed": 0,
-          "critChance": 0,
-          "critFactor": 0,
-          "range": 0,
-          "multishot": 0,
-          "health": 0,
-          "regen": 0,
-          "defense": 0,
-          "thorns": 0,
-          "lifesteal": 0,
-          "knockback": 0,
-          "energyBonus": 0,
-          "energyPerWave": 0,
-          "interest": 0,
-          "bitsPerKill": 0,
-          "bitsPerWave": 0,
-          "freeUpgrade": 0
-        },
-        "unlocked": [],
-        "tab": "atk",
-        "amount": 1,
-        "commands": 2,
-        "pickOpen": false,
-        "offer": [],
-        "picks": 1,
-        "perks": {
-          "dataMine": 1
-        },
-        "setTiers": {
-          "overload": 0,
-          "cryo": 0,
-          "chain": 0,
-          "mining": 0,
-          "firewall": 0
-        },
-        "keys": 0,
-        "portal": "local",
-        "adRunning": false,
-        "adAudioMuted": false,
-        "soundMuted": false,
-        "gameplay": true,
-        "adsAvailable": true,
-        "restarting": false
-      }
-    },
-    {
-      "name": "portrait: pause button freezes the sim",
-      "ok": true,
-      "detail": {
-        "p0": {
-          "scene": "Battle",
-          "orientation": "portrait",
-          "wave": 1,
-          "tick": 2,
-          "phase": "wave",
-          "enemies": 1,
-          "visible": 1,
-          "projectiles": 0,
-          "dead": false,
-          "overlay": false,
-          "kills": 0,
-          "energy": 0,
-          "bits": 0,
-          "coreHp": 100,
-          "speed": 2,
-          "paused": true,
-          "fps": 62,
-          "seed": 7,
-          "levels": {
-            "damage": 0,
-            "attackSpeed": 0,
-            "critChance": 0,
-            "critFactor": 0,
-            "range": 0,
-            "multishot": 0,
-            "health": 0,
-            "regen": 0,
-            "defense": 0,
-            "thorns": 0,
-            "lifesteal": 0,
-            "knockback": 0,
-            "energyBonus": 0,
-            "energyPerWave": 0,
-            "interest": 0,
-            "bitsPerKill": 0,
-            "bitsPerWave": 0,
-            "freeUpgrade": 0
-          },
-          "unlocked": [],
-          "tab": "atk",
-          "amount": 1,
-          "commands": 2,
-          "pickOpen": false,
-          "offer": [],
-          "picks": 1,
-          "perks": {
-            "dataMine": 1
-          },
-          "setTiers": {
-            "overload": 0,
-            "cryo": 0,
-            "chain": 0,
-            "mining": 0,
-            "firewall": 0
-          },
-          "keys": 0,
-          "portal": "local",
-          "adRunning": false,
-          "adAudioMuted": false,
-          "soundMuted": false,
-          "gameplay": false,
-          "adsAvailable": true,
-          "restarting": false
-        },
-        "p1": {
-          "scene": "Battle",
-          "orientation": "portrait",
-          "wave": 1,
-          "tick": 2,
-          "phase": "wave",
-          "enemies": 1,
-          "visible": 1,
-          "projectiles": 0,
-          "dead": false,
-          "overlay": false,
-          "kills": 0,
-          "energy": 0,
-          "bits": 0,
-          "coreHp": 100,
-          "speed": 2,
-          "paused": true,
-          "fps": 61,
-          "seed": 7,
-          "levels": {
-            "damage": 0,
-            "attackSpeed": 0,
-            "critChance": 0,
-            "critFactor": 0,
-            "range": 0,
-            "multishot": 0,
-            "health": 0,
-            "regen": 0,
-            "defense": 0,
-            "thorns": 0,
-            "lifesteal": 0,
-            "knockback": 0,
-            "energyBonus": 0,
-            "energyPerWave": 0,
-            "interest": 0,
-            "bitsPerKill": 0,
-            "bitsPerWave": 0,
-            "freeUpgrade": 0
-          },
-          "unlocked": [],
-          "tab": "atk",
-          "amount": 1,
-          "commands": 2,
-          "pickOpen": false,
-          "offer": [],
-          "picks": 1,
-          "perks": {
-            "dataMine": 1
-          },
-          "setTiers": {
-            "overload": 0,
-            "cryo": 0,
-            "chain": 0,
-            "mining": 0,
-            "firewall": 0
-          },
-          "keys": 0,
-          "portal": "local",
-          "adRunning": false,
-          "adAudioMuted": false,
-          "soundMuted": false,
-          "gameplay": false,
-          "adsAvailable": true,
-          "restarting": false
-        }
-      }
-    },
-    {
-      "name": "portrait: pause button resumes",
       "ok": true,
       "detail": {
         "scene": "Battle",
@@ -2648,8 +2750,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -2662,6 +2771,236 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
+        "keys": 0,
+        "portal": "local",
+        "adRunning": false,
+        "adAudioMuted": false,
+        "soundMuted": false,
+        "gameplay": true,
+        "adsAvailable": true,
+        "restarting": false
+      }
+    },
+    {
+      "name": "portrait: pause button freezes the sim",
+      "ok": true,
+      "detail": {
+        "p0": {
+          "scene": "Battle",
+          "orientation": "portrait",
+          "wave": 1,
+          "tick": 3,
+          "phase": "wave",
+          "enemies": 1,
+          "visible": 1,
+          "projectiles": 0,
+          "dead": false,
+          "overlay": false,
+          "kills": 0,
+          "energy": 0,
+          "bits": 0,
+          "coreHp": 100,
+          "speed": 2,
+          "paused": true,
+          "fps": 61,
+          "seed": 7,
+          "levels": {
+            "damage": 0,
+            "attackSpeed": 0,
+            "critChance": 0,
+            "critFactor": 0,
+            "range": 0,
+            "multishot": 0,
+            "health": 0,
+            "regen": 0,
+            "defense": 0,
+            "thorns": 0,
+            "lifesteal": 0,
+            "knockback": 0,
+            "energyBonus": 0,
+            "energyPerWave": 0,
+            "interest": 0,
+            "bitsPerKill": 0,
+            "bitsPerWave": 0,
+            "freeUpgrade": 0
+          },
+          "unlocked": [],
+          "tab": "atk",
+          "amount": 1,
+          "commands": 1,
+          "pickOpen": false,
+          "placing": false,
+          "crystal": [
+            [
+              -2,
+              2
+            ]
+          ],
+          "offer": [],
+          "picks": 1,
+          "perks": {
+            "dataMine": 1
+          },
+          "setTiers": {
+            "overload": 0,
+            "cryo": 0,
+            "chain": 0,
+            "mining": 0,
+            "firewall": 0
+          },
+          "fusionTiers": {},
+          "keys": 0,
+          "portal": "local",
+          "adRunning": false,
+          "adAudioMuted": false,
+          "soundMuted": false,
+          "gameplay": false,
+          "adsAvailable": true,
+          "restarting": false
+        },
+        "p1": {
+          "scene": "Battle",
+          "orientation": "portrait",
+          "wave": 1,
+          "tick": 3,
+          "phase": "wave",
+          "enemies": 1,
+          "visible": 1,
+          "projectiles": 0,
+          "dead": false,
+          "overlay": false,
+          "kills": 0,
+          "energy": 0,
+          "bits": 0,
+          "coreHp": 100,
+          "speed": 2,
+          "paused": true,
+          "fps": 61,
+          "seed": 7,
+          "levels": {
+            "damage": 0,
+            "attackSpeed": 0,
+            "critChance": 0,
+            "critFactor": 0,
+            "range": 0,
+            "multishot": 0,
+            "health": 0,
+            "regen": 0,
+            "defense": 0,
+            "thorns": 0,
+            "lifesteal": 0,
+            "knockback": 0,
+            "energyBonus": 0,
+            "energyPerWave": 0,
+            "interest": 0,
+            "bitsPerKill": 0,
+            "bitsPerWave": 0,
+            "freeUpgrade": 0
+          },
+          "unlocked": [],
+          "tab": "atk",
+          "amount": 1,
+          "commands": 1,
+          "pickOpen": false,
+          "placing": false,
+          "crystal": [
+            [
+              -2,
+              2
+            ]
+          ],
+          "offer": [],
+          "picks": 1,
+          "perks": {
+            "dataMine": 1
+          },
+          "setTiers": {
+            "overload": 0,
+            "cryo": 0,
+            "chain": 0,
+            "mining": 0,
+            "firewall": 0
+          },
+          "fusionTiers": {},
+          "keys": 0,
+          "portal": "local",
+          "adRunning": false,
+          "adAudioMuted": false,
+          "soundMuted": false,
+          "gameplay": false,
+          "adsAvailable": true,
+          "restarting": false
+        }
+      }
+    },
+    {
+      "name": "portrait: pause button resumes",
+      "ok": true,
+      "detail": {
+        "scene": "Battle",
+        "orientation": "portrait",
+        "wave": 1,
+        "tick": 4,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
+        "projectiles": 0,
+        "dead": false,
+        "overlay": false,
+        "kills": 0,
+        "energy": 0,
+        "bits": 0,
+        "coreHp": 100,
+        "speed": 2,
+        "paused": false,
+        "fps": 61,
+        "seed": 7,
+        "levels": {
+          "damage": 0,
+          "attackSpeed": 0,
+          "critChance": 0,
+          "critFactor": 0,
+          "range": 0,
+          "multishot": 0,
+          "health": 0,
+          "regen": 0,
+          "defense": 0,
+          "thorns": 0,
+          "lifesteal": 0,
+          "knockback": 0,
+          "energyBonus": 0,
+          "energyPerWave": 0,
+          "interest": 0,
+          "bitsPerKill": 0,
+          "bitsPerWave": 0,
+          "freeUpgrade": 0
+        },
+        "unlocked": [],
+        "tab": "atk",
+        "amount": 1,
+        "commands": 1,
+        "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
+        "offer": [],
+        "picks": 1,
+        "perks": {
+          "dataMine": 1
+        },
+        "setTiers": {
+          "overload": 0,
+          "cryo": 0,
+          "chain": 0,
+          "mining": 0,
+          "firewall": 0
+        },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -2679,7 +3018,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 911,
+        "tick": 903,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2687,7 +3026,7 @@
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 14.7,
+        "energy": 19.066676217765043,
         "bits": 8.05,
         "coreHp": 100,
         "speed": 5,
@@ -2717,8 +3056,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -2731,6 +3077,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -2761,6 +3108,7 @@
       "detail": {
         "tab": "atk",
         "amount": 1,
+        "autoMode": false,
         "tabs": [
           {
             "tab": "atk",
@@ -2807,7 +3155,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "attackSpeed",
@@ -2819,7 +3168,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critChance",
@@ -2831,7 +3181,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critFactor",
@@ -2843,7 +3194,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "range",
@@ -2855,7 +3207,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "multishot",
@@ -2867,7 +3220,8 @@
             },
             "locked": true,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           }
         ],
         "restart": {
@@ -2928,6 +3282,14 @@
             "h": 96
           }
         },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 190,
+          "y": 573.2,
+          "w": 340,
+          "h": 90
+        },
         "layout": {
           "w": 720,
           "h": 1558,
@@ -2947,17 +3309,17 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1174,
+        "tick": 1031,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 10,
-        "energy": 21.125999999999998,
-        "bits": 11.569,
-        "coreHp": 95.80733333333332,
+        "kills": 8,
+        "energy": 22.056269914040115,
+        "bits": 9.223,
+        "coreHp": 100,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -2985,8 +3347,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -2999,6 +3368,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3013,8 +3383,8 @@
       "name": "portrait upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 21.125999999999998,
-        "s1": 16.125999999999998,
+        "s0": 22.056269914040115,
+        "s1": 17.056269914040115,
         "l0": 0,
         "l1": 1
       }
@@ -3026,8 +3396,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 16.125999999999998,
-        "e1": 10.125999999999998
+        "e0": 17.056269914040115,
+        "e1": 11.056269914040115
       }
     },
     {
@@ -3048,6 +3418,214 @@
       "detail": 10
     },
     {
+      "name": "portrait upgrades: amount toggle MAX → AUTO",
+      "ok": true,
+      "detail": {
+        "tab": "def",
+        "amount": "max",
+        "autoMode": true,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 18,
+              "y": 930,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 196,
+              "y": 930,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 374,
+              "y": 930,
+              "w": 172,
+              "h": 58
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 552,
+          "y": 930,
+          "w": 150,
+          "h": 58
+        },
+        "rows": [
+          {
+            "stat": "health",
+            "rect": {
+              "x": 18,
+              "y": 997,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "regen",
+            "rect": {
+              "x": 18,
+              "y": 1088,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "defense",
+            "rect": {
+              "x": 18,
+              "y": 1179,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "thorns",
+            "rect": {
+              "x": 18,
+              "y": 1270,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "lifesteal",
+            "rect": {
+              "x": 18,
+              "y": 1361,
+              "w": 684,
+              "h": 87
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "knockback",
+            "rect": {
+              "x": 18,
+              "y": 1452,
+              "w": 684,
+              "h": 87
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          }
+        ],
+        "restart": {
+          "x": 370,
+          "y": 1077,
+          "w": 270,
+          "h": 92
+        },
+        "home": {
+          "x": 80,
+          "y": 1077,
+          "w": 270,
+          "h": 92
+        },
+        "double": {
+          "x": 370,
+          "y": 965,
+          "w": 270,
+          "h": 92
+        },
+        "revive": {
+          "x": 80,
+          "y": 965,
+          "w": 270,
+          "h": 92
+        },
+        "pick": {
+          "cards": [
+            {
+              "x": 30,
+              "y": 416,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 664,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 912,
+              "w": 660,
+              "h": 224
+            }
+          ],
+          "reroll": {
+            "x": 30,
+            "y": 1192,
+            "w": 318,
+            "h": 96
+          },
+          "boost": {
+            "x": 372,
+            "y": 1192,
+            "w": 318,
+            "h": 96
+          }
+        },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 190,
+          "y": 573.2,
+          "w": 340,
+          "h": 90
+        },
+        "layout": {
+          "w": 720,
+          "h": 1558,
+          "panel": {
+            "x": 0,
+            "y": 912,
+            "w": 720,
+            "h": 646
+          }
+        }
+      }
+    },
+    {
+      "name": "portrait upgrades: in AUTO mode a row tap toggles auto-buy, buys nothing",
+      "ok": true,
+      "detail": {
+        "on": true,
+        "off": false
+      }
+    },
+    {
       "name": "portrait upgrades: amount toggle cycles back to ×1",
       "ok": true,
       "detail": 1
@@ -3065,7 +3643,8 @@
         },
         "locked": true,
         "affordable": false,
-        "level": 0
+        "level": 0,
+        "auto": false
       }
     },
     {
@@ -3109,11 +3688,11 @@
       }
     },
     {
-      "name": "portrait 360×640: all 114 texts ≥ 28 px",
+      "name": "portrait 360×640: all 177 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 114,
+        "count": 177,
         "bad": []
       }
     },
@@ -3123,6 +3702,7 @@
       "detail": {
         "tab": "atk",
         "amount": 1,
+        "autoMode": false,
         "tabs": [
           {
             "tab": "atk",
@@ -3169,7 +3749,8 @@
             },
             "locked": false,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "attackSpeed",
@@ -3181,7 +3762,8 @@
             },
             "locked": false,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critChance",
@@ -3193,7 +3775,8 @@
             },
             "locked": false,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critFactor",
@@ -3205,7 +3788,8 @@
             },
             "locked": false,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "range",
@@ -3217,7 +3801,8 @@
             },
             "locked": false,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "multishot",
@@ -3229,7 +3814,8 @@
             },
             "locked": true,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           }
         ],
         "restart": {
@@ -3290,6 +3876,14 @@
             "h": 96
           }
         },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 190,
+          "y": 558.8,
+          "w": 340,
+          "h": 90
+        },
         "layout": {
           "w": 720,
           "h": 1280,
@@ -3309,17 +3903,17 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1178,
+        "tick": 1025,
         "phase": "wave",
-        "enemies": 2,
+        "enemies": 1,
         "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 10,
-        "energy": 21.125999999999998,
-        "bits": 11.569,
-        "coreHp": 95.87399999999998,
+        "kills": 8,
+        "energy": 22.056269914040115,
+        "bits": 9.223,
+        "coreHp": 100,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -3349,6 +3943,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -3361,6 +3962,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3375,8 +3977,8 @@
       "name": "portrait 360×640 upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 21.125999999999998,
-        "s1": 16.125999999999998,
+        "s0": 22.056269914040115,
+        "s1": 17.056269914040115,
         "l0": 0,
         "l1": 1
       }
@@ -3388,8 +3990,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 16.125999999999998,
-        "e1": 10.125999999999998
+        "e0": 17.056269914040115,
+        "e1": 11.056269914040115
       }
     },
     {
@@ -3410,6 +4012,214 @@
       "detail": 10
     },
     {
+      "name": "portrait 360×640 upgrades: amount toggle MAX → AUTO",
+      "ok": true,
+      "detail": {
+        "tab": "def",
+        "amount": "max",
+        "autoMode": true,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 18,
+              "y": 858,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 196,
+              "y": 858,
+              "w": 172,
+              "h": 58
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 374,
+              "y": 858,
+              "w": 172,
+              "h": 58
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 552,
+          "y": 858,
+          "w": 150,
+          "h": 58
+        },
+        "rows": [
+          {
+            "stat": "health",
+            "rect": {
+              "x": 18,
+              "y": 925,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "regen",
+            "rect": {
+              "x": 18,
+              "y": 981,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "defense",
+            "rect": {
+              "x": 18,
+              "y": 1037,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "thorns",
+            "rect": {
+              "x": 18,
+              "y": 1093,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "lifesteal",
+            "rect": {
+              "x": 18,
+              "y": 1149,
+              "w": 684,
+              "h": 52
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "knockback",
+            "rect": {
+              "x": 18,
+              "y": 1205,
+              "w": 684,
+              "h": 52
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          }
+        ],
+        "restart": {
+          "x": 370,
+          "y": 938,
+          "w": 270,
+          "h": 92
+        },
+        "home": {
+          "x": 80,
+          "y": 938,
+          "w": 270,
+          "h": 92
+        },
+        "double": {
+          "x": 370,
+          "y": 826,
+          "w": 270,
+          "h": 92
+        },
+        "revive": {
+          "x": 80,
+          "y": 826,
+          "w": 270,
+          "h": 92
+        },
+        "pick": {
+          "cards": [
+            {
+              "x": 30,
+              "y": 277,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 525,
+              "w": 660,
+              "h": 224
+            },
+            {
+              "x": 30,
+              "y": 773,
+              "w": 660,
+              "h": 224
+            }
+          ],
+          "reroll": {
+            "x": 30,
+            "y": 1053,
+            "w": 318,
+            "h": 96
+          },
+          "boost": {
+            "x": 372,
+            "y": 1053,
+            "w": 318,
+            "h": 96
+          }
+        },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 190,
+          "y": 558.8,
+          "w": 340,
+          "h": 90
+        },
+        "layout": {
+          "w": 720,
+          "h": 1280,
+          "panel": {
+            "x": 0,
+            "y": 840,
+            "w": 720,
+            "h": 440
+          }
+        }
+      }
+    },
+    {
+      "name": "portrait 360×640 upgrades: in AUTO mode a row tap toggles auto-buy, buys nothing",
+      "ok": true,
+      "detail": {
+        "on": true,
+        "off": false
+      }
+    },
+    {
       "name": "portrait 360×640 upgrades: amount toggle cycles back to ×1",
       "ok": true,
       "detail": 1
@@ -3427,7 +4237,8 @@
         },
         "locked": true,
         "affordable": false,
-        "level": 0
+        "level": 0,
+        "auto": false
       }
     },
     {
@@ -3508,6 +4319,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -3520,6 +4338,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3551,7 +4370,7 @@
         "speed": 5,
         "paused": false,
         "fps": 58,
-        "seed": 698509890,
+        "seed": 1804593035,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -3577,10 +4396,12 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
-          "burstFire",
-          "overclockRounds",
-          "frostShot"
+          "permafrost",
+          "coldAura",
+          "bounce"
         ],
         "picks": 0,
         "perks": {},
@@ -3591,6 +4412,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3626,7 +4448,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 65,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -3653,6 +4475,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "energySiphon",
           "permafrost",
@@ -3667,6 +4491,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3697,7 +4522,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 65,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -3724,6 +4549,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "energySiphon",
           "permafrost",
@@ -3738,6 +4565,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3749,25 +4577,125 @@
       }
     },
     {
-      "name": "landscape 1280×720 pick overlay: all 120 texts ≥ 16 px",
+      "name": "landscape 1280×720 pick overlay: all 183 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 120,
+        "count": 183,
         "bad": []
       }
     },
     {
-      "name": "landscape 1280×720: tapping a card installs it and resumes",
+      "name": "landscape 1280×720: a new protocol asks where to place its crystal module",
+      "ok": true,
+      "detail": {
+        "auto": {
+          "x": 949.3333333333334,
+          "y": 648,
+          "w": 149.33333333333334,
+          "h": 54
+        },
+        "back": {
+          "x": 788,
+          "y": 648,
+          "w": 149.33333333333334,
+          "h": 54
+        },
+        "always": {
+          "x": 1110.6666666666667,
+          "y": 648,
+          "w": 149.33333333333334,
+          "h": 54
+        },
+        "undo": {
+          "x": 788,
+          "y": 648,
+          "w": 230,
+          "h": 54
+        },
+        "done": {
+          "x": 1030,
+          "y": 648,
+          "w": 230,
+          "h": 54
+        },
+        "autoSlot": [
+          305.5061487217439,
+          495.95533849569483
+        ],
+        "free": [
+          [
+            -2,
+            2
+          ],
+          [
+            -1,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            -1
+          ],
+          [
+            2,
+            -2
+          ],
+          [
+            1,
+            -2
+          ],
+          [
+            0,
+            -2
+          ],
+          [
+            -1,
+            -1
+          ],
+          [
+            -2,
+            0
+          ],
+          [
+            -2,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "landscape 1280×720: tapping a hex bolts the module there",
+      "ok": true,
+      "detail": [
+        [
+          -2,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "landscape 1280×720: tapping a card installs it",
       "ok": true,
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -3776,8 +4704,8 @@
         "bits": 0,
         "coreHp": 100,
         "speed": 1,
-        "paused": false,
-        "fps": 62,
+        "paused": true,
+        "fps": 61,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -3802,8 +4730,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -3816,22 +4751,43 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
         "adAudioMuted": false,
         "soundMuted": false,
-        "gameplay": true,
+        "gameplay": false,
         "adsAvailable": true,
         "restarting": false
       }
     },
     {
-      "name": "landscape 1280×720: all 120 texts ≥ 16 px",
+      "name": "landscape 1280×720: the editor switches to Arrange after placing",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "arrange",
+        "selected": -1,
+        "readout": [
+          "Mining 0 → 1",
+          "south-west wedge: empty → Mining"
+        ],
+        "strip": [
+          "Overload 0·0",
+          "Cryo 0·0",
+          "Chain 0·0",
+          "Mining 1·0",
+          "Firewall 0·0"
+        ]
+      }
+    },
+    {
+      "name": "landscape 1280×720: all 188 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 120,
+        "count": 188,
         "bad": []
       }
     },
@@ -3855,7 +4811,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 61,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -3880,8 +4836,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -3894,6 +4857,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3949,8 +4913,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -3963,6 +4934,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -3980,15 +4952,15 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 914,
+        "tick": 929,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 17.5,
+        "energy": 22.70916905444126,
         "bits": 7,
         "coreHp": 100,
         "speed": 5,
@@ -4018,8 +4990,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -4032,6 +5011,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -4048,6 +5028,7 @@
       "detail": {
         "tab": "atk",
         "amount": 1,
+        "autoMode": false,
         "tabs": [
           {
             "tab": "atk",
@@ -4094,7 +5075,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "attackSpeed",
@@ -4106,7 +5088,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critChance",
@@ -4118,7 +5101,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critFactor",
@@ -4130,7 +5114,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "range",
@@ -4142,7 +5127,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "multishot",
@@ -4154,7 +5140,8 @@
             },
             "locked": true,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           }
         ],
         "restart": {
@@ -4215,6 +5202,14 @@
             "h": 64
           }
         },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 254,
+          "y": 346,
+          "w": 260,
+          "h": 60
+        },
         "layout": {
           "w": 1280,
           "h": 720,
@@ -4234,16 +5229,16 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1021,
+        "tick": 932,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 8,
-        "energy": 20.05,
-        "bits": 8.02,
+        "kills": 7,
+        "energy": 22.70916905444126,
+        "bits": 7,
         "coreHp": 100,
         "speed": 5,
         "paused": false,
@@ -4272,8 +5267,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -4286,6 +5288,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -4300,8 +5303,8 @@
       "name": "landscape 1280×720 upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 20.05,
-        "s1": 15.05,
+        "s0": 22.70916905444126,
+        "s1": 17.70916905444126,
         "l0": 0,
         "l1": 1
       }
@@ -4313,8 +5316,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 15.05,
-        "e1": 9.05
+        "e0": 17.70916905444126,
+        "e1": 11.709169054441261
       }
     },
     {
@@ -4335,6 +5338,214 @@
       "detail": 10
     },
     {
+      "name": "landscape 1280×720 upgrades: amount toggle MAX → AUTO",
+      "ok": true,
+      "detail": {
+        "tab": "def",
+        "amount": "max",
+        "autoMode": true,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 790,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 914,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 1038,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 1162,
+          "y": 230,
+          "w": 96,
+          "h": 44
+        },
+        "rows": [
+          {
+            "stat": "health",
+            "rect": {
+              "x": 790,
+              "y": 283,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "regen",
+            "rect": {
+              "x": 790,
+              "y": 353,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "defense",
+            "rect": {
+              "x": 790,
+              "y": 423,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "thorns",
+            "rect": {
+              "x": 790,
+              "y": 493,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "lifesteal",
+            "rect": {
+              "x": 790,
+              "y": 563,
+              "w": 468,
+              "h": 65
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "knockback",
+            "rect": {
+              "x": 790,
+              "y": 633,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          }
+        ],
+        "restart": {
+          "x": 648,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "home": {
+          "x": 392,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "double": {
+          "x": 648,
+          "y": 500,
+          "w": 240,
+          "h": 62
+        },
+        "revive": {
+          "x": 392,
+          "y": 500,
+          "w": 240,
+          "h": 62
+        },
+        "pick": {
+          "cards": [
+            {
+              "x": 108,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 470,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 832,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            }
+          ],
+          "reroll": {
+            "x": 328,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          },
+          "boost": {
+            "x": 652,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          }
+        },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 254,
+          "y": 346,
+          "w": 260,
+          "h": 60
+        },
+        "layout": {
+          "w": 1280,
+          "h": 720,
+          "panel": {
+            "x": 768,
+            "y": 208,
+            "w": 512,
+            "h": 512
+          }
+        }
+      }
+    },
+    {
+      "name": "landscape 1280×720 upgrades: in AUTO mode a row tap toggles auto-buy, buys nothing",
+      "ok": true,
+      "detail": {
+        "on": true,
+        "off": false
+      }
+    },
+    {
       "name": "landscape 1280×720 upgrades: amount toggle cycles back to ×1",
       "ok": true,
       "detail": 1
@@ -4352,7 +5563,8 @@
         },
         "locked": true,
         "affordable": false,
-        "level": 0
+        "level": 0,
+        "auto": false
       }
     },
     {
@@ -4428,6 +5640,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "energySiphon",
           "permafrost",
@@ -4442,6 +5656,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -4499,6 +5714,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "energySiphon",
           "permafrost",
@@ -4513,6 +5730,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -4524,25 +5742,125 @@
       }
     },
     {
-      "name": "landscape 907×510 pick overlay: all 120 texts ≥ 16 px",
+      "name": "landscape 907×510 pick overlay: all 183 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 120,
+        "count": 183,
         "bad": []
       }
     },
     {
-      "name": "landscape 907×510: tapping a card installs it and resumes",
+      "name": "landscape 907×510: a new protocol asks where to place its crystal module",
+      "ok": true,
+      "detail": {
+        "auto": {
+          "x": 949.3333333333334,
+          "y": 648,
+          "w": 149.33333333333334,
+          "h": 54
+        },
+        "back": {
+          "x": 788,
+          "y": 648,
+          "w": 149.33333333333334,
+          "h": 54
+        },
+        "always": {
+          "x": 1110.6666666666667,
+          "y": 648,
+          "w": 149.33333333333334,
+          "h": 54
+        },
+        "undo": {
+          "x": 788,
+          "y": 648,
+          "w": 230,
+          "h": 54
+        },
+        "done": {
+          "x": 1030,
+          "y": 648,
+          "w": 230,
+          "h": 54
+        },
+        "autoSlot": [
+          305.5061487217439,
+          495.95533849569483
+        ],
+        "free": [
+          [
+            -2,
+            2
+          ],
+          [
+            -1,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            -1
+          ],
+          [
+            2,
+            -2
+          ],
+          [
+            1,
+            -2
+          ],
+          [
+            0,
+            -2
+          ],
+          [
+            -1,
+            -1
+          ],
+          [
+            -2,
+            0
+          ],
+          [
+            -2,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "landscape 907×510: tapping a hex bolts the module there",
+      "ok": true,
+      "detail": [
+        [
+          -2,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "landscape 907×510: tapping a card installs it",
       "ok": true,
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 1,
-        "tick": 2,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -4551,8 +5869,8 @@
         "bits": 0,
         "coreHp": 100,
         "speed": 1,
-        "paused": false,
-        "fps": 62,
+        "paused": true,
+        "fps": 61,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4577,8 +5895,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -4591,22 +5916,43 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
         "adAudioMuted": false,
         "soundMuted": false,
-        "gameplay": true,
+        "gameplay": false,
         "adsAvailable": true,
         "restarting": false
       }
     },
     {
-      "name": "landscape 907×510: all 120 texts ≥ 16 px",
+      "name": "landscape 907×510: the editor switches to Arrange after placing",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "arrange",
+        "selected": -1,
+        "readout": [
+          "Mining 0 → 1",
+          "south-west wedge: empty → Mining"
+        ],
+        "strip": [
+          "Overload 0·0",
+          "Cryo 0·0",
+          "Chain 0·0",
+          "Mining 1·0",
+          "Firewall 0·0"
+        ]
+      }
+    },
+    {
+      "name": "landscape 907×510: all 188 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 120,
+        "count": 188,
         "bad": []
       }
     },
@@ -4630,7 +5976,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 61,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4655,8 +6001,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -4669,6 +6022,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -4686,7 +6040,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 3,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4699,7 +6053,7 @@
         "coreHp": 100,
         "speed": 2,
         "paused": false,
-        "fps": 62,
+        "fps": 61,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4724,8 +6078,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -4738,6 +6099,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -4755,7 +6117,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 920,
+        "tick": 926,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4763,7 +6125,7 @@
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 17.5,
+        "energy": 22.70916905444126,
         "bits": 7,
         "coreHp": 100,
         "speed": 5,
@@ -4793,8 +6155,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -4807,6 +6176,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -4823,6 +6193,7 @@
       "detail": {
         "tab": "atk",
         "amount": 1,
+        "autoMode": false,
         "tabs": [
           {
             "tab": "atk",
@@ -4869,7 +6240,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "attackSpeed",
@@ -4881,7 +6253,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critChance",
@@ -4893,7 +6266,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "critFactor",
@@ -4905,7 +6279,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "range",
@@ -4917,7 +6292,8 @@
             },
             "locked": false,
             "affordable": true,
-            "level": 0
+            "level": 0,
+            "auto": false
           },
           {
             "stat": "multishot",
@@ -4929,7 +6305,8 @@
             },
             "locked": true,
             "affordable": false,
-            "level": 0
+            "level": 0,
+            "auto": false
           }
         ],
         "restart": {
@@ -4990,6 +6367,14 @@
             "h": 64
           }
         },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 254,
+          "y": 346,
+          "w": 260,
+          "h": 60
+        },
         "layout": {
           "w": 1280,
           "h": 720,
@@ -5009,16 +6394,16 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1028,
+        "tick": 929,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 8,
-        "energy": 20.05,
-        "bits": 8.02,
+        "kills": 7,
+        "energy": 22.70916905444126,
+        "bits": 7,
         "coreHp": 100,
         "speed": 5,
         "paused": false,
@@ -5047,8 +6432,15 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -5061,6 +6453,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -5075,8 +6468,8 @@
       "name": "landscape 907×510 upgrades: tapping Damage while paused buys a level and spends Energy",
       "ok": true,
       "detail": {
-        "s0": 20.05,
-        "s1": 15.05,
+        "s0": 22.70916905444126,
+        "s1": 17.70916905444126,
         "l0": 0,
         "l1": 1
       }
@@ -5088,8 +6481,8 @@
         "ready": true,
         "r0": 1,
         "r1": 2,
-        "e0": 15.05,
-        "e1": 9.05
+        "e0": 17.70916905444126,
+        "e1": 11.709169054441261
       }
     },
     {
@@ -5110,6 +6503,214 @@
       "detail": 10
     },
     {
+      "name": "landscape 907×510 upgrades: amount toggle MAX → AUTO",
+      "ok": true,
+      "detail": {
+        "tab": "def",
+        "amount": "max",
+        "autoMode": true,
+        "tabs": [
+          {
+            "tab": "atk",
+            "rect": {
+              "x": 790,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "def",
+            "rect": {
+              "x": 914,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          },
+          {
+            "tab": "util",
+            "rect": {
+              "x": 1038,
+              "y": 230,
+              "w": 118,
+              "h": 44
+            }
+          }
+        ],
+        "amountRect": {
+          "x": 1162,
+          "y": 230,
+          "w": 96,
+          "h": 44
+        },
+        "rows": [
+          {
+            "stat": "health",
+            "rect": {
+              "x": 790,
+              "y": 283,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "regen",
+            "rect": {
+              "x": 790,
+              "y": 353,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "defense",
+            "rect": {
+              "x": 790,
+              "y": 423,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "thorns",
+            "rect": {
+              "x": 790,
+              "y": 493,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "lifesteal",
+            "rect": {
+              "x": 790,
+              "y": 563,
+              "w": 468,
+              "h": 65
+            },
+            "locked": true,
+            "affordable": false,
+            "level": 0,
+            "auto": false
+          },
+          {
+            "stat": "knockback",
+            "rect": {
+              "x": 790,
+              "y": 633,
+              "w": 468,
+              "h": 65
+            },
+            "locked": false,
+            "affordable": true,
+            "level": 0,
+            "auto": false
+          }
+        ],
+        "restart": {
+          "x": 648,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "home": {
+          "x": 392,
+          "y": 578,
+          "w": 240,
+          "h": 62
+        },
+        "double": {
+          "x": 648,
+          "y": 500,
+          "w": 240,
+          "h": 62
+        },
+        "revive": {
+          "x": 392,
+          "y": 500,
+          "w": 240,
+          "h": 62
+        },
+        "pick": {
+          "cards": [
+            {
+              "x": 108,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 470,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            },
+            {
+              "x": 832,
+              "y": 120,
+              "w": 340,
+              "h": 380
+            }
+          ],
+          "reroll": {
+            "x": 328,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          },
+          "boost": {
+            "x": 652,
+            "y": 534,
+            "w": 300,
+            "h": 64
+          }
+        },
+        "place": null,
+        "editor": null,
+        "crystalBtn": {
+          "x": 254,
+          "y": 346,
+          "w": 260,
+          "h": 60
+        },
+        "layout": {
+          "w": 1280,
+          "h": 720,
+          "panel": {
+            "x": 768,
+            "y": 208,
+            "w": 512,
+            "h": 512
+          }
+        }
+      }
+    },
+    {
+      "name": "landscape 907×510 upgrades: in AUTO mode a row tap toggles auto-buy, buys nothing",
+      "ok": true,
+      "detail": {
+        "on": true,
+        "off": false
+      }
+    },
+    {
       "name": "landscape 907×510 upgrades: amount toggle cycles back to ×1",
       "ok": true,
       "detail": 1
@@ -5127,7 +6728,8 @@
         },
         "locked": true,
         "affordable": false,
-        "level": 0
+        "level": 0,
+        "auto": false
       }
     },
     {
@@ -5203,6 +6805,13 @@
         "amount": 1,
         "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -5215,6 +6824,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -5255,11 +6865,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -5296,6 +6906,13 @@
         "amount": 1,
         "commands": 3,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -5308,6 +6925,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -5330,12 +6948,39 @@
       }
     },
     {
+      "name": "portrait protocols: fusion chips are shown",
+      "ok": true,
+      "detail": {
+        "pairs": {
+          "overload+mining": {
+            "x": 18,
+            "y": 210,
+            "w": 64.24000000000001,
+            "h": 52
+          },
+          "overload+chain": {
+            "x": 90.24000000000001,
+            "y": 210,
+            "w": 64.24000000000001,
+            "h": 52
+          },
+          "cryo+mining": {
+            "x": 162.48000000000002,
+            "y": 210,
+            "w": 64.24000000000001,
+            "h": 52
+          }
+        },
+        "tip": null
+      }
+    },
+    {
       "name": "portrait protocols: set chips are shown",
       "ok": true,
       "detail": {
         "x": 18,
         "y": 150,
-        "w": 115.24000000000001,
+        "w": 450.20000000000005,
         "h": 52
       }
     },
@@ -5343,23 +6988,40 @@
       "name": "portrait protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 1705,
-        "p2": 1705
+        "p1": 1745,
+        "p2": 1745
       }
     },
     {
-      "name": "portrait protocols panel: all 134 texts ≥ 28 px",
+      "name": "portrait protocols panel: all 188 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 134,
+        "count": 188,
         "bad": []
+      }
+    },
+    {
+      "name": "portrait protocols: the panel content scrolls to its end",
+      "ok": true,
+      "detail": {
+        "y": -395.1999999999998,
+        "max": 395.1999999999998
       }
     },
     {
       "name": "portrait protocols: RESUME restores the previous pause state",
       "ok": true,
       "detail": false
+    },
+    {
+      "name": "portrait protocols: a crystal module shows its card on tap",
+      "ok": true,
+      "detail": {
+        "at": 0,
+        "tag": "mining",
+        "hover": 2
+      }
     },
     {
       "name": "portrait protocols: no console errors",
@@ -5437,6 +7099,13 @@
         "amount": 1,
         "commands": 3,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
@@ -5449,6 +7118,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -5471,12 +7141,66 @@
       }
     },
     {
+      "name": "landscape protocols: fusion chips are shown",
+      "ok": true,
+      "detail": {
+        "pairs": {
+          "overload+mining": {
+            "x": 583.76,
+            "y": 51.6,
+            "w": 50.08,
+            "h": 34
+          },
+          "overload+chain": {
+            "x": 641.84,
+            "y": 51.6,
+            "w": 50.08,
+            "h": 34
+          },
+          "cryo+mining": {
+            "x": 699.9200000000001,
+            "y": 51.6,
+            "w": 50.08,
+            "h": 34
+          }
+        },
+        "tip": null
+      }
+    },
+    {
+      "name": "landscape protocols: hovering a fusion chip shows its ladder",
+      "ok": true,
+      "detail": {
+        "pairs": {
+          "overload+mining": {
+            "x": 583.76,
+            "y": 51.6,
+            "w": 50.08,
+            "h": 34
+          },
+          "overload+chain": {
+            "x": 641.84,
+            "y": 51.6,
+            "w": 50.08,
+            "h": 34
+          },
+          "cryo+mining": {
+            "x": 699.9200000000001,
+            "y": 51.6,
+            "w": 50.08,
+            "h": 34
+          }
+        },
+        "tip": "overload+mining"
+      }
+    },
+    {
       "name": "landscape protocols: set chips are shown",
       "ok": true,
       "detail": {
         "x": 918,
         "y": 153,
-        "w": 97.08000000000004,
+        "w": 362.39999999999986,
         "h": 34
       }
     },
@@ -5484,17 +7208,25 @@
       "name": "landscape protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 1705,
-        "p2": 1705
+        "p1": 1740,
+        "p2": 1740
       }
     },
     {
-      "name": "landscape protocols panel: all 134 texts ≥ 16 px",
+      "name": "landscape protocols panel: all 188 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 134,
+        "count": 188,
         "bad": []
+      }
+    },
+    {
+      "name": "landscape protocols: the panel content scrolls to its end",
+      "ok": true,
+      "detail": {
+        "y": -87.20000000000005,
+        "max": 87.20000000000005
       }
     },
     {
@@ -5503,7 +7235,434 @@
       "detail": false
     },
     {
+      "name": "landscape protocols: a crystal module shows its card on hover",
+      "ok": true,
+      "detail": {
+        "at": 0,
+        "tag": "mining",
+        "hover": 2
+      }
+    },
+    {
       "name": "landscape protocols: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "portrait editor: a new-module card opens the editor in Place mode with a readout",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "place",
+        "selected": -1,
+        "readout": [
+          "Cryo 0 → 1",
+          "south-west wedge: empty → Cryo"
+        ],
+        "strip": [
+          "Overload 0·0",
+          "Cryo 0·0",
+          "Chain 0·0",
+          "Mining 0·0",
+          "Firewall 0·0"
+        ]
+      }
+    },
+    {
+      "name": "portrait editor (place): all 188 texts ≥ 28 px",
+      "ok": true,
+      "detail": {
+        "min": 28,
+        "count": 188,
+        "bad": []
+      }
+    },
+    {
+      "name": "portrait editor: a slot tap places the module there and switches to Arrange",
+      "ok": true,
+      "detail": {
+        "slot": [
+          -1,
+          2
+        ],
+        "crystal": [
+          [
+            -1,
+            2
+          ]
+        ],
+        "e1": {
+          "open": true,
+          "mode": "arrange",
+          "selected": -1,
+          "readout": [
+            "Cryo 0 → 1",
+            "south-west wedge: empty → Cryo"
+          ],
+          "strip": [
+            "Overload 0·0",
+            "Cryo 1·0",
+            "Chain 0·0",
+            "Mining 0·0",
+            "Firewall 0·0"
+          ]
+        }
+      }
+    },
+    {
+      "name": "portrait editor: DONE closes it and the battle resumes",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "name": "portrait editor: the pause menu's CRYSTAL opens Arrange",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "arrange",
+        "selected": -1,
+        "readout": [
+          "Select a module"
+        ],
+        "strip": [
+          "Overload 4·4",
+          "Cryo 2·2",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 2·I",
+          "Overcharge 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ]
+      }
+    },
+    {
+      "name": "portrait editor: a selected module shows coloured targets",
+      "ok": true,
+      "detail": {
+        "from": [
+          -1,
+          2
+        ],
+        "to": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "name": "portrait editor: a move changes the bonus strip",
+      "ok": true,
+      "detail": {
+        "before": [
+          "Overload 4·4",
+          "Cryo 2·2",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 2·I",
+          "Overcharge 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ],
+        "after": [
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 3·II",
+          "Superconductor 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ]
+      }
+    },
+    {
+      "name": "portrait editor (arrange): all 192 texts ≥ 28 px",
+      "ok": true,
+      "detail": {
+        "min": 28,
+        "count": 192,
+        "bad": []
+      }
+    },
+    {
+      "name": "portrait editor: UNDO restores the crystal and the strip",
+      "ok": true,
+      "detail": {
+        "strip": [
+          "Overload 4·4",
+          "Cryo 2·2",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 2·I",
+          "Overcharge 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ],
+        "crystal": [
+          [
+            -1,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            -1,
+            3
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            -2,
+            2
+          ],
+          [
+            -2,
+            1
+          ],
+          [
+            -2,
+            0
+          ],
+          [
+            -1,
+            -1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "portrait editor: DONE returns to the pause menu",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "portrait editor: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "landscape editor: a new-module card opens the editor in Place mode with a readout",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "place",
+        "selected": -1,
+        "readout": [
+          "Cryo 0 → 1",
+          "south-west wedge: empty → Cryo"
+        ],
+        "strip": [
+          "Overload 0·0",
+          "Cryo 0·0",
+          "Chain 0·0",
+          "Mining 0·0",
+          "Firewall 0·0"
+        ]
+      }
+    },
+    {
+      "name": "landscape editor (place): all 188 texts ≥ 16 px",
+      "ok": true,
+      "detail": {
+        "min": 16,
+        "count": 188,
+        "bad": []
+      }
+    },
+    {
+      "name": "landscape editor: a slot tap places the module there and switches to Arrange",
+      "ok": true,
+      "detail": {
+        "slot": [
+          -1,
+          2
+        ],
+        "crystal": [
+          [
+            -1,
+            2
+          ]
+        ],
+        "e1": {
+          "open": true,
+          "mode": "arrange",
+          "selected": -1,
+          "readout": [
+            "Cryo 0 → 1",
+            "south-west wedge: empty → Cryo"
+          ],
+          "strip": [
+            "Overload 0·0",
+            "Cryo 1·0",
+            "Chain 0·0",
+            "Mining 0·0",
+            "Firewall 0·0"
+          ]
+        }
+      }
+    },
+    {
+      "name": "landscape editor: DONE closes it and the battle resumes",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "name": "landscape editor: the pause menu's CRYSTAL opens Arrange",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "arrange",
+        "selected": -1,
+        "readout": [
+          "Select a module"
+        ],
+        "strip": [
+          "Overload 4·4",
+          "Cryo 2·2",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 2·I",
+          "Overcharge 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ]
+      }
+    },
+    {
+      "name": "landscape editor: a selected module shows coloured targets",
+      "ok": true,
+      "detail": {
+        "from": [
+          -1,
+          2
+        ],
+        "to": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "name": "landscape editor: a move changes the bonus strip",
+      "ok": true,
+      "detail": {
+        "before": [
+          "Overload 4·4",
+          "Cryo 2·2",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 2·I",
+          "Overcharge 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ],
+        "after": [
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 3·II",
+          "Superconductor 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ]
+      }
+    },
+    {
+      "name": "landscape editor (arrange): all 192 texts ≥ 16 px",
+      "ok": true,
+      "detail": {
+        "min": 16,
+        "count": 192,
+        "bad": []
+      }
+    },
+    {
+      "name": "landscape editor: UNDO restores the crystal and the strip",
+      "ok": true,
+      "detail": {
+        "strip": [
+          "Overload 4·4",
+          "Cryo 2·2",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock 2·I",
+          "Overcharge 1·I",
+          "Frostbite 1·I",
+          "Insurance 1·I"
+        ],
+        "crystal": [
+          [
+            -1,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            -1,
+            3
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            2,
+            0
+          ],
+          [
+            2,
+            1
+          ],
+          [
+            -2,
+            2
+          ],
+          [
+            -2,
+            1
+          ],
+          [
+            -2,
+            0
+          ],
+          [
+            -1,
+            -1
+          ]
+        ]
+      }
+    },
+    {
+      "name": "landscape editor: DONE returns to the pause menu",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "landscape editor: no console errors",
       "ok": true,
       "detail": []
     },
@@ -5554,6 +7713,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "bounce",
           "critSpike",
@@ -5568,6 +7729,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -5582,7 +7744,7 @@
       "name": "portrait meta: death pays Bits into the save and marks the first run done",
       "ok": true,
       "detail": {
-        "bits": 24,
+        "bits": 23,
         "keys": 0,
         "workshop": {},
         "labs": [],
@@ -5592,16 +7754,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1791247453413,
+        "lastSeen": 1792065491112,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "criticalMass": 1,
-          "cryoField": 1
+          "cryoField": 1,
+          "spikes": 1
         },
         "loadout": [
-          "criticalMass",
-          "cryoField"
+          "cryoField",
+          "spikes"
         ],
         "presets": [
           [],
@@ -5614,22 +7776,22 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 17219.368999999966,
-          "simTicks": 2573,
+          "realMs": 16934.641333333304,
+          "simTicks": 2537,
           "waves": 3,
           "kills": {
-            "basic": 20,
+            "basic": 19,
             "fast": 4,
             "tank": 0,
             "ranged": 0,
             "boss": 0
           },
-          "damage": 291.26275999999996,
+          "damage": 292.83039199999996,
           "maxHit": 5,
-          "hitsTaken": 17,
-          "bitsEarned": 24,
+          "hitsTaken": 22,
+          "bitsEarned": 23,
           "keysEarned": 0,
-          "energyEarned": 49.00639999999997,
+          "energyEarned": 63.964894441260746,
           "levelsBought": 0,
           "picks": 2,
           "revives": 0
@@ -5637,7 +7799,10 @@
         "settings": {
           "sound": true,
           "music": true,
-          "reduceMotion": false
+          "reduceMotion": false,
+          "autoPlace": false,
+          "editorSeen": false,
+          "autoStats": []
         }
       }
     },
@@ -5645,8 +7810,8 @@
       "name": "portrait meta: ×2 BITS (rewarded) doubles the payout",
       "ok": true,
       "detail": {
-        "before": 24,
-        "after": 48
+        "before": 23,
+        "after": 46
       }
     },
     {
@@ -5676,7 +7841,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 908,
+        "tick": 904,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -5684,9 +7849,9 @@
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 14,
+        "energy": 17.6458452722063,
         "bits": 7,
-        "coreHp": 100,
+        "coreHp": 110.00000000000001,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -5714,20 +7879,28 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
-          "critSpike": 1
+          "patch": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -5787,7 +7960,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 63,
+        "fps": 67,
         "seed": 4,
         "levels": {
           "damage": 0,
@@ -5814,6 +7987,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": true,
+        "placing": false,
+        "crystal": [],
         "offer": [
           "bounce",
           "critSpike",
@@ -5828,6 +8003,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -5842,7 +8018,7 @@
       "name": "landscape meta: death pays Bits into the save and marks the first run done",
       "ok": true,
       "detail": {
-        "bits": 24,
+        "bits": 23,
         "keys": 0,
         "workshop": {},
         "labs": [],
@@ -5852,16 +8028,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1791247483279,
+        "lastSeen": 1792065520828,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "cryoField": 1,
-          "spikes": 1
+          "ricochet": 1,
+          "compound": 1
         },
         "loadout": [
-          "cryoField",
-          "spikes"
+          "ricochet",
+          "compound"
         ],
         "presets": [
           [],
@@ -5874,22 +8050,22 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 17205.936666666617,
-          "simTicks": 2573,
+          "realMs": 16951.271866666633,
+          "simTicks": 2537,
           "waves": 3,
           "kills": {
-            "basic": 20,
+            "basic": 19,
             "fast": 4,
             "tank": 0,
             "ranged": 0,
             "boss": 0
           },
-          "damage": 291.26275999999996,
+          "damage": 292.83039199999996,
           "maxHit": 5,
-          "hitsTaken": 17,
-          "bitsEarned": 24,
+          "hitsTaken": 22,
+          "bitsEarned": 23,
           "keysEarned": 0,
-          "energyEarned": 49.00639999999997,
+          "energyEarned": 63.964894441260746,
           "levelsBought": 0,
           "picks": 2,
           "revives": 0
@@ -5897,7 +8073,10 @@
         "settings": {
           "sound": true,
           "music": true,
-          "reduceMotion": false
+          "reduceMotion": false,
+          "autoPlace": false,
+          "editorSeen": false,
+          "autoStats": []
         }
       }
     },
@@ -5905,8 +8084,8 @@
       "name": "landscape meta: ×2 BITS (rewarded) doubles the payout",
       "ok": true,
       "detail": {
-        "before": 24,
-        "after": 48
+        "before": 23,
+        "after": 46
       }
     },
     {
@@ -5944,9 +8123,9 @@
         "dead": false,
         "overlay": false,
         "kills": 7,
-        "energy": 14,
+        "energy": 17.6458452722063,
         "bits": 7,
-        "coreHp": 110.00000000000001,
+        "coreHp": 100,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -5974,20 +8153,28 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [
+          [
+            -2,
+            2
+          ]
+        ],
         "offer": [],
         "picks": 1,
         "perks": {
-          "patch": 1
+          "arc": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
-          "chain": 0,
+          "chain": 2,
           "mining": 0,
-          "firewall": 2
+          "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -6032,11 +8219,11 @@
       "ok": true,
       "detail": {
         "cards": {
-          "criticalMass": 1,
+          "spikes": 1,
           "ricochet": 1
         },
         "loadout": [
-          "criticalMass",
+          "spikes",
           "ricochet"
         ]
       }
@@ -6083,11 +8270,11 @@
       "ok": true,
       "detail": {
         "tags": [
-          "overload",
+          "firewall",
           "chain"
         ],
         "cards": [
-          "criticalMass",
+          "spikes",
           "ricochet"
         ],
         "sets": {
@@ -6109,11 +8296,11 @@
       "ok": true,
       "detail": {
         "cards": {
-          "cryoField": 1,
+          "ricochet": 1,
           "criticalMass": 1
         },
         "loadout": [
-          "cryoField",
+          "ricochet",
           "criticalMass"
         ]
       }
@@ -6160,11 +8347,11 @@
       "ok": true,
       "detail": {
         "tags": [
-          "cryo",
+          "chain",
           "overload"
         ],
         "cards": [
-          "cryoField",
+          "ricochet",
           "criticalMass"
         ],
         "sets": {
@@ -6203,11 +8390,11 @@
       }
     },
     {
-      "name": "portrait stats panel: all 123 texts ≥ 28 px",
+      "name": "portrait stats panel: all 186 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 123,
+        "count": 186,
         "bad": []
       }
     },
@@ -6223,22 +8410,22 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15751.46999999999,
-          "simTicks": 2363,
+          "realMs": 15651.549999999988,
+          "simTicks": 2347,
           "waves": 3,
           "kills": {
             "basic": 17,
-            "fast": 5,
+            "fast": 3,
             "tank": 0,
             "ranged": 0,
             "boss": 0
           },
-          "damage": 270.78523520000005,
+          "damage": 275.56973760000005,
           "maxHit": 5,
-          "hitsTaken": 16,
-          "bitsEarned": 22,
+          "hitsTaken": 19,
+          "bitsEarned": 20,
           "keysEarned": 0,
-          "energyEarned": 56.05599999999999,
+          "energyEarned": 71.2013616905444,
           "levelsBought": 0,
           "picks": 2,
           "revives": 0
@@ -6281,11 +8468,11 @@
       }
     },
     {
-      "name": "landscape stats panel: all 123 texts ≥ 16 px",
+      "name": "landscape stats panel: all 186 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 123,
+        "count": 186,
         "bad": []
       }
     },
@@ -6301,22 +8488,22 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15784.869999999984,
-          "simTicks": 2363,
+          "realMs": 15736.143333333317,
+          "simTicks": 2347,
           "waves": 3,
           "kills": {
             "basic": 17,
-            "fast": 5,
+            "fast": 3,
             "tank": 0,
             "ranged": 0,
             "boss": 0
           },
-          "damage": 270.78523520000005,
+          "damage": 275.56973760000005,
           "maxHit": 5,
-          "hitsTaken": 16,
-          "bitsEarned": 22,
+          "hitsTaken": 19,
+          "bitsEarned": 20,
           "keysEarned": 0,
-          "energyEarned": 56.05599999999999,
+          "energyEarned": 71.2013616905444,
           "levelsBought": 0,
           "picks": 2,
           "revives": 0
@@ -6344,21 +8531,21 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1131,
+        "tick": 1132,
         "phase": "wave",
-        "enemies": 200,
-        "visible": 200,
-        "projectiles": 1,
+        "enemies": 199,
+        "visible": 199,
+        "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 72,
-        "energy": 144,
-        "bits": 72,
-        "coreHp": 999999966212.7675,
+        "kills": 73,
+        "energy": 175.19369627507166,
+        "bits": 73,
+        "coreHp": 999999966357.8942,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1463665755,
+        "seed": 985778070,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -6384,6 +8571,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [],
         "offer": [],
         "picks": 0,
         "perks": {},
@@ -6394,6 +8583,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,
@@ -6407,7 +8597,7 @@
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00318953831433
+      "detail": 60.003189538314324
     },
     {
       "name": "stress desktop: no console errors",
@@ -6421,21 +8611,21 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1135,
+        "tick": 1132,
         "phase": "wave",
-        "enemies": 200,
-        "visible": 200,
+        "enemies": 199,
+        "visible": 199,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
         "kills": 73,
-        "energy": 146,
+        "energy": 176.319770773639,
         "bits": 73,
-        "coreHp": 999999966213.8229,
+        "coreHp": 999999966371.6223,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1651947922,
+        "seed": 1942427627,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -6461,6 +8651,8 @@
         "amount": 1,
         "commands": 0,
         "pickOpen": false,
+        "placing": false,
+        "crystal": [],
         "offer": [],
         "picks": 0,
         "perks": {},
@@ -6471,6 +8663,7 @@
           "mining": 0,
           "firewall": 0
         },
+        "fusionTiers": {},
         "keys": 0,
         "portal": "local",
         "adRunning": false,

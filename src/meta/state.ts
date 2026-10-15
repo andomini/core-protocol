@@ -8,6 +8,12 @@ export interface Settings {
   sound: boolean;
   music: boolean;
   reduceMotion: boolean;
+  /** New crystal modules go to the auto slot without the placement step. */
+  autoPlace: boolean;
+  /** The crystal editor's rule strip was dismissed once (DONE). */
+  editorSeen: boolean;
+  /** Stats the player marked for auto-buy (tap a row's glyph); bought cheapest-first as Energy allows. */
+  autoStats: StatId[];
 }
 
 export interface MetaState {
@@ -67,7 +73,7 @@ export function defaultMeta(): MetaState {
     freePackAt: 0,
     starterGiven: false,
     lifetime: emptyLifetime(),
-    settings: { sound: true, music: true, reduceMotion: false },
+    settings: { sound: true, music: true, reduceMotion: false, autoPlace: false, editorSeen: false, autoStats: [] },
   };
 }
 
@@ -113,6 +119,9 @@ export function validateMeta(raw: unknown, data: GameData, md: MetaData): MetaSt
     m.settings.sound = raw.settings.sound !== false;
     m.settings.music = raw.settings.music !== false;
     m.settings.reduceMotion = raw.settings.reduceMotion === true;
+    m.settings.autoPlace = raw.settings.autoPlace === true;
+    m.settings.editorSeen = raw.settings.editorSeen === true;
+    if (Array.isArray(raw.settings.autoStats)) m.settings.autoStats = raw.settings.autoStats.filter((x): x is StatId => (STAT_IDS as readonly unknown[]).includes(x));
   }
   return m;
 }

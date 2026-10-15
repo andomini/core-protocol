@@ -2,7 +2,7 @@ import { assertFiniteDeep } from './num';
 import { type World, WORLD_VERSION } from './state';
 
 /** Bumped with the World shape: v1 (M1–M2a) derived core stats; v2 (M2b) had no protocols (M3). */
-export const SNAPSHOT_VERSION = 5;
+export const SNAPSHOT_VERSION = 7;
 
 /** Serializes the whole world. Throws if any value is non-finite (JSON would turn it into null). */
 export function snapshot(w: World): string {
@@ -37,6 +37,11 @@ export function restore(s: string): World {
     typeof w.revived !== 'boolean' ||
     !Array.isArray(w.cards) ||
     typeof w.shield !== 'number' ||
+    !Array.isArray(w.crystal) ||
+    !Array.isArray(w.terrain) ||
+    !Array.isArray(w.nests) ||
+    typeof w.genome !== 'object' ||
+    w.genome === null ||
     typeof w.levels !== 'object' ||
     typeof w.workshop !== 'object' ||
     !Array.isArray(w.unlocked) ||
@@ -60,6 +65,20 @@ export function restore(s: string): World {
   ) {
     throw new Error('snapshot: malformed world');
   }
+  // Runs saved before fusion tiers (none, or the first fusion pass): none reached yet, and anything the old
+  // pass applied is dropped; the next crystal change (pick or move) recomputes them.
+  if (w.fusionTiers === undefined) {
+    w.fusionTiers = {};
+    w.mods = w.mods.filter((m) => !m.source.startsWith('fusion:'));
+    for (const k of Object.keys(w.timers)) if (k.startsWith('fusion:')) delete w.timers[k];
+  } else if (
+    w.fusionTiers === null ||
+    typeof w.fusionTiers !== 'object' ||
+    Object.values(w.fusionTiers).some((t) => !Number.isInteger(t) || (t as number) < 0)
+  ) {
+    throw new Error('snapshot: malformed world');
+  }
+  delete (w as { fusions?: unknown }).fusions;
   try {
     assertFiniteDeep(w);
   } catch (err) {

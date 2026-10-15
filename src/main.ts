@@ -8,6 +8,7 @@ import { showToast } from './portal/toast';
 import { installDevHooks } from './render/devHooks';
 import { LETTERBOX } from './render/palette';
 import { initRenderScale } from './render/resolution';
+import { WIDGET, watchBuild } from './render/widget';
 import { BattleScene } from './render/scenes/BattleScene';
 import { BootScene } from './render/scenes/BootScene';
 import { HomeScene } from './render/scenes/HomeScene';
@@ -77,9 +78,15 @@ async function start(): Promise<void> {
     },
     render: { antialias: true, powerPreference: 'high-performance' },
     input: { activePointers: 2 },
+    // Widget mode: a setTimeout loop keeps ticking while the window is hidden (rAF stops there).
+    ...(WIDGET ? { fps: { forceSetTimeOut: true, target: 60 } } : {}),
     scene: [BootScene, HomeScene, BattleScene],
   });
   game.registry.set('layout', layout);
+  // Widget mode: Phaser pauses its loop when the page hides; the widget plays on in the background.
+  if (WIDGET) game.events.once(Phaser.Core.Events.READY, () => game.events.off(Phaser.Core.Events.HIDDEN));
+  // A new widget build was installed: reload into it (BattleScene saves the run on pagehide).
+  if (WIDGET) watchBuild(() => location.reload());
   // The toast sits in the arena (below the core), never across the arena/panel seam.
   const toastAnchor = () => {
     const r = game.canvas?.getBoundingClientRect();

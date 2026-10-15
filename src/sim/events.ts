@@ -20,8 +20,18 @@ export type SimEvent =
   | { type: 'coreHit'; enemyId: number; damage: number; ranged: boolean; blocked: boolean; absorbed: number }
   /** A protocol offer opened (or was rerolled). */
   | { type: 'pickOffer'; pick: number; wave: number; offer: string[]; rerolls: number }
-  | { type: 'perkPicked'; id: string; stacks: number }
-  | { type: 'setTier'; tag: Tag; tier: number }
+  /** `module`: the crystal hex of the perk's module ([q, r]), when it has one. */
+  | { type: 'perkPicked'; id: string; stacks: number; module: [number, number] | null }
+  /** The virus genome gained a level against `tag` (spec 2026-10-14 §C). */
+  | { type: 'mutation'; tag: Tag; level: number }
+  /** The breach widened at a wave start: the spawn ring is now `radius` (world px). */
+  | { type: 'arenaGrow'; radius: number; ring: number; ringGrew: boolean; nests: number }
+  /** A nest's cell was reclaimed: the nest is gone and paid out. */
+  | { type: 'nestDestroyed'; x: number; y: number; energy: number; bits: number }
+  /** A set's tier changed (`tier` < `prev`: a move broke the cluster). */
+  | { type: 'setTier'; tag: Tag; tier: number; prev: number }
+  /** A fusion's tier changed; `a`, `b`: the module hexes of the pair's first link (null when none is left). */
+  | { type: 'fusion'; key: string; tier: number; prev: number; a: [number, number] | null; b: [number, number] | null }
   | { type: 'boost'; from: number; until: number }
   | { type: 'commandRejected'; cmd: string; reason: ProtocolReject | 'unknown' }
   | { type: 'freeze'; enemyId: number }

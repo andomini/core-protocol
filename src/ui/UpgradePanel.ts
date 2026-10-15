@@ -25,6 +25,8 @@ export interface PanelHost {
   command(cmd: Command): void;
   /** True while a queued command has not reached the sim yet. */
   pending(): boolean;
+  /** The stats auto-buy may spend on; a tap on a row's glyph toggles one. */
+  auto?: { has(id: StatId): boolean; toggle(id: StatId): void };
 }
 
 const AMOUNTS: readonly BuyCount[] = [1, 10, 'max'];
@@ -48,6 +50,11 @@ interface Row {
   /** Last rendered state, to skip redundant setText / setTexture (text re-rasterises on change). */
   key: string;
   valueKey: string;
+  /** Widget: the AUTO badge (null outside the widget). */
+  /** Auto-buy badge (a looping arrow on the glyph's corner) and its drawn state: −1 hidden, 0 off, 1 on. */
+  auto: Phaser.GameObjects.Graphics | null;
+  autoState: number;
+  autoAt: [number, number];
 }
 
 export interface PanelRowInfo {
@@ -56,11 +63,14 @@ export interface PanelRowInfo {
   locked: boolean;
   affordable: boolean;
   level: number;
+  auto: boolean;
 }
 
 export class UpgradePanel {
   tab: TabId = 'atk';
   amount: BuyCount = 1;
+  /** AUTO mode (after MAX on the amount toggle): a row tap marks or unmarks the stat for auto-buy. */
+  autoMode = false;
   readonly g: PanelGeo;
   private readonly rows: Row[] = [];
   private readonly tabImgs: Phaser.GameObjects.Image[] = [];
@@ -124,7 +134,18 @@ export class UpgradePanel {
         zone: this.zone(r, D, () => undefined),
         key: '',
         valueKey: '',
+        auto: null,
+        autoState: -1,
+        autoAt: [r.x + g.glyphSize * 0.4 + 6, r.y + g.glyphSize * 0.4 + 6],
       };
+      if (host.auto) {
+        // A glyph-sized zone above the row's own: a tap there toggles auto-buy instead of buying.
+        const gs = g.glyphSize * 1.7;
+        this.zone({ x: rg.glyph[0] - gs / 2, y: r.y, w: gs, h: r.h }, D + 0.1, () => {
+          if (row.stat) host.auto!.toggle(row.stat);
+        });
+        row.auto = scene.add.graphics().setDepth(D + 0.3);
+      }
       row.zone.on('pointerdown', () => this.press(i));
       row.zone.on('pointerout', () => this.release());
       row.zone.on('pointerup', () => this.release());
@@ -166,8 +187,15 @@ export class UpgradePanel {
   }
 
   cycleAmount(): void {
-    this.amount = AMOUNTS[(AMOUNTS.indexOf(this.amount) + 1) % AMOUNTS.length]!;
-    this.amountText.setText(this.amount === 'max' ? 'MAX' : `×${this.amount}`);
+    if (this.autoMode) {
+      this.autoMode = false;
+      this.amount = 1;
+    } else if (this.amount === AMOUNTS[AMOUNTS.length - 1] && this.host.auto) {
+      this.autoMode = true;
+    } else {
+      this.amount = AMOUNTS[(AMOUNTS.indexOf(this.amount) + 1) % AMOUNTS.length]!;
+    }
+    this.amountText.setText(this.autoMode ? 'AUTO' : this.amount === 'max' ? 'MAX' : `×${this.amount}`).setColor(this.autoMode ? ENERGY_CSS : '#e8fbff');
     for (const r of this.rows) r.key = r.valueKey = '';
   }
 
@@ -181,6 +209,11 @@ export class UpgradePanel {
   }
 
   private press(i: number): void {
+    if (this.autoMode) {
+      const id = this.rows[i]!.stat;
+      if (id !== null && isUnlocked(this.host.world(), this.data, id)) this.host.auto!.toggle(id);
+      return;
+    }
     this.holdRow = i;
     this.holdCount = 0;
     this.holdNext = this.now + HOLD_DELAY_MS;
@@ -265,7 +298,14 @@ export class UpgradePanel {
       const maxed = q.levels === 0;
       const affordable = !locked && !w.dead && q.affordable;
       const level = w.levels[id];
-      const key = `${locked ? 'L' : maxed ? 'M' : affordable ? 'A' : 'N'}|${level}|${q.levels}|${formatPrice(q.cost)}`;
+      // The badge marks a stat on auto-buy.
+      const autoOn = this.host.auto?.has(id) ?? false;
+      const autoState = locked || maxed || !autoOn ? -1 : 1;
+      if (row.auto && autoState !== row.autoState) {
+        row.autoState = autoState;
+        drawAutoBadge(row.auto.clear(), row.autoAt[0], row.autoAt[1], this.g.glyphSize * 0.24, autoState);
+      }
+      const key = `${locked ? 'L' : maxed ? 'M' : affordable ? 'A' : 'N'}|${level}|${q.levels}|${formatPrice(q.cost)}|${this.autoMode ? (autoOn ? 'on' : 'off') : ''}`;
       if (key !== row.key) {
         row.key = key;
         row.bg.setTexture(affordable ? `up_row_${def.tab}` : 'up_row_off');
@@ -276,7 +316,11 @@ export class UpgradePanel {
         const cx = this.priceCenter(row);
         if (locked) row.price.setText('LAB').setColor(LOCKED_CSS).setX(cx);
         else if (maxed) row.price.setText('MAX').setColor(TEXT_DIM).setX(cx);
-        else row.price.setText(formatPrice(q.cost)).setColor(affordable ? ENERGY_CSS : '#8a7a4a').setX(cx + 14);
+        else if (this.autoMode) {
+          row.priceIcon.setVisible(false);
+          row.priceBg.setTexture(autoOn ? 'up_price_on' : 'up_price_off');
+          row.price.setText(autoOn ? 'ON' : 'OFF').setColor(autoOn ? ENERGY_CSS : TEXT_DIM).setX(cx);
+        } else row.price.setText(formatPrice(q.cost)).setColor(affordable ? ENERGY_CSS : '#8a7a4a').setX(cx + 14);
         if (row.level) {
           const more = !locked && !maxed && q.levels > 1 ? ` +${q.levels}` : '';
           row.level.setText(locked ? '' : maxed ? `LV ${level} MAX` : `LV ${level}${more}`);
@@ -318,11 +362,12 @@ export class UpgradePanel {
   }
 
   /** Dev/smoke: what each visible row shows and where it is (logical px). */
-  info(): { tab: TabId; amount: BuyCount; tabs: { tab: TabId; rect: Rect }[]; amountRect: Rect; rows: PanelRowInfo[] } {
+  info(): { tab: TabId; amount: BuyCount; autoMode: boolean; tabs: { tab: TabId; rect: Rect }[]; amountRect: Rect; rows: PanelRowInfo[] } {
     const w = this.host.world();
     return {
       tab: this.tab,
       amount: this.amount,
+      autoMode: this.autoMode,
       tabs: TAB_IDS.map((tab, i) => ({ tab, rect: this.g.tabs[i]! })),
       amountRect: this.g.amount,
       rows: this.rows.flatMap((r, i) =>
@@ -335,8 +380,24 @@ export class UpgradePanel {
               locked: !isUnlocked(w, this.data, r.stat),
               affordable: isUnlocked(w, this.data, r.stat) && !w.dead && quoteFor(w, this.data, r.stat, this.amount).affordable,
               level: w.levels[r.stat],
+              auto: this.host.auto?.has(r.stat) ?? false,
             }],
       ),
     };
   }
+}
+
+/** A circular arrow: bright Energy yellow when the stat is on auto-buy, a dim outline when it is not. */
+function drawAutoBadge(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, state: number): void {
+  if (state < 0) return;
+  const c = state > 0 ? ENERGY : 0x7f97c8;
+  const a = state > 0 ? 1 : 0.7;
+  if (state > 0) g.fillStyle(0x2a2306, 0.95).fillCircle(x, y, r * 1.55);
+  g.lineStyle(Math.max(2, r * 0.32), c, a);
+  g.beginPath();
+  g.arc(x, y, r, -Math.PI * 0.35, Math.PI * 1.35);
+  g.strokePath();
+  const ex = x + r * Math.cos(-Math.PI * 0.35);
+  const ey = y + r * Math.sin(-Math.PI * 0.35);
+  g.fillStyle(c, a).fillTriangle(ex - r * 0.55, ey - r * 0.35, ex + r * 0.55, ey - r * 0.1, ex + r * 0.05, ey + r * 0.6);
 }

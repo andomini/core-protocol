@@ -105,6 +105,15 @@ export async function open(browser, base, device, query = '', opts = {}) {
       });
       await p.mouse.click(box.x + x * box.s, box.y + y * box.s);
     },
+    /** Mouse move to a logical point (hover). */
+    hoverLogical: async (x, y) => {
+      const box = await p.evaluate(() => {
+        const r = document.querySelector('canvas').getBoundingClientRect();
+        const L = window.__cp.game.registry.get('layout');
+        return { x: r.x, y: r.y, s: r.width / L.w };
+      });
+      await p.mouse.move(box.x + x * box.s, box.y + y * box.s);
+    },
     /** Committed screenshot (JPEG, small) + a full-quality PNG for review in .superpowers/. */
     shot: async (name) => {
       mkdirSync('reports/screens', { recursive: true });

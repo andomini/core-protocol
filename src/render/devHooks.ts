@@ -6,6 +6,8 @@ import type { RewardedPlacement } from '../portal/ads';
 import { services } from '../services';
 import type { BuyCount } from '../sim/commands';
 import type { EnemyKind, StatId, TabId } from '../sim/data';
+import { grantPerk } from '../sim/perks';
+import { freeSlots } from '../sim/crystal';
 import type { BattleScene } from './scenes/BattleScene';
 
 export function installDevHooks(game: Phaser.Game): void {
@@ -69,11 +71,14 @@ export function installDevHooks(game: Phaser.Game): void {
         tab: b.upgrades.tab,
         amount: b.upgrades.amount,
         commands: b.session.log.length,
-        pickOpen: b.pick.visible,
+        pickOpen: b.pick.visible || b.placingIndex >= 0,
+        placing: b.placingIndex >= 0,
+        crystal: w.crystal.map((m) => [m.q, m.r]),
         offer: [...w.offer],
         picks: w.picks,
         perks: Object.fromEntries(Object.entries(w.perks).filter(([, n]) => n > 0)),
         setTiers: { ...w.setTiers },
+        fusionTiers: { ...w.fusionTiers },
         keys: w.keys,
         ...portalState(),
         restarting: b.life.isRestarting,
@@ -91,6 +96,9 @@ export function installDevHooks(game: Phaser.Game): void {
         double: b.death.doubleRect(),
         revive: b.death.reviveRect(),
         pick: { cards, reroll: b.pick.rerollRect(), boost: b.pick.boostRect() },
+        place: b.crystal.placing ? { ...b.editor.rects(), autoSlot: b.crystal.placing.auto && b.crystal.hexScreen(...b.crystal.placing.auto), free: b.crystal.placing.free } : null,
+        editor: b.editor.visible ? b.editor.rects() : null,
+        crystalBtn: b.crystalBtn.r,
         layout: { w: b.L.w, h: b.L.h, panel: b.L.panel },
       };
     },
@@ -105,9 +113,47 @@ export function installDevHooks(game: Phaser.Game): void {
     setSpeed: (n: number) => battle()?.setSpeed(n),
     pause: (on = true) => battle()?.setPaused(on),
     spawn: (kind: EnemyKind, n = 1, dir?: number) => battle()?.spawn(kind, n, dir),
+    /** Jumps the wave counter (the arena radius and camera zoom follow at the next frame). */
+    setWave: (n: number) => {
+      const b = battle();
+      if (b) b.session.world.wave = n;
+    },
     restart: () => battle()?.restart(),
+    /**
+     * Dev: bolts on a showcase crystal (sets on and off, a lone module, fusions I and II) outside the command
+     * log (breaks replay of this run), for crystal screenshots.
+     */
+    demoCrystal: () => {
+      const b = battle();
+      if (!b) return;
+      const w = b.session.world;
+      const put: [string, [number, number], number][] = [
+        ['overclockRounds', [-2, 2], 2], ['burstFire', [-1, 2], 2], ['bounce', [0, 2], 1], ['arc', [-1, 3], 1], ['conductive', [-2, 3], 1],
+        ['frostShot', [2, 0], 1], ['patch', [2, -2], 2], ['hardening', [1, -2], 1], ['energySiphon', [0, -2], 2],
+      ];
+      // A slot already taken (modules from earlier picks) falls back to the auto slot.
+      const free = (s: [number, number]) => freeSlots(w, b.gd).some(([q, r]) => q === s[0] && r === s[1]);
+      for (const [id, slot, n] of put) for (let i = 0; i < n; i++) grantPerk(w, b.gd, id, null, i === 0 && !(id in w.perks) && free(slot) ? slot : undefined);
+    },
     /** Takes card `i` of the open protocol offer (as a card tap would). */
     pickPerk: (i = 0) => battle()?.command({ type: 'pickPerk', index: i }),
+    /** The crystal editor: `index` ≥ 0 places that offer card's module, −1 (default) arranges (as the pause menu's CRYSTAL). */
+    openEditor: (index = -1) => battle()?.openEditor(index),
+    closeEditor: () => battle()?.closeEditor(true),
+    editor: () => {
+      const e = battle()?.editor;
+      if (!e) return null;
+      return { open: e.visible, mode: e.mode, selected: e.selected, readout: [...e.readoutLines], strip: [...e.stripLines] };
+    },
+    /** Screen point (logical px) of crystal hex (q, r) at the current zoom. */
+    slotScreen: (q: number, r: number) => battle()?.crystal.hexScreen(q, r) ?? null,
+    /** Issues a moveModule command (as the editor would). */
+    moveModule: (from: [number, number], to: [number, number]) => battle()?.command({ type: 'moveModule', from, to }),
+    /** Fusion chips shown in the set bar (pair key → rect) and the pair whose card is open. */
+    fusionChips: () => {
+      const c = battle()?.chips;
+      return c ? { pairs: c.pairs, tip: c.tipKey } : null;
+    },
     openProtocols: () => battle()?.openProtocols(),
     closeProtocols: () => battle()?.closeProtocols(),
     /** The RESTART button path (midgame ad offer first). */

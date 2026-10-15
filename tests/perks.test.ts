@@ -5,7 +5,7 @@ import type { SimEvent } from '../src/sim/events';
 import { hashWorld } from '../src/sim/hash';
 import { applyCommands } from '../src/sim/commands';
 import {
-  applySetTiers,
+  refreshCrystal,
   enterPick,
   generateOffer,
   grantPerk,
@@ -63,7 +63,7 @@ describe('pick schedule (spec §2.4)', () => {
     const w = createWorld(data, { seed: 1, tier: 1 });
     const id = w.offer[1]!;
     const ev = apply(w, data, { type: 'pickPerk', index: 1 });
-    expect(ofType(ev, 'perkPicked')).toEqual([{ type: 'perkPicked', id, stacks: 1 }]);
+    expect(ofType(ev, 'perkPicked')).toEqual([{ type: 'perkPicked', id, stacks: 1, module: expect.any(Array) }]);
     expect(w.perks[id]).toBe(1);
     expect(w.tick).toBe(1);
     expect(w.wave).toBe(1);
@@ -349,8 +349,8 @@ describe('tags, sets and modifiers', () => {
     const b = worldStats(w, data);
     expect(b).toEqual(a);
     expect(a.damage).toBeCloseTo(d0 * 1.15, 12);
-    applySetTiers(w, data, null);
-    applySetTiers(w, data, null);
+    refreshCrystal(w, data, null);
+    refreshCrystal(w, data, null);
     expect(w.mods).toHaveLength(n0 + 1);
     expect(perkProfile(w, data)).toEqual(perkProfile(w, data));
     expect(worldStats(restore(snapshot(w)), data)).toEqual(a);

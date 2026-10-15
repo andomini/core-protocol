@@ -2,6 +2,7 @@
 // SDK init, report loading finished to the portal (once), then Battle.
 
 import Phaser from 'phaser';
+import { WIDGET } from '../widget';
 import { MetaStore } from '../../meta/MetaStore';
 import { DEFAULT_META_DATA } from '../../meta/metaData';
 import { services } from '../../services';
@@ -31,7 +32,9 @@ export class BootScene extends Phaser.Scene {
       const m = services.meta.meta;
       // The very first session drops straight into a run (instant play); later ones open on Home.
       const forceHome = import.meta.env.DEV && new URLSearchParams(location.search).get('home') === '1';
-      if (!forceHome && !m.firstRunDone && !services.meta.hasRun()) this.scene.start('Battle', { mode: 'new', tier: 1 });
+      // The desktop widget picks its run straight back up (after a reload into a new build, a restart).
+      if (WIDGET && services.meta.hasRun()) this.scene.start('Battle', { mode: 'continue' });
+      else if (!forceHome && !m.firstRunDone && !services.meta.hasRun()) this.scene.start('Battle', { mode: 'new', tier: 1 });
       else this.scene.start('Home');
     });
   }

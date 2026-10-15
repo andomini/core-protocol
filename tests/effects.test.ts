@@ -139,10 +139,10 @@ describe('knockback', () => {
     const data = testData();
     const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     const e = spawnEnemy(w, data, 'basic', data.config.spawnRadius - 3, 0, []);
-    knockBack(e, data, 50);
+    knockBack(e, data, 50, 1);
     expect(dist(e)).toBeCloseTo(data.config.spawnRadius, 9);
     const c = spawnEnemy(w, data, 'basic', 0, 0, []);
-    knockBack(c, data, 7);
+    knockBack(c, data, 7, 1);
     expect(Number.isFinite(c.x) && Number.isFinite(c.y)).toBe(true);
     expect(dist(c)).toBeCloseTo(7, 6);
     const [dx, dy] = data.directions[0]!;

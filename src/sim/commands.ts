@@ -4,7 +4,7 @@
 import { type GameData, STAT_IDS, type StatId } from './data';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
-import { pickPerk, type ProtocolReject, rerollOffer, takeBoost } from './perks';
+import { moveCrystalModule, pickPerk, type ProtocolReject, rerollOffer, takeBoost } from './perks';
 import { chance } from './rng';
 import { quoteBuy, type BuyQuote } from './stats';
 import { type World, worldStats } from './state';
@@ -13,8 +13,10 @@ export type BuyCount = number | 'max';
 
 export type Command =
   | { type: 'buy'; stat: StatId; count: BuyCount }
-  /** Takes card `index` of the open protocol offer. */
-  | { type: 'pickPerk'; index: number }
+  /** Takes card `index` of the open protocol offer; `slot` = crystal hex [q, r] for a new module (else auto). */
+  | { type: 'pickPerk'; index: number; slot?: [number, number] }
+  /** Moves the crystal module at `from` to hex `to`; a module at `to` swaps places with it (spec 2026-10-15 §2). */
+  | { type: 'moveModule'; from: [number, number]; to: [number, number] }
   /** A new offer: `free` (lab node) or `ad` (after a watched rewarded ad). */
   | { type: 'reroll'; via: 'free' | 'ad' }
   /** Rewarded boost: × Energy for the next waves (pick screen only, with a cooldown). */
@@ -102,8 +104,11 @@ export function applyCommands(w: World, data: GameData, cmds: readonly Command[]
   for (const cmd of cmds) {
     const c = cmd as { type?: unknown; stat?: unknown; count?: unknown; index?: unknown; via?: unknown };
     if (c.type === 'buy') buy(w, data, c.stat, c.count, events);
-    else if (c.type === 'pickPerk') protocol(events, 'pickPerk', pickPerk(w, data, c.index, events));
-    else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
+    else if (c.type === 'pickPerk') protocol(events, 'pickPerk', pickPerk(w, data, c.index, events, (cmd as { slot?: unknown }).slot));
+    else if (c.type === 'moveModule') {
+      const m = cmd as { from?: unknown; to?: unknown };
+      protocol(events, 'moveModule', moveCrystalModule(w, data, m.from, m.to, events));
+    } else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
     else if (c.type === 'boost') protocol(events, 'boost', takeBoost(w, data, events));
     else if (c.type === 'revive') protocol(events, 'revive', revive(w, data, (cmd as { hp?: unknown }).hp, events));
     else if (typeof c.stat === 'string') reject(events, c.stat, 'unknown');

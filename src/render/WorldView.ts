@@ -6,11 +6,33 @@ import Phaser from 'phaser';
 import type { EnemyKind } from '../sim/data';
 import type { Enemy } from '../sim/state';
 import type { Layout } from '../ui/layout';
-import { CORE, CORE_HIT, CRIMSON, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, SLOW_TINT, TRACER } from './palette';
+import { TAGS, type Tag } from '../sim/perkData';
+import { CORE, CORE_HIT, CRIMSON, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
 import { ImagePool } from './pools';
 import { ps, RS } from './resolution';
 import type { RunSession } from './RunSession';
 import { GRID_TILE, TRACER_LEN } from './textures';
+
+/** Per-channel blend of two 0xRRGGBB colours: `t` = 0 → a, 1 → b. */
+export function mixColor(a: number, b: number, t: number): number {
+  const ch = (s: number): number => Math.round(((a >> s) & 255) + (((b >> s) & 255) - ((a >> s) & 255)) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
+/**
+ * The core's colours from its crystal: the tag with the most module stacks (ties: placed first) and the
+ * runner-up for the inner hex; cyan with a pale centre while there are no modules.
+ */
+export function coreColors(crystal: readonly { tag: Tag; perk: string }[], perks: Readonly<Record<string, number>>): [number, number] {
+  const sum = new Map<Tag, number>();
+  for (const m of crystal) sum.set(m.tag, (sum.get(m.tag) ?? 0) + (perks[m.perk] ?? 0));
+  const ranked = [...sum.entries()].filter(([, n]) => n > 0);
+  // Stable sort keeps the placement order on ties.
+  ranked.sort((x, y) => y[1] - x[1]);
+  if (ranked.length === 0) return [CORE, mixColor(CORE, 0xffffff, 0.5)];
+  const main = TAG_COLOR[ranked[0]![0]];
+  return [main, ranked.length > 1 ? TAG_COLOR[ranked[1]![0]] : mixColor(main, 0xffffff, 0.5)];
+}
 
 export const DEPTH = {
   grid: 1, light: 2, pulse: 3, range: 4, boss: 5, enemy: 6, projectile: 7, core: 8, fx: 9, bars: 10,
@@ -80,6 +102,9 @@ export class WorldView {
   private readonly range: Phaser.GameObjects.Graphics;
   private frame = 0;
   private coreFlashUntil = 0;
+  /** Displayed core colours, easing toward coreColors() of the crystal. */
+  private coreMain = CORE;
+  private coreAccent = mixColor(CORE, 0xffffff, 0.5);
   private coreShakeUntil = 0;
   private lastNow = 0;
   /** Screen position of the core this frame (shake included). */
@@ -138,6 +163,7 @@ export class WorldView {
   private drawRange(): void {
     const g = this.range.clear();
     this.rangeDrawn = this.session().stats.range;
+    this.scaleDrawn = this.L.scale;
     const r = this.rangeDrawn * this.L.scale;
     const { cx, cy } = this.L;
     g.fillStyle(CORE, 0.025).fillCircle(cx, cy, r);
@@ -203,6 +229,7 @@ export class WorldView {
 
   private readonly tmp = { x: 0, y: 0 };
   private rangeDrawn = 0;
+  private scaleDrawn = 0;
 
   draw(alpha: number, now: number): void {
     const dt = this.lastNow === 0 ? 16 : Math.min(100, now - this.lastNow);
@@ -211,13 +238,20 @@ export class WorldView {
     const L = this.L;
     const sess = this.session();
     const w = sess.world;
-    if (sess.stats.range !== this.rangeDrawn) this.drawRange();
+    if (sess.stats.range !== this.rangeDrawn || this.L.scale !== this.scaleDrawn) this.drawRange();
+    const [main, accent] = coreColors(w.crystal, w.perks);
+    const k = 1 - Math.exp(-dt / 300);
+    this.coreMain = main === this.coreMain ? main : mixColor(this.coreMain, main, k);
+    this.coreAccent = accent === this.coreAccent ? accent : mixColor(this.coreAccent, accent, k);
     this.drawCore(w.core.hp / sess.stats.health, now, w.dead);
     this.spine.clear();
     this.drawPulses(dt);
 
     const bars = this.bars.clear();
     this.bossLabel.setVisible(false);
+    // Mutated viruses (spec 2026-10-14 §C) wear a ring in the colour of the genome's strongest gene.
+    let gene: Tag | null = null;
+    for (const t of TAGS) if (w.genome[t] > 0 && (gene === null || w.genome[t] > w.genome[gene])) gene = t;
     const tmp = this.tmp;
     for (const e of w.enemies) {
       let s = this.enemies.get(e.id);
@@ -259,6 +293,7 @@ export class WorldView {
         else img.clearTint();
       }
       const r = e.radius * L.scale * ENEMY_VIS;
+      if (gene !== null) bars.lineStyle(Math.max(1.5, r * 0.14), TAG_COLOR[gene], 0.75 * fade).strokeCircle(sx, sy, r + 3);
       if (s.kind === 'boss') {
         const bw = Math.max(120, r * 3.2);
         const by = sy - r - 26;
@@ -452,7 +487,7 @@ export class WorldView {
     const low = hpFrac < 0.3;
     const pulse = 1 + 0.04 * Math.sin(now / (low ? 90 : 420));
     this.coreOuter.setPosition(x, y).setRotation(now * 0.00025).setScale(ps(L.scale * CORE_VIS) * pulse);
-    this.coreRing.setPosition(x, y).setRotation(-now * 0.00012);
+    this.coreRing.setPosition(x, y).setRotation(-now * 0.00012).setScale(ps(L.scale * CORE_VIS));
     this.coreInner.setPosition(x, y).setRotation(-now * 0.0006).setScale(ps(L.scale * CORE_VIS) * (1 + 0.08 * Math.sin(now / 260)));
     this.coreLight.setPosition(x, y).setAlpha(0.75 + 0.25 * Math.sin(now / 700));
     const flash = now < this.coreFlashUntil;
@@ -462,17 +497,18 @@ export class WorldView {
       this.coreLight.setTint(CORE_HIT);
     } else if (low && Math.sin(now / 90) > 0.6) {
       this.coreOuter.setTint(CORE_HIT);
-      this.coreInner.clearTint();
+      this.coreInner.setTint(this.coreAccent);
       this.coreLight.setTint(CORE_HIT);
     } else {
-      this.coreOuter.clearTint();
-      this.coreInner.clearTint();
-      this.coreLight.clearTint();
+      this.coreOuter.setTint(this.coreMain);
+      this.coreInner.setTint(this.coreAccent);
+      this.coreLight.setTint(this.coreMain);
     }
+    this.coreRing.setTint(this.coreMain);
     const r = this.rangeDrawn * L.scale;
     for (let i = 0; i < this.orbiters.length; i++) {
       const a = now * 0.0005 + i * Math.PI;
-      this.orbiters[i]!.setPosition(L.cx + Math.cos(a) * r, L.cy + Math.sin(a) * r);
+      this.orbiters[i]!.setPosition(L.cx + Math.cos(a) * r, L.cy + Math.sin(a) * r).setTint(i === 0 ? this.coreMain : this.coreAccent);
     }
   }
 

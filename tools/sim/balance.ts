@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import botJson from './bot.json';
 import { DEFAULT_DATA, type GameData, STAT_IDS, validateData } from '../../src/sim/data';
-import { TAGS } from '../../src/sim/perkData';
+import { fusionKeys, TAGS } from '../../src/sim/perkData';
 import { type PickPolicyName, POLICIES, type PolicyName, TAG_PICKS } from './bot';
 import { type RunResult, runBot } from './runner';
 
@@ -121,6 +121,18 @@ const tagSetShare = (key: string) => {
   return pct(rs.filter((r) => r.world.setTiers[tag as (typeof TAGS)[number]] >= 2).length, rs.length);
 };
 
+/** Fusions at death (auto placement, no moves): share of runs holding each pair at tier ≥ I, and at II+. */
+function fusionTable(key: string): string {
+  const rs = by[key]!;
+  const second = data.sets.fusionTiers[1] ?? Infinity;
+  return fusionKeys()
+    .map((k) => ({ k, n: rs.filter((r) => (r.world.fusionTiers[k] ?? 0) > 0).length, n2: rs.filter((r) => (r.world.fusionTiers[k] ?? 0) >= second).length }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .map((x) => `${data.sets.fusions[x.k]!.name} ${pct(x.n, rs.length)}${x.n2 > 0 ? ` (II+ ${pct(x.n2, rs.length)})` : ''}`)
+    .join(' · ');
+}
+
 const md = [
   '# Balance report — M3 (protocols, tags, sets; first run)',
   '',
@@ -160,6 +172,10 @@ const md = [
   '## Perks held at death (share of runs)',
   '',
   ...['greedy + greedy-pick', 'greedy + random-pick', ...TAG_PICKS.map((p) => `greedy + ${p}`)].map((k) => `- **${k}:** ${perkTable(k)}`),
+  '',
+  '## Fusions held at death (auto placement; share of runs at tier I+, II+)',
+  '',
+  ...['greedy + greedy-pick', 'greedy + random-pick', ...TAG_PICKS.map((p) => `greedy + ${p}`)].map((k) => `- **${k}:** ${fusionTable(k) || '—'}`),
   '',
   '## Median levels at death',
   '',

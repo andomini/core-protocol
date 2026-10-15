@@ -88,3 +88,14 @@ export function drawTagIcon(g: Phaser.GameObjects.Graphics, tag: Tag, cx: number
       break;
   }
 }
+
+/** A fusion's mark: a disc split down the middle in its two tags' colours (left `a`, right `b`). */
+export function drawPairDisc(g: Phaser.GameObjects.Graphics, a: number, b: number, cx: number, cy: number, r: number, alpha = 1): void {
+  g.fillStyle(a, alpha);
+  g.slice(cx, cy, r, Math.PI / 2, Math.PI * 1.5, false);
+  g.fillPath();
+  g.fillStyle(b, alpha);
+  g.slice(cx, cy, r, -Math.PI / 2, Math.PI / 2, false);
+  g.fillPath();
+  g.lineStyle(Math.max(1.5, r * 0.12), 0x03050d, 0.8).lineBetween(cx, cy - r, cx, cy + r);
+}

@@ -2,6 +2,7 @@
 // (🃏 Cards joins in M5 after the first run). Every view is rebuilt on refresh: menus change rarely.
 
 import Phaser from 'phaser';
+import { WIDGET, WIDGET_CFG } from '../widget';
 import { DEFAULT_META_DATA, type MetaData, unlockWaveFor } from '../../meta/metaData';
 import { buyLab, labEffects, labState } from '../../meta/labs';
 import { CARDS, canFreePack, cardDef, cardSlots, claimFreePack, equip, openPack, type PackCard, starsFor, unequip } from '../../meta/cards';
@@ -96,6 +97,22 @@ export class HomeScene extends Phaser.Scene {
       this.registry.remove('starterReveal');
       this.showPack(starter);
     } else this.maybeOffline();
+    if (WIDGET) this.widgetIdle();
+  }
+
+  /** Widget mode: after a while without input on Home, go back to playing (continue, or a new run). */
+  private widgetIdle(): void {
+    document.title = 'Core Protocol · HOME';
+    let ev = this.time.delayedCall(WIDGET_CFG.homeIdleMs, () => this.idleResume());
+    this.input.on('pointerdown', () => {
+      ev.remove();
+      ev = this.time.delayedCall(WIDGET_CFG.homeIdleMs, () => this.idleResume());
+    });
+  }
+
+  private idleResume(): void {
+    if (services.meta.hasRun()) this.continueRun();
+    else this.startRun(services.meta.meta.tier);
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -211,7 +228,9 @@ export class HomeScene extends Phaser.Scene {
     const nextLocked = tier >= m.tierUnlocked;
     this.btn({ x: r.x + r.w - aw - 20, y: r.y + 22, w: aw, h: ah }, '▶', () => this.pickTier(tier + 1), { enabled: !nextLocked, size: f + 8 });
     let y = r.y + 30 + ah + (portrait ? 30 : 16);
-    this.t(cx, y, `Enemy HP ×${formatNum(td.hpMul)} · Bits ×${formatNum(td.bitsMul)}`, f, TEXT_DIM).setOrigin(0.5, 0);
+    // formatNum floors below 1000 (2.5 → "2"), so multipliers keep two decimals
+    const mul = (x: number): string => (x < 100 ? String(Math.round(x * 100) / 100) : formatNum(x));
+    this.t(cx, y, `Enemy HP ×${mul(td.hpMul)} · Bits ×${mul(td.bitsMul)}`, f, TEXT_DIM).setOrigin(0.5, 0);
     y += f + 14;
     this.t(cx, y, td.condition ? `⚠ ${td.condition}` : 'No special conditions', f, td.condition ? '#ffb03b' : TEXT_DIM).setOrigin(0.5, 0);
     y += f + 14;
@@ -596,10 +615,11 @@ export class HomeScene extends Phaser.Scene {
     const f = this.G.font;
     const portrait = this.L.o === 'portrait';
     this.t(c.x, c.y, 'SETTINGS', this.G.titleFont, TEXT, { title: true, glow: '#22e5ff' });
-    const rows: [keyof typeof m.settings, string][] = [
+    const rows: ['sound' | 'music' | 'reduceMotion' | 'autoPlace', string][] = [
       ['sound', 'Sound effects'],
       ['music', 'Music'],
       ['reduceMotion', 'Reduce motion (no shake)'],
+      ['autoPlace', 'Auto-place crystal modules'],
     ];
     const h = portrait ? 110 : 70;
     rows.forEach(([key, label], i) => {

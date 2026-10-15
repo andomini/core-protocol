@@ -1,0 +1,8 @@
+{
+  "cellSize": 24,
+  "coreRing": 1,
+  "maxRing": 3,
+  "ringEvery": 20,
+  "maxRingCap": 5,
+  "auto": { "sameTag": 10, "sectorMatch": 3, "sectorEmpty": 2, "ring": 1, "link": 1 }
+}

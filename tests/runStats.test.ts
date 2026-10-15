@@ -33,6 +33,15 @@ describe('run stats', () => {
     expect(s.energyFromKills).toBeCloseTo(sess.world.energy, 6); // nothing bought; wave bonuses are 0 at level 0
   });
 
+  it('fusions: the highest tier per pair survives a tier drop and a save', () => {
+    const s = emptyRunStats();
+    recordEvent(s, { type: 'fusion', key: 'cryo+mining', tier: 3, prev: 1, a: [0, 1], b: [1, 1] });
+    recordEvent(s, { type: 'fusion', key: 'cryo+mining', tier: 1, prev: 3, a: null, b: null });
+    expect(s.fusionMax).toEqual({ 'cryo+mining': 3 });
+    expect(validateRunStats(JSON.parse(JSON.stringify(s))).fusionMax).toEqual({ 'cryo+mining': 3 });
+    expect(validateRunStats({ fusionMax: { 'cryo+mining': -2, junk: 5 } }).fusionMax).toEqual({});
+  });
+
   it('stored blobs are normalised; lifetime totals add up', () => {
     const s = validateRunStats({ hits: 5, kills: { basic: 2 }, damage: { shot: 9 }, junk: 1 });
     expect([s.hits, s.kills.basic, s.damage.shot, s.kills.boss]).toEqual([5, 2, 9, 0]);

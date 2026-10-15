@@ -1,8 +1,11 @@
 import { type EnemyKind, type GameData, STAT_IDS, type StatId } from './data';
 import { type Effect, TAGS, type Tag, validateEffect } from './perkData';
+import type { Module } from './crystal';
+import { blankGenome } from './mutations';
 import { appendStatMods, initProtocols, type Timer } from './perks';
 import { createStream, type RngState } from './rng';
 import { clampValue } from './num';
+import { initialTerrain } from './territory';
 import { canonicalLevels, type CoreStats, effectiveStats, type Levels, type Modifier } from './stats';
 
 // The World is plain JSON: no classes, Maps or functions, so it can be hashed and snapshotted.
@@ -55,13 +58,13 @@ export interface CoreState {
   shots: number;
 }
 
-/** v3 (M3): protocols — perks, set tiers, pick phase, Keys, boost, periodic timers, slow/freeze, bounces. */
-export const WORLD_VERSION = 5;
+/** v3 (M3): protocols — perks, set tiers, pick phase, Keys, boost, periodic timers, slow/freeze, bounces. v6: crystal, territory, genome. */
+export const WORLD_VERSION = 7;
 
 export type Phase = 'wave' | 'pause' | 'pick';
 
 export interface World {
-  v: 5;
+  v: 7;
   seed: number;
   /** 1-based index into GameData.tiers. */
   tier: number;
@@ -89,8 +92,10 @@ export interface World {
   perks: Record<string, number>;
   /** Tags of the card loadout (M5); each counts 1 toward its set. */
   cardTags: Tag[];
-  /** Highest set tier applied per tag (0, 2, 4, 6). */
+  /** Set tier applied per tag (0, 2, 4, 6), from the crystal now: a move that breaks a cluster lowers it. */
   setTiers: Record<Tag, number>;
+  /** Fusion tier per tag pair ("a+b" in TAGS order; absent = 0), from the links on the crystal now. */
+  fusionTiers: Record<string, number>;
   /** Perk ids on offer (display order) while `phase === 'pick'`; empty otherwise. */
   offer: string[];
   /** Rerolls used on the open offer. */
@@ -125,6 +130,14 @@ export interface World {
   cards: CardInRun[];
   /** Barrier: absorbs core damage before HP; refilled at each wave start. */
   shield: number;
+  /** Protocol modules on the crystal, in placement order (spec 2026-10-14 §A). */
+  crystal: Module[];
+  /** Territory cells (territory.ts grid order): 1 ours, 0 infected (§B). */
+  terrain: number[];
+  /** Virus gene levels per countered tag (§C). */
+  genome: Record<Tag, number>;
+  /** Virus nests: territory cell ids in the ground the breach revealed (spawn while infected). */
+  nests: number[];
   /** Separate streams so purchases (upgrades) never perturb combat or spawns. */
   rng: { spawn: RngState; combat: RngState; upgrades: RngState };
 }
@@ -199,7 +212,7 @@ export function createWorld(data: GameData, opts: RunOptions): World {
   for (const t of TAGS) setTiers[t] = 0;
   const cardTags = (opts.cardTags ?? []).filter((t): t is Tag => (TAGS as readonly string[]).includes(t));
   const w: World = {
-    v: 5,
+    v: 7,
     seed: opts.seed,
     tier: opts.tier,
     tick: 0,
@@ -219,6 +232,7 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     perks,
     cardTags,
     setTiers,
+    fusionTiers: {},
     offer: [],
     rerolls: 0,
     picks: 0,
@@ -247,6 +261,10 @@ export function createWorld(data: GameData, opts: RunOptions): World {
       return { id: String(c.id), effects: c.effects.map((e) => ({ ...e })) };
     }),
     shield: 0,
+    crystal: [],
+    terrain: initialTerrain(data),
+    genome: blankGenome(),
+    nests: [],
     rng: { spawn: createStream(opts.seed, 'spawn'), combat: createStream(opts.seed, 'combat'), upgrades: createStream(opts.seed, 'upgrades') },
   };
   // Card stat effects become modifiers once; their periodic effects get timers (first fire one period in).

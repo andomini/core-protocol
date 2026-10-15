@@ -2,6 +2,7 @@
 // saved with the run snapshot, folded into lifetime totals when the run is paid out.
 import { ENEMY_KINDS, type EnemyKind } from '../sim/data';
 import type { SimEvent } from '../sim/events';
+import { fusionKeys } from '../sim/perkData';
 
 export type DamageSource = 'shot' | 'bounce' | 'lightning' | 'tesla' | 'thorns';
 export const DAMAGE_SOURCES: readonly DamageSource[] = ['shot', 'bounce', 'lightning', 'tesla', 'thorns'];
@@ -36,6 +37,8 @@ export interface RunStats {
   waveSkips: number;
   freezes: number;
   bolts: number;
+  /** Highest fusion tier (its link count, sets.fusionTiers) reached this run, by pair key. */
+  fusionMax: Record<string, number>;
 }
 
 const kinds = (): Record<EnemyKind, number> => Object.fromEntries(ENEMY_KINDS.map((k) => [k, 0])) as Record<EnemyKind, number>;
@@ -69,6 +72,7 @@ export function emptyRunStats(): RunStats {
     waveSkips: 0,
     freezes: 0,
     bolts: 0,
+    fusionMax: {},
   };
 }
 
@@ -118,6 +122,9 @@ export function recordEvent(s: RunStats, e: SimEvent): void {
     case 'waveSkip':
       s.waveSkips += 1;
       return;
+    case 'fusion':
+      if (e.tier > (s.fusionMax[e.key] ?? 0)) s.fusionMax[e.key] = e.tier;
+      break;
     case 'freeze':
       s.freezes += 1;
       return;
@@ -155,6 +162,10 @@ export function validateRunStats(raw: unknown): RunStats {
   }
   for (const k of ENEMY_KINDS) s.kills[k] = num((r.kills as Record<string, unknown> | undefined)?.[k]);
   for (const k of DAMAGE_SOURCES) s.damage[k] = num((r.damage as Record<string, unknown> | undefined)?.[k]);
+  for (const k of fusionKeys()) {
+    const v = num((r.fusionMax as Record<string, unknown> | undefined)?.[k]);
+    if (v > 0) s.fusionMax[k] = v;
+  }
   return s;
 }
 

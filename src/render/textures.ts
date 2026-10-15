@@ -5,7 +5,7 @@
 import Phaser from 'phaser';
 import { type EnemyKind, type GameData, STAT_IDS, type StatId } from '../sim/data';
 import {
-  KEY, BITS, CORE, CYAN, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, LOCKED, PANEL_EDGE, PANEL_FILL, TAB_COLOR, TRACER, WHITE,
+  KEY, BITS, CYAN, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, LOCKED, PANEL_EDGE, PANEL_FILL, TAB_COLOR, TRACER, WHITE,
 } from './palette';
 import { RS } from './resolution';
 
@@ -148,22 +148,23 @@ function enemies(scene: Phaser.Scene, data: GameData): void {
   });
 }
 
+// Baked white: WorldView tints the core with the colours of its modules (cyan while it has none).
 function core(scene: Phaser.Scene, data: GameData): void {
   const cr = data.core.radius;
   shapeTexture(scene, 'core_outer', cr * 1.3, (ctx, c) => {
-    neon(ctx, regular(c, c, cr * 1.18, 6, Math.PI / 6), CORE, 3.2, 0.08, 16);
+    neon(ctx, regular(c, c, cr * 1.18, 6, Math.PI / 6), WHITE, 3.2, 0.08, 16);
     // Notches on every vertex.
-    for (const [x, y] of regular(c, c, cr * 1.18, 6, Math.PI / 6)) dot(ctx, x, y, 2.4, CORE, 8);
+    for (const [x, y] of regular(c, c, cr * 1.18, 6, Math.PI / 6)) dot(ctx, x, y, 2.4, WHITE, 8);
   });
   shapeTexture(scene, 'core_inner', cr * 0.8, (ctx, c) => {
-    neon(ctx, regular(c, c, cr * 0.66, 6, 0), CORE, 2.4, 0.35, 12);
+    neon(ctx, regular(c, c, cr * 0.66, 6, 0), WHITE, 2.4, 0.35, 12);
     neon(ctx, regular(c, c, cr * 0.32, 6, Math.PI / 6), WHITE, 1.6, 0.6, 8);
   });
   const rr = cr * 1.85;
   shapeTexture(scene, 'core_ring', rr + 4, (ctx, c) => {
-    ctx.shadowColor = rgba(CORE, 1);
+    ctx.shadowColor = rgba(WHITE, 1);
     ctx.shadowBlur = 8 * RS;
-    ctx.strokeStyle = rgba(CORE, 0.75);
+    ctx.strokeStyle = rgba(WHITE, 0.75);
     ctx.lineWidth = 2;
     for (let i = 0; i < 6; i++) {
       const a = (i / 6) * Math.PI * 2;
@@ -171,7 +172,7 @@ function core(scene: Phaser.Scene, data: GameData): void {
       ctx.arc(c, c, rr, a + 0.12, a + Math.PI / 3 - 0.12);
       ctx.stroke();
     }
-    ctx.strokeStyle = rgba(CORE, 0.5);
+    ctx.strokeStyle = rgba(WHITE, 0.5);
     ctx.lineWidth = 1;
     for (let i = 0; i < 36; i++) {
       const a = (i / 36) * Math.PI * 2;
@@ -185,10 +186,10 @@ function core(scene: Phaser.Scene, data: GameData): void {
   const L = 512;
   bake(scene, 'core_light', L, L, (ctx) => {
     const g = ctx.createRadialGradient(L / 2, L / 2, 0, L / 2, L / 2, L / 2);
-    g.addColorStop(0, rgba(CORE, 0.55));
-    g.addColorStop(0.18, rgba(CORE, 0.16));
-    g.addColorStop(0.5, rgba(0x1f6bff, 0.05));
-    g.addColorStop(1, rgba(0x1f6bff, 0));
+    g.addColorStop(0, rgba(WHITE, 0.55));
+    g.addColorStop(0.18, rgba(WHITE, 0.16));
+    g.addColorStop(0.5, rgba(WHITE, 0.05));
+    g.addColorStop(1, rgba(WHITE, 0));
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, L, L);
   });

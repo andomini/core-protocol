@@ -1,11 +1,14 @@
 import configJson from '../data/config.json';
 import coreJson from '../data/core.json';
+import crystalJson from '../data/crystal.json';
+import mutationsJson from '../data/mutations.json';
+import territoryJson from '../data/territory.json';
 import directionsJson from '../data/directions.json';
 import enemiesJson from '../data/enemies.json';
 import perksJson from '../data/perks.json';
 import setsJson from '../data/sets.json';
 import statsJson from '../data/stats.json';
-import { type PerksData, type SetsData, validatePerks, validateSets } from './perkData';
+import { type PerksData, type SetsData, TAGS, type Tag, validatePerks, validateSets } from './perkData';
 import tiersJson from '../data/tiers.json';
 
 export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss';
@@ -82,6 +85,8 @@ export interface StatDef {
   maxLevel?: number;
   /** Upper bound on the effective value (after modifiers). */
   cap?: number;
+  /** Highest the cap can be raised to by `capAdd` effects (absent = the cap cannot move). */
+  capMax?: number;
   /** Price of the next level from level L: base × growth^L. */
   cost: { base: number; growth: number };
   format: StatFormat;
@@ -111,6 +116,12 @@ export interface SimConfig {
   pauseSeconds: number;
   bossEvery: number;
   spawnRadius: number;
+  /** The breach widens: every arenaGrowEvery waves the spawn ring grows by arenaGrowStep, up to arenaMaxRadius. */
+  arenaGrowEvery: number;
+  arenaGrowStep: number;
+  arenaMaxRadius: number;
+  /** Share of the arena growth applied to virus speed (1 = they cross the wider ring in the same time). */
+  arenaSpeedScale: number;
   baseEnemiesPerWave: number;
   enemiesPerWaveGrowth: number;
   maxEnemiesPerWave: number;
@@ -134,6 +145,66 @@ export interface SimConfig {
   reviveClearRadius: number;
 }
 
+/** The core's crystal (protocol modules on a hex grid around the core). */
+export interface CrystalDef {
+  /** Hex size (center to corner), world px. */
+  cellSize: number;
+  /** Rings 0..coreRing are the core itself; modules go into rings coreRing+1..maxRing. */
+  coreRing: number;
+  maxRing: number;
+  /** The crystal grows with the breach: +1 ring every ringEvery waves, up to maxRingCap. */
+  ringEvery: number;
+  maxRingCap: number;
+  /** Auto-placement score weights. */
+  /** `link`: per neighbour of another tag (a fusion link, spec 2026-10-15 §1). */
+  auto: { sameTag: number; sectorMatch: number; sectorEmpty: number; ring: number; link: number };
+}
+
+/** The arena's hex territory: ours vs infected cells. */
+export interface TerritoryDef {
+  cellSize: number;
+  /** Cells whose center is within this distance start as ours. */
+  startRadius: number;
+  /** Every N ticks each living, non-frozen virus infects the cell under it. */
+  infectEvery: number;
+  /** Every N ticks infected cells touching our ground (no virus, no nest on them) turn ours again. */
+  regrowEvery: number;
+  bossInfectRing: number;
+  /** A kill cleanses its cell and the rings around it up to this. */
+  cleanseRing: number;
+  /** Kill Energy × (energyBase + energyPerOwned × owned share). */
+  energyBase: number;
+  energyPerOwned: number;
+  overloadDamage: number;
+  cryoSlow: number;
+  chainDamage: number;
+  miningEnergy: number;
+  firewallDamage: number;
+  infectedSpeed: number;
+  /** Far kills pay more: Energy and Bits × (1 + farPer100 × (distance − farFrom) / 100) beyond farFrom. */
+  farFrom: number;
+  farPer100: number;
+  /** Nests: each arena growth plants nestsPerGrow in the new ground (at most maxNests alive). A nest on an
+   *  infected cell spawns nestKind every nestEvery wave ticks; reclaiming its cell destroys it for a payout. */
+  nestsPerGrow: number;
+  maxNests: number;
+  /** Nests sit at most this far out, so a long-Range core can still reclaim them. */
+  nestMaxRadius: number;
+  nestEvery: number;
+  nestKind: EnemyKind;
+  nestEnergy: number;
+  nestBits: number;
+}
+
+/** Virus mutations: the genome learns the build's dominant tag. */
+export interface MutationsDef {
+  startWave: number;
+  every: number;
+  maxLevel: number;
+  /** Each gene level × (1 − perLevel) on the countered effect. */
+  perLevel: Record<Tag, number>;
+}
+
 export interface GameData {
   config: SimConfig;
   core: CoreDef;
@@ -142,6 +213,9 @@ export interface GameData {
   stats: StatsData;
   perks: PerksData;
   sets: SetsData;
+  crystal: CrystalDef;
+  territory: TerritoryDef;
+  mutations: MutationsDef;
   /** 64 unit vectors around the circle (see tools/gen-directions.ts). */
   directions: [number, number][];
 }
@@ -187,6 +261,7 @@ function validateStats(s: StatsData): void {
     else nonNeg(def.per, `${at}.per`);
     if (def.maxLevel !== undefined) check(Number.isInteger(def.maxLevel) && def.maxLevel >= 1, `${at}.maxLevel must be a whole number ≥ 1`);
     if (def.cap !== undefined) positive(def.cap, `${at}.cap`);
+    if (def.capMax !== undefined) check(def.cap !== undefined && def.capMax >= def.cap, `${at}.capMax needs a cap and must be ≥ it`);
     check(def.cost !== undefined, `${at}.cost is missing`);
     positive(def.cost.base, `${at}.cost.base`);
     check(
@@ -213,6 +288,10 @@ export function validateData(d: GameData): GameData {
   );
   check(Number.isInteger(c.bossEvery) && c.bossEvery > 0, `config.bossEvery must be a positive integer, got ${c.bossEvery}`);
   positive(c.spawnRadius, 'config.spawnRadius');
+  check(Number.isInteger(c.arenaGrowEvery) && c.arenaGrowEvery > 0, 'config.arenaGrowEvery must be a positive integer');
+  nonNeg(c.arenaGrowStep, 'config.arenaGrowStep');
+  check(c.arenaMaxRadius >= c.spawnRadius, 'config.arenaMaxRadius must be ≥ spawnRadius');
+  nonNeg(c.arenaSpeedScale, 'config.arenaSpeedScale');
   nonNeg(c.baseEnemiesPerWave, 'config.baseEnemiesPerWave');
   nonNeg(c.enemiesPerWaveGrowth, 'config.enemiesPerWaveGrowth');
   wholeNonNeg(c.maxEnemiesPerWave, 'config.maxEnemiesPerWave');
@@ -233,6 +312,38 @@ export function validateData(d: GameData): GameData {
   validateStats(d.stats);
   validatePerks(d.perks);
   validateSets(d.sets);
+  // A cap raise needs a cap that can move.
+  for (const [id, pdef] of Object.entries(d.perks.perks))
+    for (const e of pdef.effects)
+      if (e.type === 'capAdd') check(d.stats.stats[e.stat].capMax !== undefined, `perks.${id}: capAdd on ${e.stat}, which has no capMax`);
+  const cr = d.crystal;
+  positive(cr?.cellSize, 'crystal.cellSize');
+  wholeNonNeg(cr.coreRing, 'crystal.coreRing');
+  check(Number.isInteger(cr.maxRing) && cr.maxRing > cr.coreRing, 'crystal.maxRing must be a whole number > coreRing');
+  check(Number.isInteger(cr.ringEvery) && cr.ringEvery > 0, 'crystal.ringEvery must be a positive integer');
+  check(Number.isInteger(cr.maxRingCap) && cr.maxRingCap >= cr.maxRing, 'crystal.maxRingCap must be a whole number ≥ maxRing');
+  for (const k of ['sameTag', 'sectorMatch', 'sectorEmpty', 'ring', 'link'] as const) nonNeg(cr.auto?.[k], `crystal.auto.${k}`);
+  const tr = d.territory;
+  positive(tr?.cellSize, 'territory.cellSize');
+  nonNeg(tr.startRadius, 'territory.startRadius');
+  check(Number.isInteger(tr.infectEvery) && tr.infectEvery > 0, 'territory.infectEvery must be a positive integer');
+  check(Number.isInteger(tr.regrowEvery) && tr.regrowEvery > 0, 'territory.regrowEvery must be a positive integer');
+  wholeNonNeg(tr.bossInfectRing, 'territory.bossInfectRing');
+  wholeNonNeg(tr.cleanseRing, 'territory.cleanseRing');
+  for (const k of ['energyBase', 'energyPerOwned', 'overloadDamage', 'chainDamage', 'miningEnergy', 'firewallDamage', 'infectedSpeed'] as const) nonNeg(tr[k], `territory.${k}`);
+  for (const k of ['farFrom', 'farPer100', 'nestEnergy', 'nestBits', 'nestMaxRadius'] as const) nonNeg(tr[k], `territory.${k}`);
+  for (const k of ['nestsPerGrow', 'maxNests'] as const) wholeNonNeg(tr[k], `territory.${k}`);
+  check(Number.isInteger(tr.nestEvery) && tr.nestEvery > 0, 'territory.nestEvery must be a positive integer');
+  check(tr.nestKind in d.enemies && tr.nestKind !== 'boss', 'territory.nestKind must be a non-boss enemy kind');
+  check(Number.isFinite(tr.cryoSlow) && tr.cryoSlow >= 0 && tr.cryoSlow < 1, 'territory.cryoSlow must be in [0, 1)');
+  const mu = d.mutations;
+  check(Number.isInteger(mu?.startWave) && mu.startWave >= 1, 'mutations.startWave must be a whole number ≥ 1');
+  check(Number.isInteger(mu.every) && mu.every >= 1, 'mutations.every must be a whole number ≥ 1');
+  wholeNonNeg(mu.maxLevel, 'mutations.maxLevel');
+  for (const t of TAGS) {
+    const v = mu.perLevel?.[t];
+    check(Number.isFinite(v) && v >= 0 && v * mu.maxLevel < 1, `mutations.perLevel.${t} must be ≥ 0 and × maxLevel < 1`);
+  }
 
   for (const kind of ENEMY_KINDS) {
     const e = d.enemies[kind];
@@ -284,5 +395,8 @@ export const DEFAULT_DATA: GameData = validateData({
   stats: statsJson as StatsData,
   perks: perksJson as unknown as PerksData,
   sets: setsJson as unknown as SetsData,
+  crystal: crystalJson as CrystalDef,
+  territory: territoryJson as TerritoryDef,
+  mutations: mutationsJson as unknown as MutationsDef,
   directions: directionsJson as [number, number][],
 });

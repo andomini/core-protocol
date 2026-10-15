@@ -97,6 +97,21 @@ export function effectLine(data: GameData, e: Effect): string {
       return `Shield ${pct(e.frac)} HP each wave`;
     case 'waveSkip':
       return `${pct(e.chance)} chance to skip a wave (rewards kept)`;
+    case 'capAdd': {
+      const def = data.stats.stats[e.stat];
+      // Absolute: "Defense cap 78%" reads better than a raise of a number the player never sees.
+      return `${def.name} cap ${pct(Math.min((def.cap ?? 0) + e.value, def.capMax ?? def.cap ?? 0))}`;
+    }
+    case 'killBonus': {
+      const who = e.when === 'crit' ? 'Crit kills' : e.when === 'frozen' ? 'Frozen kills' : 'Bounce & lightning kills';
+      return `${who}: ×${round(e.energyMul)} Energy`;
+    }
+    case 'lightningFreeze':
+      return `Lightning freezes for ${round(e.seconds)}s`;
+    case 'thornsSlow':
+      return `Thorns slow attackers ${pct(e.strength)} for ${round(e.seconds)}s`;
+    case 'retaliate':
+      return `Each virus attack: bolt back for ×${round(e.damageMul)} Damage`;
     case 'ruleChange': {
       const f = RULE_TEXT[e.rule];
       return f ? f(e.op, e.value) : `${e.rule} ${e.op === 'mul' ? '×' : '+'}${round(e.value)}`;
@@ -120,6 +135,7 @@ export function totalLines(data: GameData, id: string, stacks: number): string[]
         return effectLine(data, { ...e, value: m });
       }
       case 'statAdd':
+      case 'capAdd':
         return effectLine(data, { ...e, value: e.value * n });
       case 'ruleChange':
         if (e.op === 'add') return effectLine(data, { ...e, value: e.value * n });
@@ -136,6 +152,20 @@ export function totalLines(data: GameData, id: string, stacks: number): string[]
       default:
         return effectLine(data, e);
     }
+  });
+}
+
+/** Lines for taking one more stack of an owned perk: "now → after" where the total changes. */
+export function upgradeLines(data: GameData, id: string, stacks: number): string[] {
+  const now = totalLines(data, id, stacks);
+  const next = totalLines(data, id, stacks + 1);
+  return next.map((l, i) => {
+    const a = now[i]!;
+    if (l === a) return l;
+    // Drop the shared leading words: "Every 10th shot ×3 → ×5".
+    let cut = 0;
+    for (let k = 0; k < Math.min(a.length, l.length) && a[k] === l[k]; k++) if (a[k] === ' ') cut = k + 1;
+    return `${a} → ${l.slice(cut)}`;
   });
 }
 
@@ -158,6 +188,45 @@ export function setProgress(data: GameData, tag: Tag, count: number): SetProgres
   }
   const effs = next > 0 ? data.sets.sets[tag][String(next)] : undefined;
   return { count, tier, next, nextText: effs && effs[0] ? effectLine(data, effs[0]) : '' };
+}
+
+export interface SetLadderRow {
+  tier: number;
+  /** Reached: tiers stack, every reached tier stays on. */
+  on: boolean;
+  text: string;
+}
+
+/** Every tier of a set with its bonus, lit up to the reached tier. */
+export function setLadder(data: GameData, tag: Tag, reached: number): SetLadderRow[] {
+  return data.sets.tiers.map((t) => ({ tier: t, on: t <= reached, text: setTierLines(data, tag, t).join(' · ') }));
+}
+
+/** Lines for one fusion tier (`tier` = its link count, sets.fusionTiers): what that tier adds. */
+export function fusionLines(data: GameData, key: string, tier: number): string[] {
+  return (data.sets.fusions[key]!.tiers[String(tier)] ?? []).map((e) => effectLine(data, e));
+}
+
+/** What a fusion at `tier` does in all: the lines of every tier up to it (tiers add up). */
+export function fusionReachedLines(data: GameData, key: string, tier: number): string[] {
+  return data.sets.fusionTiers.filter((t) => t <= tier).flatMap((t) => fusionLines(data, key, t));
+}
+
+/** Every tier of a fusion with its bonus, lit up to the reached tier. */
+export function fusionLadder(data: GameData, key: string, reached: number): SetLadderRow[] {
+  return data.sets.fusionTiers.map((t) => ({ tier: t, on: t <= reached, text: fusionLines(data, key, t).join(' · ') }));
+}
+
+/** A fusion tier's level as a roman numeral (link counts 1 / 3 / 5 → I / II / III); '' for none. */
+export function fusionLevel(data: GameData, tier: number): string {
+  const i = data.sets.fusionTiers.indexOf(tier);
+  return i < 0 ? '' : (['I', 'II', 'III', 'IV', 'V'][i] ?? String(i + 1));
+}
+
+/** The fusion's two tags, in key order. */
+export function fusionTags(key: string): [Tag, Tag] {
+  const [a, b] = key.split('+') as [Tag, Tag];
+  return [a, b];
 }
 
 /** Lines for a set tier (all its effects). */

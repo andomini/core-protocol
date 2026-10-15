@@ -21,9 +21,25 @@ function merge(target: Record<string, unknown>, patch: Record<string, unknown>):
 
 export type StatBases = Partial<Record<StatId, number>>;
 
-/** Deep clone of DEFAULT_DATA with `patch` applied and stat base values overridden, validated. */
+/**
+ * Territory with no effect (no income scaling, no cell buffs, no haste), so tests of older mechanics keep
+ * their exact numbers; territory tests patch the values they check (or use DEFAULT_DATA).
+ */
+export const NEUTRAL_TERRITORY = {
+  energyBase: 1,
+  energyPerOwned: 0,
+  overloadDamage: 1,
+  cryoSlow: 0,
+  chainDamage: 1,
+  miningEnergy: 1,
+  firewallDamage: 1,
+  infectedSpeed: 1,
+} as const;
+
+/** Deep clone of DEFAULT_DATA with a neutral territory, `patch` applied and stat base values overridden, validated. */
 export function testData(patch: DeepPartial<GameData> = {}, bases: StatBases = {}): GameData {
   const d = structuredClone(DEFAULT_DATA);
+  Object.assign(d.territory, NEUTRAL_TERRITORY);
   merge(d as unknown as Record<string, unknown>, patch as Record<string, unknown>);
   for (const [id, v] of Object.entries(bases)) d.stats.stats[id as StatId].base = v;
   return validateData(d);

@@ -1,39 +1,10 @@
 {
   "workshop": {
     "default": {
-      "base": 19,
-      "growth": 1.45
+      "base": 16,
+      "growth": 1.12
     },
-    "stats": {
-      "damage": {
-        "base": 14,
-        "growth": 1.43
-      },
-      "attackSpeed": {
-        "base": 16,
-        "growth": 1.45
-      },
-      "health": {
-        "base": 14,
-        "growth": 1.43
-      },
-      "regen": {
-        "base": 16,
-        "growth": 1.44
-      },
-      "energyPerWave": {
-        "base": 16,
-        "growth": 1.45
-      },
-      "bitsPerWave": {
-        "base": 22,
-        "growth": 1.47
-      },
-      "bitsPerKill": {
-        "base": 26,
-        "growth": 1.48
-      }
-    }
+    "stats": {}
   },
   "tiers": {
     "unlockWave": 72,

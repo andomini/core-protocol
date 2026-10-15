@@ -6,7 +6,7 @@ import { buildRunOptions } from '../src/meta/runOptions';
 import { offlineReward } from '../src/meta/offline';
 import { settleRun } from '../src/meta/runEnd';
 import { defaultMeta, validateMeta } from '../src/meta/state';
-import { buyWorkshop, workshopCost } from '../src/meta/workshop';
+import { buyWorkshop, workshopCost, workshopCurve } from '../src/meta/workshop';
 
 const D = DEFAULT_DATA;
 const M = DEFAULT_META_DATA;
@@ -36,12 +36,12 @@ describe('workshop', () => {
   it('costs grow geometrically and a purchase spends Bits and raises the level', () => {
     const m = defaultMeta();
     const c0 = workshopCost(m, M, 'damage');
-    expect(c0).toBe(M.workshop.stats.damage!.base);
+    expect(c0).toBe(workshopCurve(M, 'damage').base);
     m.bits = 1000;
     expect(buyWorkshop(m, D, M, 'damage')).toBe(true);
     expect(m.workshop.damage).toBe(1);
     expect(m.bits).toBe(1000 - c0);
-    expect(workshopCost(m, M, 'damage')).toBe(Math.ceil(M.workshop.stats.damage!.base * M.workshop.stats.damage!.growth));
+    expect(workshopCost(m, M, 'damage')).toBe(Math.ceil(workshopCurve(M, 'damage').base * workshopCurve(M, 'damage').growth));
   });
 
   it('refuses without Bits, for a lab-locked stat, and past the stat cap', () => {

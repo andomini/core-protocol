@@ -3,6 +3,7 @@ import type { SimEvent } from './events';
 import { clampValue } from './num';
 import type { PerkProfile } from './perks';
 import { chance } from './rng';
+import { sectorOf } from './hex';
 import { gridFor } from './spatial';
 import type { Enemy, Projectile, World } from './state';
 import type { CoreStats } from './stats';
@@ -52,7 +53,9 @@ export function updateCore(w: World, data: GameData, st: CoreStats, prof: PerkPr
       // Multishot: the extra projectiles (i > 0) hit for a share of the main shot's damage.
       const share = i === 0 ? 1 : data.config.multishotDamage;
       const damage = clampValue((crit ? st.damage * st.critFactor : st.damage) * (big ? prof.nthMul : 1) * share);
-      const p: Projectile = { id: w.nextId++, targetId: t.id, x: 0, y: 0, damage, crit, bounces, hits: [] };
+      // Shots leave from the crystal's tip facing the target (spec 2026-10-14 §A).
+      const [x, y] = prof.shape.tips[sectorOf(t.x, t.y)] ?? [0, 0];
+      const p: Projectile = { id: w.nextId++, targetId: t.id, x, y, damage, crit, bounces, hits: [] };
       w.projectiles.push(p);
       events.push({ type: 'shot', projectileId: p.id, targetId: t.id, crit, big });
     }

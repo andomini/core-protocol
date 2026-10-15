@@ -86,6 +86,15 @@ describe('effectiveStats', () => {
     expect(effectiveStats(data, i).defense).toBe(S.defense.cap);
   });
 
+  it('cap modifiers raise the cap, never past capMax', () => {
+    const i = none();
+    i.run.defense = 50;
+    i.mods = [{ stat: 'defense', op: 'cap', value: 0.03, source: 'hardening' }];
+    expect(effectiveStats(data, i).defense).toBeCloseTo(S.defense.cap! + 0.03, 12);
+    i.mods = Array.from({ length: 20 }, () => ({ stat: 'defense' as const, op: 'cap' as const, value: 0.03, source: 'hardening' }));
+    expect(effectiveStats(data, i).defense).toBe(S.defense.capMax);
+  });
+
   it('is pure: the inputs are not mutated and the same inputs give equal results', () => {
     const i = none();
     i.run.health = 5;
@@ -136,7 +145,7 @@ describe('MAX buy', () => {
   });
 
   it('respects the max level', () => {
-    const d = S.range; // maxLevel 10
+    const d = S.interest; // maxLevel 10
     expect(remainingLevels(d, 4)).toBe(6);
     expect(maxAffordable(d, 4, 1e100)).toBe(6);
     expect(maxAffordable(d, 10, 1e100)).toBe(0);
@@ -161,7 +170,7 @@ describe('MAX buy', () => {
   });
 
   it('quoteBuy: ×N is all-or-nothing, clipped to the max level; MAX shows the next level when nothing is affordable', () => {
-    const d = S.range;
+    const d = S.interest;
     expect(quoteBuy(d, 0, 1, 1e9)).toEqual({ levels: 1, cost: costSum(d, 0, 1), affordable: true });
     expect(quoteBuy(d, 5, 10, 1e9)).toEqual({ levels: 5, cost: costSum(d, 5, 5), affordable: true });
     expect(quoteBuy(d, 0, 10, 20).affordable).toBe(false);
