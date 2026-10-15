@@ -117,7 +117,8 @@ describe('costs', () => {
       const d = S[id];
       for (const [L, n] of [[0, 1], [0, 10], [7, 13], [40, 60]] as const) {
         let exact = 0;
-        for (let k = 0; k < n; k++) exact += d.cost.base * Math.pow(d.cost.growth, L + k);
+        const knee = d.cost.knee ?? Infinity; // soft wall: growthAfter per level past the knee
+        for (let k = 0; k < n; k++) exact += d.cost.base * Math.pow(d.cost.growth, Math.min(L + k, knee)) * (L + k > knee ? Math.pow(d.cost.growthAfter!, L + k - knee) : 1);
         const s = costSum(d, L, n);
         expect(Number.isInteger(s)).toBe(true);
         expect(s - exact).toBeGreaterThan(-1e-6 * exact);
@@ -153,7 +154,7 @@ describe('MAX buy', () => {
   });
 
   it('handles 1e250 Energy fast, without a per-level loop', () => {
-    const d = S.damage;
+    const d = def({ cost: { base: S.damage.cost.base, growth: S.damage.cost.growth } }); // plain geometric
     const t0 = performance.now();
     const n = maxAffordable(d, 0, 1e250);
     const ms = performance.now() - t0;

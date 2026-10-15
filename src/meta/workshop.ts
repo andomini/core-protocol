@@ -8,10 +8,35 @@ export function workshopCurve(md: MetaData, stat: StatId) {
   return md.workshop.stats[stat] ?? md.workshop.default;
 }
 
-/** Bits for the next workshop level of `stat`. */
+/** Bits for the next workshop level of `stat` (geometric; past the curve's knee it grows by growthAfter). */
 export function workshopCost(m: MetaState, md: MetaData, stat: StatId): number {
   const c = workshopCurve(md, stat);
-  return Math.ceil(c.base * Math.pow(c.growth, m.workshop[stat] ?? 0));
+  const lvl = m.workshop[stat] ?? 0;
+  if (c.knee === undefined || lvl <= c.knee) return Math.ceil(c.base * Math.pow(c.growth, lvl));
+  return Math.ceil(c.base * Math.pow(c.growth, c.knee) * Math.pow(c.growthAfter!, lvl - c.knee));
+}
+
+/** Mastery multiplier on `stat` from its workshop level: mul^⌊level/every⌋ (1 when the stat has none). */
+export function masteryMul(m: MetaState, md: MetaData, stat: StatId): number {
+  return masteryAt(md, stat, m.workshop[stat] ?? 0);
+}
+
+/** The mastery multiplier a workshop `level` of `stat` gives. */
+export function masteryAt(md: MetaData, stat: StatId, level: number): number {
+  const ms = md.workshop.mastery;
+  const x = ms?.mul[stat];
+  if (ms === undefined || x === undefined || x <= 1) return 1;
+  return Math.pow(x, Math.floor(level / ms.every));
+}
+
+/** Every stat's mastery multiplier above 1 (for RunOptions.workshopMul). */
+export function masteryMuls(m: MetaState, md: MetaData): Partial<Record<StatId, number>> {
+  const out: Partial<Record<StatId, number>> = {};
+  for (const id of Object.keys(md.workshop.mastery?.mul ?? {}) as StatId[]) {
+    const x = masteryMul(m, md, id);
+    if (x > 1) out[id] = x;
+  }
+  return out;
 }
 
 export function workshopUnlocked(m: MetaState, data: GameData, md: MetaData, stat: StatId): boolean {

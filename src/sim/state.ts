@@ -166,6 +166,8 @@ export interface RunOptions {
   startEnergy?: number;
   /** Equipped cards (M5), effects already resolved for their star level by the meta layer. */
   cards?: readonly CardInRun[];
+  /** Workshop mastery (meta): × on a stat's value for the whole run, resolved by the meta layer. */
+  workshopMul?: Partial<Record<StatId, number>>;
   /** Carried with the run for the meta layer (Bits multiplier, Fast Boot, Second Wind); the sim ignores it. */
   metaBonus?: { bitsMul: number; fastBootWaves: number; secondWind: number };
 }
@@ -267,6 +269,11 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     nests: [],
     rng: { spawn: createStream(opts.seed, 'spawn'), combat: createStream(opts.seed, 'combat'), upgrades: createStream(opts.seed, 'upgrades') },
   };
+  // Workshop mastery multipliers: one `mul` modifier per stat, canonical order.
+  for (const id of STAT_IDS) {
+    const x = opts.workshopMul?.[id];
+    if (x !== undefined && Number.isFinite(x) && x > 1) w.mods.push({ stat: id, op: 'mul', value: clampValue(x), source: 'mastery' });
+  }
   // Card stat effects become modifiers once; their periodic effects get timers (first fire one period in).
   for (const c of w.cards) {
     appendStatMods(w, c.effects, 1, `card:${c.id}`);

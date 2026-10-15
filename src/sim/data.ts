@@ -87,8 +87,8 @@ export interface StatDef {
   cap?: number;
   /** Highest the cap can be raised to by `capAdd` effects (absent = the cap cannot move). */
   capMax?: number;
-  /** Price of the next level from level L: base × growth^L. */
-  cost: { base: number; growth: number };
+  /** Price of the next level from level L: base × growth^L (soft wall: growthAfter past `knee`, see CostCurve). */
+  cost: CostCurve;
   format: StatFormat;
   /** Locked until a lab node unlocks it (M4); RunOptions.unlocked overrides. */
   lockedByDefault: boolean;
@@ -104,6 +104,26 @@ export interface StatsData {
   tabs: Record<TabId, StatId[]>;
   stats: Record<StatId, StatDef>;
   economy: EconomyDef;
+}
+
+/**
+ * A level price curve: base × growth^L up to the `knee` level, then the price keeps rising by the gentler
+ * `growthAfter` per level (1 = flat), so a stat never hits a hard exponential wall. Both soft-wall fields
+ * are optional and go together; without them the curve is plain geometric.
+ */
+export interface CostCurve {
+  base: number;
+  growth: number;
+  knee?: number;
+  growthAfter?: number;
+}
+
+/** Checks the optional soft-wall pair of a cost curve; `at` names it in the error. */
+export function checkKnee(c: CostCurve, at: string): void {
+  if (c.knee === undefined && c.growthAfter === undefined) return;
+  if (!(c.knee !== undefined && Number.isInteger(c.knee) && c.knee >= 1)) throw new Error(`data: ${at}.knee must be a whole number ≥ 1 (with growthAfter)`);
+  if (!(typeof c.growthAfter === 'number' && Number.isFinite(c.growthAfter) && c.growthAfter >= 1 && c.growthAfter <= c.growth))
+    throw new Error(`data: ${at}.growthAfter must be in [1, growth], got ${c.growthAfter}`);
 }
 
 /** Allowed range for the in-run cost growth factor (spec §2.3). */
@@ -268,6 +288,7 @@ function validateStats(s: StatsData): void {
       Number.isFinite(def.cost.growth) && def.cost.growth >= COST_GROWTH_MIN && def.cost.growth <= COST_GROWTH_MAX,
       `${at}.cost.growth must be in [${COST_GROWTH_MIN}, ${COST_GROWTH_MAX}], got ${def.cost.growth}`,
     );
+    checkKnee(def.cost, `${at}.cost`);
     check(STAT_FORMATS.includes(def.format), `${at}.format must be one of ${STAT_FORMATS.join('|')}`);
     check(typeof def.lockedByDefault === 'boolean', `${at}.lockedByDefault must be a boolean`);
   }

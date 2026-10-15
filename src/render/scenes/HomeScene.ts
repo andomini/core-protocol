@@ -13,7 +13,7 @@ import { addRunToLifetime } from '../../meta/runStats';
 import { drawTagIcon } from '../../ui/tagIcon';
 import { offlineReward } from '../../meta/offline';
 import { settleRun } from '../../meta/runEnd';
-import { buyWorkshop, workshopCost, workshopMax, workshopUnlocked } from '../../meta/workshop';
+import { buyWorkshop, masteryAt, workshopCost, workshopMax, workshopUnlocked } from '../../meta/workshop';
 import { services } from '../../services';
 import { DEFAULT_DATA, type GameData, STAT_IDS, type StatId, type TabId } from '../../sim/data';
 import { statValue } from '../../sim/stats';
@@ -380,7 +380,11 @@ export class HomeScene extends Phaser.Scene {
     this.card(r, unlocked ? TAB_COLOR[def.tab] : LOCKED, 0.8);
     const fmt = def.format as StatFormatKind;
     this.t(r.x + 20, r.y + 10, def.name, f + 2, unlocked ? TEXT : LOCKED_CSS);
-    const sub = !unlocked ? 'Unlock in LABS' : maxed ? `LV ${lvl} · ${formatStat(fmt, statValue(def, lvl))} · MAX` : `LV ${lvl} · ${formatStat(fmt, statValue(def, lvl))} → ${formatStat(fmt, statValue(def, lvl + 1))}`;
+    // Value at a workshop level, mastery (× every N levels) included; the mastery factor is shown once it applies.
+    const val = (l: number) => formatStat(fmt, statValue(def, l) * masteryAt(this.md, id, l));
+    const mx = masteryAt(this.md, id, lvl);
+    const mastery = mx > 1 ? ` · ×${mx < 100 ? mx.toFixed(2) : formatNum(mx)}` : '';
+    const sub = !unlocked ? 'Unlock in LABS' : maxed ? `LV ${lvl} · ${val(lvl)} · MAX` : `LV ${lvl} · ${val(lvl)} → ${val(lvl + 1)}${mastery}`;
     this.t(r.x + 20, r.y + 14 + f + 2, sub, f, unlocked ? TEXT_DIM : LOCKED_CSS);
     const bw = this.L.o === 'portrait' ? 190 : 170;
     const ok = unlocked && !maxed && bits >= cost;

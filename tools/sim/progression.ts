@@ -20,6 +20,7 @@ const out = arg('out', 'reports/progression.md');
 const expArg = arg('exp', '');
 const exp: Experiment | undefined = expArg ? (JSON.parse(expArg.startsWith('{') ? expArg : readFileSync(expArg, 'utf8')) as Experiment) : undefined;
 const stratArg = arg('strats', '');
+const endless = args.includes('--endless');
 const threads = Math.max(1, Math.min(cpus().length - 2, players));
 
 const ALL_STRATS: { strategy: Strategy; ads: boolean }[] = [
@@ -30,7 +31,7 @@ const ALL_STRATS: { strategy: Strategy; ads: boolean }[] = [
   { strategy: 'casual', ads: false },
 ];
 const STRATS = stratArg ? ALL_STRATS.filter((s) => stratArg.split(',').includes(`${s.strategy}${s.ads ? '+ads' : ''}`)) : ALL_STRATS;
-const queue: PlayerConfig[] = Array.from({ length: players }, (_, i) => ({ id: i + 1, ...STRATS[i % STRATS.length]!, maxHours, maxRuns, runCapMin }));
+const queue: PlayerConfig[] = Array.from({ length: players }, (_, i) => ({ id: i + 1, ...STRATS[i % STRATS.length]!, maxHours, maxRuns, runCapMin, endless }));
 const total = queue.length;
 const results: PlayerResult[] = [];
 const t0 = Date.now();
@@ -70,7 +71,7 @@ const L: string[] = [];
 L.push('# Progression report', '');
 L.push(`${results.length} simulated players · up to ${maxHours} h of real play or ${maxRuns} runs each · run cap ${runCapMin} sim-min · ${threads} threads · ${((Date.now() - t0) / 60000).toFixed(1)} min wall · \`npm run sim:progression\``, '');
 if (exp) L.push(`Experiment: \`${JSON.stringify(exp)}\``, '');
-L.push('Real time = sim time at the best unlocked speed (casual: ×2 max) + 0.5 min of menus per run. Tiers unlock at wave ' + M.tiers.unlockWave + '.', '');
+L.push('Real time = sim time at the best unlocked speed (casual: ×2 max) + 0.5 min of menus per run. Tier N+1 unlocks at wave ' + (M.tiers.unlockWaves ?? [M.tiers.unlockWave]).join(' / ') + ' of tier N.', '');
 
 L.push('## When tiers unlock (median · p10–p90 of players who got there; share reached)', '');
 L.push(`| strategy | ${Array.from({ length: tiers - 1 }, (_, i) => `T${i + 2}`).join(' | ')} |`, `|---|${'---|'.repeat(tiers - 1)}`);
@@ -85,7 +86,7 @@ for (const [g, rs] of groups) {
 L.push('');
 
 L.push('## Best wave on the highest tier over time (median over players)', '');
-const marks = [0.5, 1, 2, 4, 8, 16, 24, 40, 60, 80, 100, 120].filter((x) => x <= maxHours);
+const marks = [0.5, 1, 2, 4, 8, 16, 24, 40, 60, 80, 100, 120, 150].filter((x) => x <= maxHours);
 L.push(`| strategy | ${marks.map((m) => `${m} h`).join(' | ')} |`, `|---|${'---|'.repeat(marks.length)}`);
 for (const [g, rs] of groups) {
   const cells = marks.map((mk) => {
@@ -101,6 +102,24 @@ for (const [g, rs] of groups) {
   });
   L.push(`| ${g} | ${cells.join(' | ')} |`);
 }
+L.push('');
+
+L.push('## Workshop level (damage · health · crit factor) and in-run damage level at death, over time (median over players)', '');
+L.push(`| strategy | ${marks.map((m) => `${m} h`).join(' | ')} |`, `|---|${'---|'.repeat(marks.length)}`);
+for (const [g, rs] of groups) {
+  const cells = marks.map((mk) => {
+    const last = rs.map((r) => r.rows.filter((x) => x.hours <= mk).at(-1)).filter((x) => x !== undefined);
+    if (!last.length) return '—';
+    const win = rs.flatMap((r) => r.rows.filter((x) => x.hours <= mk && x.hours > mk * 0.75));
+    return `${[0, 1, 2].map((i) => q(last.map((x) => x!.ws[i]!), 0.5)).join('·')} / ${win.length ? q(win.map((x) => x.lv[0]), 0.5) : '—'}`;
+  });
+  L.push(`| ${g} | ${cells.join(' | ')} |`);
+}
+L.push('');
+
+L.push('## Best wave per tier at the end (median over players)', '');
+L.push(`| strategy | ${Array.from({ length: tiers }, (_, i) => `T${i + 1}`).join(' | ')} |`, `|---|${'---|'.repeat(tiers)}`);
+for (const [g, rs] of groups) L.push(`| ${g} | ${Array.from({ length: tiers }, (_, i) => q(rs.map((r) => r.final.best[String(i + 1)] ?? 0), 0.5)).join(' | ')} |`);
 L.push('');
 
 L.push('## Where progress stalls (longest stretch without a new best wave on the tier played)', '');

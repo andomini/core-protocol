@@ -5,6 +5,7 @@ import { loadoutBonus, loadoutForRun } from './cards';
 import { labEffects } from './labs';
 import type { MetaData } from './metaData';
 import type { MetaState } from './state';
+import { masteryMuls } from './workshop';
 
 export function buildRunOptions(m: MetaState, _data: GameData, md: MetaData, tier: number, seed: number): RunOptions {
   const e = labEffects(m, md);
@@ -23,6 +24,7 @@ export function buildRunOptions(m: MetaState, _data: GameData, md: MetaData, tie
     startEnergy: e.startEnergy + b.startEnergy,
     cardTags: lo.cardTags,
     cards: lo.cards,
+    workshopMul: masteryMuls(m, md),
     metaBonus: { bitsMul: b.bitsMul, fastBootWaves: b.fastBootWaves, secondWind: b.secondWind },
   };
 }

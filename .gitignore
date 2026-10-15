@@ -4,3 +4,4 @@ dist/
 .superpowers/
 publish/out/raw/
 .dev/
+.claude/worktrees/

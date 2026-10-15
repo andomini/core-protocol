@@ -1,11 +1,15 @@
 // Meta-progression data (spec §3): workshop prices, tier unlocks, milestones, offline income, labs.
 import labsJson from '../data/labs.json';
 import metaJson from '../data/meta.json';
-import { STAT_IDS, type StatId } from '../sim/data';
+import { checkKnee, type CostCurve, STAT_IDS, type StatId } from '../sim/data';
 
-export interface PriceCurve {
-  base: number;
-  growth: number;
+/** Workshop price curve: the same shape as an in-run cost (geometric, optional soft-wall knee). */
+export type PriceCurve = CostCurve;
+
+/** Workshop mastery: every `every` workshop levels of a listed stat multiply its in-run value by `mul[stat]`. */
+export interface Mastery {
+  every: number;
+  mul: Partial<Record<StatId, number>>;
 }
 
 export type LabEffect =
@@ -32,7 +36,7 @@ export interface LabNode {
 }
 
 export interface MetaData {
-  workshop: { default: PriceCurve; stats: Partial<Record<StatId, PriceCurve>> };
+  workshop: { default: PriceCurve; stats: Partial<Record<StatId, PriceCurve>>; mastery?: Mastery };
   /** Wave to reach on tier t to unlock tier t+1: `unlockWaves[t-1]`, else `unlockWave`. */
   tiers: { unlockWave: number; unlockWaves?: number[] };
   milestones: { waves: number[]; keys: number[]; keysPerTier: number };
@@ -46,11 +50,22 @@ function check(cond: boolean, msg: string): void {
 }
 
 export function validateMetaData(d: MetaData): MetaData {
-  const curve = (c: PriceCurve, at: string) => check(c.base > 0 && c.growth > 1, `${at} needs base > 0 and growth > 1`);
+  const curve = (c: PriceCurve, at: string) => {
+    check(c.base > 0 && c.growth > 1, `${at} needs base > 0 and growth > 1`);
+    checkKnee(c, `meta ${at}`);
+  };
   curve(d.workshop.default, 'workshop.default');
   for (const [id, c] of Object.entries(d.workshop.stats)) {
     check((STAT_IDS as readonly string[]).includes(id), `workshop.stats.${id} is not a stat`);
     curve(c!, `workshop.stats.${id}`);
+  }
+  const ms = d.workshop.mastery;
+  if (ms !== undefined) {
+    check(Number.isInteger(ms.every) && ms.every >= 1, 'workshop.mastery.every must be a whole number ≥ 1');
+    for (const [id, x] of Object.entries(ms.mul)) {
+      check((STAT_IDS as readonly string[]).includes(id), `workshop.mastery.mul.${id} is not a stat`);
+      check(typeof x === 'number' && Number.isFinite(x) && x >= 1, `workshop.mastery.mul.${id} must be ≥ 1`);
+    }
   }
   check(d.milestones.waves.length === d.milestones.keys.length, 'milestones.waves and keys differ in length');
   const ids = new Set<string>();

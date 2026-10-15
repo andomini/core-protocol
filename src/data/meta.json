@@ -2,18 +2,29 @@
   "workshop": {
     "default": {
       "base": 16,
-      "growth": 1.12
+      "growth": 1.12,
+      "knee": 60,
+      "growthAfter": 1.008
     },
-    "stats": {}
+    "stats": {},
+    "mastery": {
+      "every": 10,
+      "mul": {
+        "damage": 1.05,
+        "health": 1.05,
+        "critFactor": 1.05,
+        "regen": 1.05
+      }
+    }
   },
   "tiers": {
     "unlockWave": 72,
     "unlockWaves": [
-      45,
-      47,
-      63,
-      70,
-      72
+      50,
+      100,
+      150,
+      200,
+      250
     ]
   },
   "milestones": {

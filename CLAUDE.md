@@ -26,6 +26,7 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 ## Rules
 - `src/sim` is pure and deterministic: only + − × ÷, Math.floor/ceil/min/max/abs/imul; roots via `dsqrt`, powers via `powInt` (`src/sim/num.ts`). No Math.random/sqrt/pow/trig, `**`, Date, DOM. Checked by `tests/purity.test.ts`.
 - All balance numbers live in `src/data/*.json`, never in code.
+- Cost curves (`stats.json` cost, `meta.json` workshop) are `base·growth^L` up to `knee`, then `growthAfter` per level (`curveSum` in `src/sim/stats.ts`); workshop mastery (`meta.json` workshop.mastery: ×mul per `every` levels) reaches the sim as `mul` mods with source `mastery`. Check pacing with `npm run sim:progression -- --players 20 --hours 150 --endless` (~1 h).
 - All sim values pass through `clampValue` (≤ 1e300); a NaN throws.
 - World state is plain JSON: no classes, Map/Set or functions inside `World`. It stores stat *levels*; values come from `effectiveStats` (`src/sim/stats.ts`).
 - Ads only through `services.ads` (`src/portal/ads.ts`); saves only through `SaveSlot` over `services.storage` (`src/portal/storage.ts`). See `docs/superpowers/plans/2026-10-05-m6-portals-notes.md`.

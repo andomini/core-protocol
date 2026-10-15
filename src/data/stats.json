@@ -34,7 +34,9 @@
       "mode": "add",
       "cost": {
         "base": 5,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "num",
       "lockedByDefault": false
@@ -48,7 +50,9 @@
       "maxLevel": 40,
       "cost": {
         "base": 8,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "perSec",
       "lockedByDefault": false
@@ -63,7 +67,9 @@
       "cap": 1,
       "cost": {
         "base": 10,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": false
@@ -76,7 +82,9 @@
       "mode": "add",
       "cost": {
         "base": 10,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "mult",
       "lockedByDefault": false
@@ -90,7 +98,9 @@
       "maxLevel": 48,
       "cost": {
         "base": 12,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "int",
       "lockedByDefault": false
@@ -104,7 +114,9 @@
       "maxLevel": 3,
       "cost": {
         "base": 200,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "plus",
       "lockedByDefault": true
@@ -117,7 +129,9 @@
       "mode": "add",
       "cost": {
         "base": 5,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "num",
       "lockedByDefault": false
@@ -130,7 +144,9 @@
       "mode": "add",
       "cost": {
         "base": 6,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "perSec",
       "lockedByDefault": false
@@ -146,7 +162,9 @@
       "capMax": 0.9,
       "cost": {
         "base": 10,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": false
@@ -159,7 +177,9 @@
       "mode": "add",
       "cost": {
         "base": 10,
-        "growth": 1.08
+        "growth": 1.08,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": false,
@@ -174,7 +194,9 @@
       "maxLevel": 20,
       "cost": {
         "base": 50,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": true
@@ -188,7 +210,9 @@
       "maxLevel": 20,
       "cost": {
         "base": 10,
-        "growth": 1.08
+        "growth": 1.08,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "int",
       "lockedByDefault": false
@@ -201,7 +225,9 @@
       "mode": "add",
       "cost": {
         "base": 10,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": false
@@ -214,7 +240,9 @@
       "mode": "add",
       "cost": {
         "base": 10,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "num",
       "lockedByDefault": false
@@ -228,7 +256,9 @@
       "maxLevel": 10,
       "cost": {
         "base": 30,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": true
@@ -241,7 +271,9 @@
       "mode": "add",
       "cost": {
         "base": 8,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": false
@@ -254,7 +286,9 @@
       "mode": "add",
       "cost": {
         "base": 8,
-        "growth": 1.1
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "num",
       "lockedByDefault": false
@@ -268,7 +302,9 @@
       "maxLevel": 20,
       "cost": {
         "base": 30,
-        "growth": 1.12
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
       },
       "format": "pct",
       "lockedByDefault": true

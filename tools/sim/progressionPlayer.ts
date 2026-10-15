@@ -23,6 +23,8 @@ export interface PlayerConfig {
   maxRuns: number;
   /** Sim-minute cap per run (a run reaching it counts as "runaway"). */
   runCapMin: number;
+  /** Keep playing after the last tier's unlock wave (measures the endless late game). */
+  endless?: boolean;
 }
 
 export interface RunRow {
@@ -39,6 +41,10 @@ export interface RunRow {
   labs: number;
   cards: number;
   capped: boolean;
+  /** Workshop levels of damage / health / critFactor after this run's spending. */
+  ws: [number, number, number];
+  /** In-run levels of damage / health / critFactor at the end of this run. */
+  lv: [number, number, number];
 }
 
 export interface PlayerResult {
@@ -184,8 +190,10 @@ export function simulatePlayer(cfg: PlayerConfig): PlayerResult {
       labs: m.labs.length,
       cards: m.loadout.length,
       capped,
+      ws: [m.workshop.damage ?? 0, m.workshop.health ?? 0, m.workshop.critFactor ?? 0],
+      lv: [res.world.levels.damage, res.world.levels.health, res.world.levels.critFactor],
     });
-    if (m.tierUnlocked === D.tiers.length && (m.best[String(D.tiers.length)] ?? 0) >= unlockWaveFor(M, D.tiers.length)) break;
+    if (!cfg.endless && m.tierUnlocked === D.tiers.length && (m.best[String(D.tiers.length)] ?? 0) >= unlockWaveFor(M, D.tiers.length)) break;
   }
   return {
     cfg,

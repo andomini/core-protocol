@@ -1,7 +1,7 @@
 // In-run stats (spec §2.3): values derived from data + levels + modifiers, costs, and the MAX buy.
 // The World stores only levels and modifiers; every derived value comes from effectiveStats().
 
-import { type GameData, STAT_IDS, type StatDef, type StatId } from './data';
+import { type CostCurve, type GameData, STAT_IDS, type StatDef, type StatId } from './data';
 import { clampValue, MAX_VALUE, powInt } from './num';
 
 export type Levels = Record<StatId, number>;
@@ -86,18 +86,42 @@ export function levelCost(def: StatDef, level: number): number {
 }
 
 /**
- * Total price of levels `level … level+n−1`: ⌈base·c^L·(c^n − 1)/(c − 1)⌉, via powInt. Whole Energy, so
- * the HUD's floored Energy and the shown price agree exactly on affordability. Monotone in n.
+ * Total price of levels `level … level+n−1` on a cost curve: ⌈base·c^L·(c^n − 1)/(c − 1)⌉ via powInt, and
+ * past the curve's knee the same geometric sum with growthAfter (a plain count when it is 1). Whole Energy
+ * (or Bits), so a floored balance and the shown price agree exactly on affordability. Monotone in n.
  * Returns Infinity (never affordable, never stored) when the price would pass MAX_VALUE.
  */
-export function costSum(def: StatDef, level: number, n: number): number {
+export function curveSum(cost: CostCurve, level: number, n: number): number {
   if (n <= 0) return 0;
-  const c = def.cost.growth;
-  const a = powInt(c, level);
-  const q = powInt(c, n);
-  if (a >= MAX_VALUE || q >= MAX_VALUE) return Infinity;
-  const s = (def.cost.base * a * (q - 1)) / (c - 1);
+  const c = cost.growth;
+  const knee = cost.knee ?? Infinity;
+  const n1 = Math.max(0, Math.min(level + n, knee) - level); // levels priced on the steep part
+  let s = 0;
+  if (n1 > 0) {
+    const a = powInt(c, level);
+    const q = powInt(c, n1);
+    if (a >= MAX_VALUE || q >= MAX_VALUE) return Infinity;
+    s = (cost.base * a * (q - 1)) / (c - 1);
+  }
+  const n2 = n - n1;
+  if (n2 > 0) {
+    const h = cost.growthAfter!;
+    const from = Math.max(level, knee);
+    const first = cost.base * powInt(c, knee) * powInt(h, from - knee);
+    if (first >= MAX_VALUE) return Infinity;
+    if (h === 1) s += first * n2;
+    else {
+      const q = powInt(h, n2);
+      if (q >= MAX_VALUE) return Infinity;
+      s += (first * (q - 1)) / (h - 1);
+    }
+  }
   return s > MAX_VALUE ? Infinity : Math.ceil(s);
+}
+
+/** Total in-run price of levels `level … level+n−1` of a stat (its cost curve). */
+export function costSum(def: StatDef, level: number, n: number): number {
+  return curveSum(def.cost, level, n);
 }
 
 /** Levels still purchasable in this run (Infinity without a max level). */
