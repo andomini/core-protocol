@@ -1,0 +1,3 @@
+{
+  "wall": { "minRadius": 240, "ringStep": 12, "rangeMargin": 32, "segments": 6, "contestDist": 60 }
+}

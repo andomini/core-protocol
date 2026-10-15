@@ -1,4 +1,6 @@
+import { SECTOR_DIRS } from './hex';
 import { assertFiniteDeep } from './num';
+import { STRUCTURE_KINDS } from './perkData';
 import { type World, WORLD_VERSION } from './state';
 
 /** Bumped with the World shape: v1 (M1–M2a) derived core stats; v2 (M2b) had no protocols (M3). */
@@ -8,6 +10,29 @@ export const SNAPSHOT_VERSION = 7;
 export function snapshot(w: World): string {
   assertFiniteDeep(w);
   return JSON.stringify({ v: SNAPSHOT_VERSION, world: w });
+}
+
+/** One saved structure: a known kind, a slot in range (a bad one would crash the first tick), a share in [0, 1], plain numbers elsewhere. */
+function validStruct(x: unknown): boolean {
+  if (x === null || typeof x !== 'object') return false;
+  const s = x as Record<string, unknown>;
+  const num = (k: string) => typeof s[k] === 'number';
+  return (
+    (STRUCTURE_KINDS as readonly unknown[]).includes(s.kind) &&
+    Number.isInteger(s.id) &&
+    Number.isInteger(s.slot) &&
+    (s.slot as number) >= 0 &&
+    (s.slot as number) < (s.kind === 'mine' ? 12 : SECTOR_DIRS.length) &&
+    num('share') &&
+    (s.share as number) >= 0 &&
+    (s.share as number) <= 1 &&
+    num('x') &&
+    num('y') &&
+    num('cd') &&
+    num('streak') &&
+    num('powered') &&
+    num('downUntilTick')
+  );
 }
 
 /** Parses a snapshot back into a World; every failure is an Error mentioning "snapshot". */
@@ -76,6 +101,12 @@ export function restore(s: string): World {
     typeof w.fusionTiers !== 'object' ||
     Object.values(w.fusionTiers).some((t) => !Number.isInteger(t) || (t as number) < 0)
   ) {
+    throw new Error('snapshot: malformed world');
+  }
+  // Runs saved before structures (spec 2026-10-15): none built, no ring yet; the first tick builds them from the links.
+  if (w.structs === undefined) w.structs = [];
+  if (w.wallR === undefined) w.wallR = 0;
+  if (!Array.isArray(w.structs) || typeof w.wallR !== 'number' || !w.structs.every(validStruct)) {
     throw new Error('snapshot: malformed world');
   }
   delete (w as { fusions?: unknown }).fusions;

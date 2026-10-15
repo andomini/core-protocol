@@ -34,6 +34,9 @@ export interface RunResult {
   /** The tag of the first 2-set. */
   set2Tag: Tag | null;
   keys: number;
+  /** Virus damage that landed on wall segments / on the core over the run (after Defense; structHit / coreHit events, blocked hits excluded). */
+  wallTaken: number;
+  coreTaken: number;
 }
 
 export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, maxMinutes = 60, pick: PickPolicyName = 'greedy-pick'): RunResult {
@@ -51,6 +54,8 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
   const waveStartS: number[] = [];
   let spent = 0;
   let buys = 0;
+  let wallTaken = 0;
+  let coreTaken = 0;
   while (!w.dead && w.tick < maxTicks) {
     const cmds: Command[] = bot.decide(w, data);
     if (w.phase === 'pick') cmds.push({ type: 'pickPerk', index: picker.choose(w, data) });
@@ -60,7 +65,9 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
       if (e.type === 'buy') {
         spent += e.cost;
         buys += e.levels;
-      } else if (e.type === 'waveStart') waveStartS[e.wave] = w.tick / data.config.tickHz;
+      } else if (e.type === 'structHit') wallTaken += e.damage;
+      else if (e.type === 'coreHit') coreTaken += e.blocked ? 0 : e.damage;
+      else if (e.type === 'waveStart') waveStartS[e.wave] = w.tick / data.config.tickHz;
       else if (e.type === 'setTier') {
         // A pick between waves counts for the wave just played (the set is live from the next one).
         const wave = Math.max(1, w.wave);
@@ -84,6 +91,8 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
     set6Wave,
     set2Tag,
     keys: w.keys,
+    wallTaken,
+    coreTaken,
     seed: opts.seed,
     wave: w.wave,
     dead: w.dead,

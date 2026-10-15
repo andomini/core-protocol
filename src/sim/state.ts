@@ -1,5 +1,5 @@
 import { type EnemyKind, type GameData, STAT_IDS, type StatId } from './data';
-import { type Effect, TAGS, type Tag, validateEffect } from './perkData';
+import { type Effect, type StructureKind, TAGS, type Tag, validateEffect } from './perkData';
 import type { Module } from './crystal';
 import { blankGenome } from './mutations';
 import { appendStatMods, initProtocols, type Timer } from './perks';
@@ -47,6 +47,29 @@ export interface Projectile {
   bounces: number;
   /** Enemies this projectile already hit (bounce exclusion). */
   hits: number[];
+}
+
+/**
+ * A firewall-fusion structure (spec 2026-10-15). Whether it is active is derived from the perk profile and
+ * `share`/`downUntilTick` every tick, never stored. `x`/`y` are a render cache rewritten by syncStructures.
+ */
+export interface Struct {
+  id: number;
+  kind: StructureKind;
+  /** Index among the entries of its kind (wall: the sector, 0..5). */
+  slot: number;
+  x: number;
+  y: number;
+  /** HP as a share of its derived maximum, in [0, 1]. */
+  share: number;
+  /** Turret fire cooldown (ticks). */
+  cd: number;
+  /** Station: waves survived in a row. */
+  streak: number;
+  /** Station: ticks standing this wave. */
+  powered: number;
+  /** Down (share 0) until this tick; wall without regrow and stations are also repaired at wave start. */
+  downUntilTick: number;
 }
 
 /** Only true state: max HP, damage, range… are derived (see worldStats). */
@@ -138,6 +161,10 @@ export interface World {
   genome: Record<Tag, number>;
   /** Virus nests: territory cell ids in the ground the breach revealed (spawn while infected). */
   nests: number[];
+  /** Firewall-fusion structures, in id order, created lazily by syncStructures. */
+  structs: Struct[];
+  /** Ice Wall ring radius for this wave, set at the wave start (0 before the first wave). */
+  wallR: number;
   /** Separate streams so purchases (upgrades) never perturb combat or spawns. */
   rng: { spawn: RngState; combat: RngState; upgrades: RngState };
 }
@@ -267,6 +294,8 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     terrain: initialTerrain(data),
     genome: blankGenome(),
     nests: [],
+    structs: [],
+    wallR: 0,
     rng: { spawn: createStream(opts.seed, 'spawn'), combat: createStream(opts.seed, 'combat'), upgrades: createStream(opts.seed, 'upgrades') },
   };
   // Workshop mastery multipliers: one `mul` modifier per stat, canonical order.

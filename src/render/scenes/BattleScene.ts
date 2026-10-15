@@ -19,6 +19,7 @@ import { formatPrice } from '../../ui/format';
 import { CrystalEditor } from '../../ui/CrystalEditor';
 import { GenomeStrip } from '../../ui/GenomeStrip';
 import { CrystalView } from '../CrystalView';
+import { StructureView } from '../StructureView';
 import { worldStats } from '../../sim/state';
 import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleRun } from '../../meta/runEnd';
@@ -75,6 +76,7 @@ export class BattleScene extends Phaser.Scene {
   death!: DeathOverlay;
   pick!: PickOverlay;
   crystal!: CrystalView;
+  structures!: StructureView;
   private modTip!: SetTooltip;
   private modTipAt = -1;
   private baseScale = 1;
@@ -184,6 +186,7 @@ export class BattleScene extends Phaser.Scene {
     this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.loop = new FixedLoop(this.gd.config.tickHz, MAX_TICKS_PER_FRAME);
     this.view = new WorldView(this, this.L, () => this.session);
+    this.structures = new StructureView(this, this.L, this.gd);
     this.fx = new Effects(this);
     this.numbers = new DamageNumbers(this, this.L);
     this.hints = new Hints(this, this.L, !services.meta.meta.firstRunDone && !this.flags.stress);
@@ -698,6 +701,7 @@ export class BattleScene extends Phaser.Scene {
     this.session.restart(this.runOptions(newSeed()));
     this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.view.reset();
+    this.structures.reset();
     this.fx.reset();
     this.numbers.reset();
     this.hud.reset();
@@ -892,6 +896,22 @@ export class BattleScene extends Phaser.Scene {
         if (e.ranged && this.screenOf(e.enemyId)) this.fx.beam(this.tmp.x, this.tmp.y, L.cx, L.cy, coreR);
         break;
       }
+      case 'structHit': {
+        this.structures.hit(this.session.world.structs.find((x) => x.id === e.sid)?.slot ?? -1, now);
+        const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
+        this.fx.hit(sx, sy);
+        if (e.ranged && this.screenOf(e.enemyId)) this.fx.beam(this.tmp.x, this.tmp.y, sx, sy, 0);
+        sfx.play('wallHit');
+        break;
+      }
+      case 'structDown':
+        this.fx.pulse(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 34 * L.scale, TAG_COLOR.cryo);
+        sfx.play('kill');
+        this.shake(120, 0.003);
+        break;
+      case 'structUp':
+        this.fx.waveRing(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 26 * L.scale, TAG_COLOR.cryo);
+        break;
       case 'waveStart':
         this.saveRun();
         if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? 4 : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
@@ -1032,6 +1052,7 @@ export class BattleScene extends Phaser.Scene {
     this.zoomTick(delta);
     const alpha = w.dead ? 1 : this.loop.alpha();
     this.view.draw(alpha, time);
+    this.structures.draw(this.session.world, time);
     this.crystal.draw(this.session.world, sectorTags(this.session.world, this.gd), time);
     this.genome.update(this.session.world.genome);
     this.fx.update();

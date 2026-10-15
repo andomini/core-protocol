@@ -20,8 +20,60 @@ export const RULE_IDS = [
 export type RuleId = (typeof RULE_IDS)[number];
 export type Rules = Record<RuleId, number>;
 
-export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'retaliate'] as const;
+export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'retaliate', 'structure'] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
+
+/** Battlefield structures a firewall fusion builds (spec 2026-10-15). Only the wall is simulated so far. */
+export const STRUCTURE_KINDS = ['wall', 'turret', 'mine', 'station'] as const;
+export type StructureKind = (typeof STRUCTURE_KINDS)[number];
+
+/** Every number a `structure` effect can carry (the union over the kinds; STRUCTURE_FIELDS says which kind takes which). */
+export type StructureField =
+  | 'hpFrac' | 'regrowSec' | 'shatterRadius' | 'shatterSec'
+  | 'count' | 'dmgFrac' | 'rateMul' | 'range' | 'targets' | 'frenzyBelow' | 'frenzyMul'
+  | 'perWave' | 'max' | 'dmgMul' | 'blast' | 'arcs'
+  | 'energy' | 'rebuildWaves' | 'bits' | 'streakStep' | 'streakMax';
+
+/** How a structure field is checked: `pos` > 0, `frac` in (0, 1], `nonNeg` ≥ 0, else a whole number in [min, max]. */
+type FieldRule = { pos: true } | { frac: true } | { min: number; max: number } | { nonNeg: true };
+/** Per kind: every field a `structure` effect may set; `req` fields must all be set once the kind first appears in a ladder. */
+export const STRUCTURE_FIELDS: Record<StructureKind, Record<string, { rule: FieldRule; req: boolean }>> = {
+  wall: {
+    hpFrac: { rule: { frac: true }, req: true },
+    regrowSec: { rule: { pos: true }, req: false },
+    shatterRadius: { rule: { pos: true }, req: false },
+    shatterSec: { rule: { pos: true }, req: false },
+  },
+  turret: {
+    count: { rule: { min: 0, max: 6 }, req: true },
+    dmgFrac: { rule: { pos: true }, req: true },
+    rateMul: { rule: { pos: true }, req: true },
+    range: { rule: { pos: true }, req: true },
+    targets: { rule: { min: 1, max: 8 }, req: true },
+    frenzyBelow: { rule: { frac: true }, req: false },
+    frenzyMul: { rule: { pos: true }, req: false },
+  },
+  mine: {
+    perWave: { rule: { min: 1, max: 12 }, req: true },
+    max: { rule: { min: 1, max: 12 }, req: true },
+    dmgMul: { rule: { pos: true }, req: true },
+    blast: { rule: { pos: true }, req: true },
+    targets: { rule: { min: 1, max: 8 }, req: true },
+    arcs: { rule: { min: 0, max: 8 }, req: true },
+  },
+  station: {
+    count: { rule: { min: 0, max: 6 }, req: true },
+    hpFrac: { rule: { frac: true }, req: true },
+    energy: { rule: { pos: true }, req: true },
+    rebuildWaves: { rule: { min: 1, max: 100 }, req: true },
+    bits: { rule: { nonNeg: true }, req: true },
+    streakStep: { rule: { pos: true }, req: false },
+    streakMax: { rule: { pos: true }, req: false },
+  },
+};
+
+/** The numbers of one structure kind as folded over a fusion's reached tiers (field-wise max; larger is always better). */
+export type StructureValues = Record<string, number>;
 
 export type Effect =
   /** A flat change to a stat (or the Interest cap), appended to World.mods once per stack. */
@@ -65,7 +117,9 @@ export type Effect =
   /** A Thorns hit slows its attacker by `strength` for `seconds`. */
   | { type: 'thornsSlow'; strength: number; seconds: number }
   /** Every virus attack on the core is answered by a bolt at the attacker for `damageMul` × Damage. */
-  | { type: 'retaliate'; damageMul: number };
+  | { type: 'retaliate'; damageMul: number }
+  /** A fusion's battlefield structure; the fields are per kind (STRUCTURE_FIELDS), a tier lists only what it raises. */
+  | ({ type: 'structure'; kind: StructureKind } & { [F in StructureField]?: number });
 
 export interface PerkDef {
   name: string;
@@ -136,7 +190,7 @@ function wholePos(x: unknown, at: string): void {
 
 const MOD_TARGETS: readonly string[] = [...STAT_IDS, 'interestCap'];
 
-export function validateEffect(e: Effect, at: string): void {
+export function validateEffect(e: Effect, at: string, allowStructure = false): void {
   check(e !== null && typeof e === 'object' && (EFFECT_TYPES as readonly string[]).includes(e.type), `${at}.type must be one of ${EFFECT_TYPES.join('|')}`);
   switch (e.type) {
     case 'statAdd':
@@ -223,6 +277,23 @@ export function validateEffect(e: Effect, at: string): void {
     case 'retaliate':
       pos(e.damageMul, `${at}.damageMul`);
       return;
+    case 'structure': {
+      // Only fusion ladders build structures: the renderer folds those alone (fusionStructure) and must agree with the sim.
+      check(allowStructure, `${at}: structure effects belong in sets.fusions only`);
+      check((STRUCTURE_KINDS as readonly string[]).includes(e.kind), `${at}.kind must be one of ${STRUCTURE_KINDS.join('|')}`);
+      const fields = STRUCTURE_FIELDS[e.kind];
+      for (const [k, v] of Object.entries(e)) {
+        if (k === 'type' || k === 'kind') continue;
+        const f = fields[k];
+        check(f !== undefined, `${at}.${k}: unknown ${e.kind} field`);
+        const r = f!.rule;
+        if ('pos' in r) pos(v, `${at}.${k}`);
+        else if ('frac' in r) frac(v, `${at}.${k}`);
+        else if ('nonNeg' in r) check(finite(v) && v >= 0, `${at}.${k} must be a finite number ≥ 0, got ${String(v)}`);
+        else check(Number.isInteger(v) && (v as number) >= r.min && (v as number) <= r.max, `${at}.${k} must be a whole number in ${r.min}..${r.max}, got ${String(v)}`);
+      }
+      return;
+    }
   }
 }
 
@@ -295,7 +366,32 @@ export function validateSets(s: SetsData): void {
     for (const t of s.fusionTiers) {
       const eff = f!.tiers[String(t)];
       check(Array.isArray(eff) && eff.length > 0, `sets.fusions.${key}.tiers.${t} must list effects`);
-      eff!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.tiers.${t}[${i}]`));
+      eff!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.tiers.${t}[${i}]`, true));
     }
+    validateStructureLadder(key, f!, s.fusionTiers);
+  }
+}
+
+/**
+ * Folds a fusion's `structure` effects tier by tier like the profile does (field-wise max) and checks the
+ * ladder: a kind's required fields are all set once it first appears (so a typo in tier I cannot leave a
+ * structure without a count), no later tier lowers a field (larger is always better), perWave ≤ max.
+ */
+function validateStructureLadder(key: string, f: FusionDef, tiers: readonly number[]): void {
+  const folded: Partial<Record<StructureKind, StructureValues>> = {};
+  for (const t of tiers) {
+    f.tiers[String(t)]!.forEach((e, i) => {
+      if (e.type !== 'structure') return;
+      const at = `sets.fusions.${key}.tiers.${t}[${i}]`;
+      const first = folded[e.kind] === undefined;
+      const acc = (folded[e.kind] ??= {});
+      for (const [k, v] of Object.entries(e)) {
+        if (k === 'type' || k === 'kind') continue;
+        check(acc[k] === undefined || (v as number) >= acc[k]!, `${at}.${k} lowers ${e.kind}.${k} (${String(v)} < ${acc[k]}): ladder values must not decrease`);
+        acc[k] = v as number;
+      }
+      if (first) for (const [k, d] of Object.entries(STRUCTURE_FIELDS[e.kind])) check(!d.req || acc[k] !== undefined, `${at}: ${e.kind} is missing "${k}" at its first tier`);
+      if (acc.perWave !== undefined && acc.max !== undefined) check(acc.perWave <= acc.max, `${at}: mine perWave must be ≤ max`);
+    });
   }
 }

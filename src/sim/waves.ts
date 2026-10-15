@@ -6,6 +6,7 @@ import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile, tagC
 import { chance, createStream, nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
 import type { CoreStats } from './stats';
+import { prepareStructures, wallRadius } from './structures';
 import { arenaRadius, arenaSpeed, crystalRing, terrainFor } from './territory';
 
 /** Regular spawns are spread over this share of the wave, so the last ones still arrive in time. */
@@ -46,7 +47,7 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   const before = arenaRadius(data, w.wave - 1);
   if (radius !== before) {
     const ring = crystalRing(data, w.wave);
-    const nests = plantNests(w, data, before);
+    const nests = plantNests(w, data, st, before);
     events.push({ type: 'arenaGrow', radius, ring, ringGrew: ring !== crystalRing(data, w.wave - 1), nests });
   }
   const boss = isBossWave(data, w.wave, w.tier);
@@ -58,6 +59,8 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   for (let i = 0; i < n; i++) queue.push(pickWeighted(w.rng.spawn, kinds, weights));
   // Barrier (card): the shield refills at every wave start.
   if (prof.shieldFrac > 0) w.shield = clampValue(st.health * prof.shieldFrac);
+  // Structures (spec 2026-10-15): this wave's wall ring, repairs and push-out (before the Wave Skip return: the ring is per wave).
+  prepareStructures(w, data, st, prof, events);
   // Wave Skip (card): a regular wave may be skipped on its own stream; its kill rewards are paid at once.
   if (!boss && prof.waveSkip > 0 && queue.length > 0 && chance(createStream(w.seed, `skip:${w.wave}`), prof.waveSkip)) {
     const tier = data.tiers[w.tier - 1]!;
@@ -124,15 +127,17 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
 }
 
 /** Plants nests on infected cells just inside the old spawn ring `r0` (rng.spawn); returns how many. */
-function plantNests(w: World, data: GameData, r0: number): number {
+function plantNests(w: World, data: GameData, st: CoreStats, r0: number): number {
   const t = data.territory;
+  // No nest inside the wall ring (a nest planted there would spawn viruses behind the wall).
+  const ring = wallRadius(data, st, w.wave) + data.structures.wall.contestDist;
   const g = terrainFor(data);
   // The band just inside the old edge (now well within the wider ring), capped at nestMaxRadius.
   const hi = Math.min(r0, t.nestMaxRadius);
   const lo = Math.max(0, hi - 3 * t.cellSize);
   const pool: number[] = [];
   for (let i = 0; i < g.x.length; i++) {
-    if (w.terrain[i] === 0 && g.d2[i]! >= lo * lo && g.d2[i]! <= hi * hi && !w.nests.includes(i)) pool.push(i);
+    if (w.terrain[i] === 0 && g.d2[i]! >= lo * lo && g.d2[i]! <= hi * hi && g.d2[i]! >= ring * ring && !w.nests.includes(i)) pool.push(i);
   }
   let n = 0;
   while (n < t.nestsPerGrow && w.nests.length < t.maxNests && pool.length > 0) {

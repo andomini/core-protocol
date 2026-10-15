@@ -1,5 +1,5 @@
 import type { EnemyKind, StatId } from './data';
-import type { Tag } from './perkData';
+import type { StructureKind, Tag } from './perkData';
 import type { ProtocolReject } from './perks';
 
 export type BuyRejectReason = 'dead' | 'unknown' | 'badCount' | 'locked' | 'maxed' | 'funds';
@@ -18,6 +18,12 @@ export type SimEvent =
   | { type: 'kill'; enemyId: number; kind: EnemyKind; energy: number; bits: number; keys: number }
   /** `blocked`: absorbed by the 🛡 immunity window. */
   | { type: 'coreHit'; enemyId: number; damage: number; ranged: boolean; blocked: boolean; absorbed: number }
+  /** A virus attack landed on a structure (`damage` after Defense; the structure's own HP, not the core's). */
+  | { type: 'structHit'; sid: number; kind: StructureKind; x: number; y: number; enemyId: number; damage: number; ranged: boolean }
+  /** A structure was destroyed (or, with a link broken, counted as destroyed); it comes back at `structUp`. */
+  | { type: 'structDown'; sid: number; kind: StructureKind; x: number; y: number }
+  /** A destroyed structure was rebuilt (regrow, wave-start repair, revive). */
+  | { type: 'structUp'; sid: number; kind: StructureKind; x: number; y: number }
   /** A protocol offer opened (or was rerolled). */
   | { type: 'pickOffer'; pick: number; wave: number; offer: string[]; rerolls: number }
   /** `module`: the crystal hex of the perk's module ([q, r]), when it has one. */

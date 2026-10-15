@@ -7,6 +7,7 @@ import { clampValue } from './num';
 import { type PerkProfile, periodicTicks, perkProfile } from './perks';
 import { hitEnemy, updateProjectiles } from './projectiles';
 import { gridFor } from './spatial';
+import { syncStructures, updateStructures } from './structures';
 import { updateTerritory } from './territory';
 import { type World, worldStats } from './state';
 import type { CoreStats } from './stats';
@@ -64,8 +65,8 @@ export function combatStats(w: World, data: GameData, prof: PerkProfile): CoreSt
 /**
  * Advances the world by one tick (1/tickHz s). A dead world, or one waiting for a protocol pick, does not
  * change (beyond the commands).
- * Order: commands → [pick? stop] → periodic effects → waves/spawns → enemies move & attack → infection → death check →
- * spatial hash → core regen & fire → projectiles (hits, procs, bounces).
+ * Order: commands → [pick? stop] → periodic effects → structures follow the links → waves/spawns → enemies move & attack →
+ * infection → death check → spatial hash → structures regrow & shatter → core regen & fire → projectiles (hits, procs, bounces).
  * Commands come first, before anything else touches the world, so applying them between two steps is
  * exactly the same as passing them to the next step (RunSession relies on this while paused or picking).
  */
@@ -77,6 +78,7 @@ export function step(w: World, data: GameData, commands: readonly Command[], eve
   runPeriodic(w, data, prof, events);
   const st = combatStats(w, data, prof);
   if (w.core.hp > st.health) w.core.hp = st.health;
+  syncStructures(w, data, prof, events);
   advanceWave(w, data, st, prof, events);
   updateEnemies(w, data, st, prof, events);
   updateTerritory(w, data);
@@ -90,6 +92,7 @@ export function step(w: World, data: GameData, commands: readonly Command[], eve
     return;
   }
   gridFor(data).build(w.enemies);
+  updateStructures(w, data, prof, events);
   updateCore(w, data, st, prof, events);
   updateProjectiles(w, data, st, prof, events);
 }

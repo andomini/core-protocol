@@ -10,7 +10,7 @@ import { clusterCounts, type CrystalShape, crystalShape, freeSlots, fusionLinkCo
 import { geneKeep } from './mutations';
 import { clampValue, powInt } from './num';
 import { ownedShare } from './territory';
-import { type Effect, fusionKeys, RARITIES, type Rarity, RULE_IDS, type Rules, TAGS, type Tag } from './perkData';
+import { type Effect, fusionKeys, RARITIES, type Rarity, RULE_IDS, type Rules, type StructureKind, type StructureValues, TAGS, type Tag } from './perkData';
 import { createStream, nextInt, pickWeighted } from './rng';
 import type { World } from './state';
 import { effectiveStats, type Modifier } from './stats';
@@ -410,6 +410,8 @@ export interface PerkProfile {
   thornsSlow: number;
   thornsSlowTicks: number;
   retaliateMul: number;
+  /** Fusion structures by kind, folded field-wise (max) over the reached tiers; absent = not built. */
+  structures: Partial<Record<StructureKind, StructureValues>>;
   /** The crystal's sectors, reach and muzzles this tick (spec 2026-10-14 §A). */
   shape: CrystalShape;
   /** Share of the territory that is ours (§B). */
@@ -454,6 +456,7 @@ function blankProfile(data: GameData): PerkProfile {
     thornsSlow: 0,
     thornsSlowTicks: 0,
     retaliateMul: 0,
+    structures: {},
     shape: { sectors: [null, null, null, null, null, null], reach: [0, 0, 0, 0, 0, 0], tips: [] },
     owned: 0,
     geneCrit: 1,
@@ -461,6 +464,25 @@ function blankProfile(data: GameData): PerkProfile {
     geneEnergy: 1,
     geneGuard: 1,
   };
+}
+
+/** Tiers add up like set tiers, but a structure ladder only raises: the field-wise max over what was reached. */
+function foldStructure(into: Partial<Record<StructureKind, StructureValues>>, e: Extract<Effect, { type: 'structure' }>): void {
+  const acc = (into[e.kind] ??= {});
+  for (const [k, v] of Object.entries(e)) if (k !== 'type' && k !== 'kind') acc[k] = Math.max(acc[k] ?? 0, v as number);
+}
+
+/** One structure kind as the fusion ladders alone fold it (cheap; the renderer's view of the profile), undefined = not built. */
+export function fusionStructure(w: World, data: GameData, kind: StructureKind): StructureValues | undefined {
+  const into: Partial<Record<StructureKind, StructureValues>> = {};
+  for (const key of fusionKeys()) {
+    const tier = w.fusionTiers[key] ?? 0;
+    for (const t of data.sets.fusionTiers) {
+      if (t > tier) break;
+      for (const e of data.sets.fusions[key]!.tiers[String(t)]!) if (e.type === 'structure' && e.kind === kind) foldStructure(into, e);
+    }
+  }
+  return into[kind];
 }
 
 /** Folds every held perk (× stacks), every reached set and fusion tier and the cards into one profile. Pure; O(perks + sets). */
@@ -544,6 +566,9 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
         return;
       case 'retaliate':
         p.retaliateMul += e.damageMul * n;
+        return;
+      case 'structure':
+        foldStructure(p.structures, e);
         return;
     }
   };

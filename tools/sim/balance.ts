@@ -57,6 +57,20 @@ for (const c of combos) {
 const med = (key: string) => quantile(by[key]!.map((r) => r.wave), 0.5);
 const set2 = (rs: RunResult[]) => rs.filter((r) => r.set2Wave > 0);
 
+/** Median final wave of the runs that did (or did not) hold the Ice Wall at death. */
+function wallWaves(rs: RunResult[], walled: boolean): string {
+  const sel = rs.filter((r) => ((r.world.fusionTiers['cryo+firewall'] ?? 0) > 0) === walled);
+  return sel.length === 0 ? '—' : `${quantile(sel.map((r) => r.wave), 0.5)} (${sel.length} runs)`;
+}
+
+/** Share of the virus damage that landed on wall segments rather than the core, over the runs that built a wall (— if none did). */
+function wallShare(rs: RunResult[]): string {
+  const walled = rs.filter((r) => r.wallTaken > 0);
+  if (walled.length === 0) return '—';
+  const share = walled.map((r) => r.wallTaken / (r.wallTaken + r.coreTaken));
+  return `${pct(quantile(share, 0.5) * 100, 100)} (${walled.length}/${rs.length} runs)`;
+}
+
 const rows = combos.map((c) => {
   const rs = by[c.key]!;
   const waves = rs.map((r) => r.wave);
@@ -64,7 +78,7 @@ const rows = combos.map((c) => {
   const s2 = set2(rs);
   const s4 = rs.filter((r) => r.set4Wave > 0);
   const s2w = s2.map((r) => r.set2Wave);
-  return `| ${c.key} | ${quantile(waves, 0.5)} | ${Math.min(...waves)}–${Math.max(...waves)} | ${f1(quantile(mins, 0.5))} | ${quantile(rs.map((r) => r.picks), 0.5)} | ${c.protocols ? pct(s2.length, rs.length) : '—'} | ${s2w.length ? quantile(s2w, 0.5) : '—'} | ${c.protocols ? pct(s4.length, rs.length) : '—'} | ${Math.round(quantile(rs.map((r) => r.buys), 0.5))} | ${rs.filter((r) => !r.dead).length} |`;
+  return `| ${c.key} | ${quantile(waves, 0.5)} | ${Math.min(...waves)}–${Math.max(...waves)} | ${f1(quantile(mins, 0.5))} | ${quantile(rs.map((r) => r.picks), 0.5)} | ${c.protocols ? pct(s2.length, rs.length) : '—'} | ${s2w.length ? quantile(s2w, 0.5) : '—'} | ${c.protocols ? pct(s4.length, rs.length) : '—'} | ${Math.round(quantile(rs.map((r) => r.buys), 0.5))} | ${rs.filter((r) => !r.dead).length} | ${wallShare(rs)} |`;
 });
 
 // B1: the wave-1 pick opens the run at tick 0 (wall-clock time to the overlay: reports/ui-smoke.json).
@@ -160,10 +174,14 @@ const md = [
   '',
   `Share of tag-bot runs that reached their own 2-set: ${TAGS.map((t) => `${t} ${tagSetShare(`greedy + tag:${t}`)}`).join(' · ')}.`,
   '',
+  `## B7: Ice Wall (spec 2026-10-15, phase 1) — report only`,
+  '',
+  `Runs whose auto-placed crystal reached cryo+firewall tier I+ (greedy + greedy-pick): ${pct(g.filter((r) => (r.world.fusionTiers['cryo+firewall'] ?? 0) > 0).length, g.length)}. Median wave with / without the wall: ${wallWaves(g, true)} / ${wallWaves(g, false)}. Wall absorbed (median share of virus damage that hit a segment, walled runs): ${wallShare(g)}; the same for the tag:cryo and tag:firewall bots: ${wallShare(by['greedy + tag:cryo']!)} / ${wallShare(by['greedy + tag:firewall']!)}.`,
+  '',
   '## All policies',
   '',
-  '| policy (buy + pick) | median wave | wave range | median min | picks | 2-set | median 2-set wave | 4-set | levels bought | alive at 60 min |',
-  '|---|---|---|---|---|---|---|---|---|---|',
+  '| policy (buy + pick) | median wave | wave range | median min | picks | 2-set | median 2-set wave | 4-set | levels bought | alive at 60 min | wall absorbed |',
+  '|---|---|---|---|---|---|---|---|---|---|---|',
   ...rows,
   '',
   `Bot "useful" stats (tools/sim/bot.json): ${botJson.useful.join(', ')}. Tab weights: ${JSON.stringify(botJson.tabWeight)}.`,

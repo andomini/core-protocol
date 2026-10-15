@@ -167,15 +167,17 @@
       }
     },
     "cryo+firewall": {
-      "name": "Frostbite",
+      "name": "Ice Wall",
       "tiers": {
         "1": [
-          { "type": "thornsSlow", "strength": 0.3, "seconds": 2 }
+          { "type": "structure", "kind": "wall", "hpFrac": 0.1 }
         ],
         "3": [
-          { "type": "statAdd", "stat": "thorns", "value": 0.25 }
+          { "type": "structure", "kind": "wall", "hpFrac": 0.18, "regrowSec": 10 },
+          { "type": "thornsSlow", "strength": 0.3, "seconds": 2 }
         ],
         "5": [
+          { "type": "structure", "kind": "wall", "hpFrac": 0.28, "shatterRadius": 80, "shatterSec": 1.5 },
           { "type": "ruleChange", "rule": "slowCap", "op": "add", "value": 0.1 }
         ]
       }

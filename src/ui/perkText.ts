@@ -49,6 +49,24 @@ const RULE_TEXT: Partial<Record<string, (op: 'add' | 'mul', v: number) => string
   bossLightning: () => 'Bosses get struck by lightning',
 };
 
+/** A structure effect (spec 2026-10-15): only the fields the tier sets, so each ladder step reads as what it adds. */
+function structureLine(data: GameData, e: Extract<Effect, { type: 'structure' }>): string {
+  const parts: string[] = [];
+  if (e.kind === 'wall') {
+    // The rules of the wall are spelled out once, on the plain tier-I line; later tiers only say what they add.
+    const plain = e.regrowSec === undefined && e.shatterRadius === undefined;
+    if (e.hpFrac !== undefined) parts.push(`${data.structures.wall.segments} wall segments, ${pct(e.hpFrac)} Health each${plain ? '; viruses must break through; quiet segments are repaired each wave' : ''}`);
+    if (e.regrowSec !== undefined) parts.push(`a broken segment regrows after ${round(e.regrowSec)}s`);
+    if (e.shatterRadius !== undefined && e.shatterSec !== undefined) {
+      parts.push(`Shatter: a breaking segment freezes viruses within ${round(e.shatterRadius)}px for ${round(e.shatterSec)}s`);
+    }
+  } else {
+    parts.push(`${e.kind} structure`);
+  }
+  const line = parts.join('; ');
+  return line.charAt(0).toUpperCase() + line.slice(1);
+}
+
 /** One line describing a single effect (one stack). */
 export function effectLine(data: GameData, e: Effect): string {
   switch (e.type) {
@@ -110,6 +128,8 @@ export function effectLine(data: GameData, e: Effect): string {
       return `Lightning freezes for ${round(e.seconds)}s`;
     case 'thornsSlow':
       return `Thorns slow attackers ${pct(e.strength)} for ${round(e.seconds)}s`;
+    case 'structure':
+      return structureLine(data, e);
     case 'retaliate':
       return `Each virus attack: bolt back for ×${round(e.damageMul)} Damage`;
     case 'ruleChange': {

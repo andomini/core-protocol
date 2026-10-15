@@ -8,6 +8,7 @@ import enemiesJson from '../data/enemies.json';
 import perksJson from '../data/perks.json';
 import setsJson from '../data/sets.json';
 import statsJson from '../data/stats.json';
+import structuresJson from '../data/structures.json';
 import { type PerksData, type SetsData, TAGS, type Tag, validatePerks, validateSets } from './perkData';
 import tiersJson from '../data/tiers.json';
 
@@ -225,6 +226,21 @@ export interface MutationsDef {
   perLevel: Record<Tag, number>;
 }
 
+/** Firewall-fusion structures (spec 2026-10-15): fixed geometry; the strength of each kind lives in the sets.json ladders. */
+export interface StructuresDef {
+  wall: {
+    /** Ring radius with the crystal at its base size; grows `ringStep` per crystal ring beyond `crystal.maxRing`. */
+    minRadius: number;
+    ringStep: number;
+    /** The ring never exceeds Range minus this, so the core can always shoot what stands at the wall. */
+    rangeMargin: number;
+    /** Segments, one per 60° sector (the six SECTOR_DIRS). */
+    segments: number;
+    /** A segment is contested while a virus stands in its sector within wallR + this. */
+    contestDist: number;
+  };
+}
+
 export interface GameData {
   config: SimConfig;
   core: CoreDef;
@@ -236,6 +252,7 @@ export interface GameData {
   crystal: CrystalDef;
   territory: TerritoryDef;
   mutations: MutationsDef;
+  structures: StructuresDef;
   /** 64 unit vectors around the circle (see tools/gen-directions.ts). */
   directions: [number, number][];
 }
@@ -357,6 +374,13 @@ export function validateData(d: GameData): GameData {
   check(Number.isInteger(tr.nestEvery) && tr.nestEvery > 0, 'territory.nestEvery must be a positive integer');
   check(tr.nestKind in d.enemies && tr.nestKind !== 'boss', 'territory.nestKind must be a non-boss enemy kind');
   check(Number.isFinite(tr.cryoSlow) && tr.cryoSlow >= 0 && tr.cryoSlow < 1, 'territory.cryoSlow must be in [0, 1)');
+  const sw = d.structures?.wall;
+  positive(sw?.minRadius, 'structures.wall.minRadius');
+  nonNeg(sw.ringStep, 'structures.wall.ringStep');
+  nonNeg(sw.rangeMargin, 'structures.wall.rangeMargin');
+  check(sw.segments === 6, 'structures.wall.segments must be 6 (one per sector)');
+  nonNeg(sw.contestDist, 'structures.wall.contestDist');
+  check(sw.minRadius > d.core.radius, 'structures.wall.minRadius must lie outside the core');
   const mu = d.mutations;
   check(Number.isInteger(mu?.startWave) && mu.startWave >= 1, 'mutations.startWave must be a whole number ≥ 1');
   check(Number.isInteger(mu.every) && mu.every >= 1, 'mutations.every must be a whole number ≥ 1');
@@ -419,5 +443,6 @@ export const DEFAULT_DATA: GameData = validateData({
   crystal: crystalJson as CrystalDef,
   territory: territoryJson as TerritoryDef,
   mutations: mutationsJson as unknown as MutationsDef,
+  structures: structuresJson as StructuresDef,
   directions: directionsJson as [number, number][],
 });
