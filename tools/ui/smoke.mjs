@@ -746,6 +746,10 @@ const scenarios = {
         }
         check(results, `${label} field drag: dragging a module pauses the battle without the pause menu`, mid.d?.moved && mid.paused && !mid.menu, mid);
         await h.mouseLogical('move', mid.at[0], mid.at[1]);
+        await h.p.waitForTimeout(80);
+        const pre = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').fieldDragState());
+        check(results, `${label} field drag: hovering a lit hex previews the change before the drop`, pre?.lines.length > 0 && !pre.lines.some((l) => l.startsWith('Drop on')), pre?.lines);
+        await minTextCheck(h, `${label} field drag`);
         await h.shot(`field-drag-${label}`);
         await h.mouseLogical('up', mid.at[0], mid.at[1]);
         await h.p.waitForTimeout(150);

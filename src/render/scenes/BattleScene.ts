@@ -13,10 +13,10 @@ import { buildRunOptions } from '../../meta/runOptions';
 import { enterPick } from '../../sim/perks';
 import { fusionKeys, type StructureKind, TAGS, type Tag } from '../../sim/perkData';
 import { showToast } from '../../portal/toast';
-import { clusterCounts, freeSlots, fusionLinkCounts, fusionLinks, moduleCluster, needsPlacement, sectorTags } from '../../sim/crystal';
+import { clusterCounts, freeSlots, fusionLinkCounts, fusionLinks, moduleCluster, movePreview, needsPlacement, sectorTags } from '../../sim/crystal';
 import { arenaRadius } from '../../sim/territory';
 import { formatNum, formatPrice } from '../../ui/format';
-import { CrystalEditor, moveTargets } from '../../ui/CrystalEditor';
+import { CrystalEditor, diffLines, moveTargets } from '../../ui/CrystalEditor';
 import { GenomeStrip } from '../../ui/GenomeStrip';
 import { CrystalView } from '../CrystalView';
 import { StructureView } from '../StructureView';
@@ -46,7 +46,7 @@ import { services } from '../../services';
 import { battleData, type DevFlags, readFlags, stressTuning } from '../devFlags';
 import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
-import { CRIMSON, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_RED } from '../palette';
+import { BG, CRIMSON, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
 import { SetTooltip } from '../../ui/SetTooltip';
 import { fusionLevel, fusionLines, fusionReachedLines, fusionTags, latticeLine, totalLines } from '../../ui/perkText';
 import { RunSession } from '../RunSession';
@@ -93,6 +93,10 @@ export class BattleScene extends Phaser.Scene {
   private pausedBeforeEditor = false;
   /** A press on a crystal module in the battle view; past a few px it becomes a drag that moves the module. */
   private fieldDrag: { i: number; x: number; y: number; moved: boolean; pausedBefore: boolean; tiers: { sets: Record<Tag, number>; fusions: Record<string, number> } | null } | null = null;
+  /** Field drag readout: what dropping on the hovered hex would change (sets, links, fusion tiers). */
+  private dragBg!: Phaser.GameObjects.Graphics;
+  private dragLines: Phaser.GameObjects.Text[] = [];
+  private dragHex = '';
   private tiersBeforeEditor: { sets: Record<Tag, number>; fusions: Record<string, number> } | null = null;
   crystalBtn!: Button;
   /** The lifecycle 'perkPick' hold is on (the pick or its placement step is open). */
@@ -241,6 +245,8 @@ export class BattleScene extends Phaser.Scene {
       this.fieldDown(p.worldX, p.worldY);
       this.hoverModule(p.worldX, p.worldY, true);
     });
+    this.dragBg = this.add.graphics().setDepth(DEPTH.overlay - 2).setVisible(false);
+    this.dragLines = [0, 1, 2].map(() => text(this, 0, 0, '', this.L.minFont + 2, { weight: '700', stroke: true }).setOrigin(0.5, 0).setDepth(DEPTH.overlay - 1).setVisible(false));
     // Drag a module straight on the field (no editor): drop on an outlined hex moves or swaps it.
     this.input.on('pointerup', (p: Phaser.Input.Pointer) => this.fieldUp(p.worldX, p.worldY));
     this.input.on('pointerupoutside', (p: Phaser.Input.Pointer) => this.fieldUp(p.worldX, p.worldY));
@@ -681,8 +687,47 @@ export class BattleScene extends Phaser.Scene {
       this.life.hold('fieldDrag', true);
       if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
       this.crystal.edit = { selected: d.i, targets: moveTargets(w, this.gd, d.i), ghost: null };
+      this.dragHex = '';
     }
-    if (this.crystal.edit) this.crystal.edit.ghost = [x, y];
+    const e = this.crystal.edit;
+    if (!e) return;
+    const w = this.session.world;
+    const m = w.crystal[d.i]!;
+    const [q, r] = this.crystal.hexAt(x, y);
+    const target = e.targets.some((t) => t.q === q && t.r === r);
+    // Over a valid hex the ghost snaps into it, so the module shows where it would sit.
+    e.ghost = target ? this.crystal.hexScreen(q, r) : [x, y];
+    const key = `${q},${r}`;
+    if (key === this.dragHex) return;
+    this.dragHex = key;
+    const lines = target
+      ? diffLines(this.gd, movePreview(w, this.gd, [m.q, m.r], [q, r]))
+      : [{ text: q === m.q && r === m.r ? 'Release to keep it here' : 'Drop on a lit hex', color: TEXT_DIM }];
+    this.showDragLines(lines);
+  }
+
+  /** The drag readout over the arena's lower part (the finger stays on the crystal). */
+  private showDragLines(lines: { text: string; color: string }[]): void {
+    const a = this.L.arena;
+    const fs = this.L.minFont + 2;
+    const lh = fs * 1.3;
+    const y0 = a.y + a.h * 0.8;
+    let wd = 0;
+    this.dragLines.forEach((t, i) => {
+      const l = lines[i];
+      t.setVisible(!!l);
+      if (!l) return;
+      t.setText(l.text).setColor(l.color).setPosition(a.x + a.w / 2, y0 + i * lh);
+      wd = Math.max(wd, t.width);
+    });
+    const pad = fs * 0.6;
+    const h = lines.length * lh;
+    this.dragBg.clear().fillStyle(BG, 0.82).fillRoundedRect(a.x + a.w / 2 - wd / 2 - pad, y0 - pad / 2, wd + pad * 2, h + pad, 10).setVisible(true);
+  }
+
+  private hideDragLines(): void {
+    this.dragBg.clear().setVisible(false);
+    for (const t of this.dragLines) t.setVisible(false);
   }
 
   private fieldUp(x: number, y: number): void {
@@ -691,6 +736,7 @@ export class BattleScene extends Phaser.Scene {
     if (!d?.moved) return;
     const e = this.crystal.edit;
     this.crystal.edit = null;
+    this.hideDragLines();
     const [q, r] = this.crystal.hexAt(x, y);
     const m = this.session.world.crystal[d.i];
     if (m && e?.targets.some((t) => t.q === q && t.r === r)) this.command({ type: 'moveModule', from: [m.q, m.r], to: [q, r] });
@@ -700,9 +746,9 @@ export class BattleScene extends Phaser.Scene {
   }
 
   /** Field drag state, for the UI smoke. */
-  fieldDragState(): { i: number; moved: boolean; targets: number } | null {
+  fieldDragState(): { i: number; moved: boolean; targets: number; lines: string[] } | null {
     const d = this.fieldDrag;
-    return d ? { i: d.i, moved: d.moved, targets: this.crystal.edit?.targets.length ?? 0 } : null;
+    return d ? { i: d.i, moved: d.moved, targets: this.crystal.edit?.targets.length ?? 0, lines: this.dragLines.filter((t) => t.visible).map((t) => t.text) } : null;
   }
 
   openProtocols(): void {
