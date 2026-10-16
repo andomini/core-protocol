@@ -62,15 +62,15 @@ describe('structures: the Ice Wall (spec 2026-10-15, phase 1)', () => {
   });
 
   it('a melee virus stops at the wall and damages the segment, not the core', () => {
-    const { data, w } = setup(1, { health: 100 });
+    const { data, w } = setup(1, { health: 1000 });
     const [x, y] = onAxis(2, w.wallR + 14 + 3);
     const e = spawnEnemy(w, data, 'basic', x, y, []);
     const hits = ofType(stepN(w, data, 3), 'structHit');
     expect(hits).toHaveLength(1);
     expect(hits[0]).toMatchObject({ kind: 'wall', sid: seg(w, 2).id, enemyId: e.id, ranged: false });
     expect(Math.hypot(e.x, e.y)).toBeCloseTo(w.wallR + e.radius, 6);
-    expect(w.core.hp).toBe(100);
-    expect(seg(w, 2).share).toBeCloseTo(1 - e.damage / (100 * 0.1), 6);
+    expect(w.core.hp).toBe(1000);
+    expect(seg(w, 2).share).toBeCloseTo(1 - e.damage / (1000 * fusionStructure(w, data, 'wall')!.hpFrac!), 6);
     expect(seg(w, 3).share).toBe(1);
   });
 
@@ -207,7 +207,7 @@ describe('structures: the Ice Wall (spec 2026-10-15, phase 1)', () => {
   it('wall HP is a share of the core Health, so Health purchases upgrade it', () => {
     const { data, w } = setup(1, { health: 100 });
     const st = worldStats(w, data);
-    expect(wallMaxHp(st, fusionStructure(w, data, 'wall')!)).toBeCloseTo(10, 9);
+    expect(wallMaxHp(st, fusionStructure(w, data, 'wall')!)).toBeCloseTo(100 * fusionStructure(w, data, 'wall')!.hpFrac!, 9);
   });
 
   it('an old save without structs/wallR restores to defaults and builds the wall on the next tick', () => {
@@ -389,7 +389,7 @@ describe('structures: data and text', () => {
     noHp.fusions['cryo+firewall']!.tiers['3'] = [{ type: 'structure', kind: 'wall', regrowSec: 10 }];
     expect(() => validateSets(noHp)).toThrow(/cryo\+firewall/);
     const lower = structuredClone(data.sets);
-    lower.fusions['cryo+firewall']!.tiers['3'] = [{ type: 'structure', kind: 'wall', hpFrac: 0.05 }];
+    lower.fusions['cryo+firewall']!.tiers['3'] = [{ type: 'structure', kind: 'wall', hpFrac: 0.02 }];
     expect(() => validateSets(lower)).toThrow(/cryo\+firewall/);
   });
 
@@ -442,7 +442,7 @@ describe('structures: the Bastion (spec 2026-10-15, phase 2)', () => {
     expect(shots[0]).toMatchObject({ sid: t.id, targetIds: [e.id] });
     const hit = ofType(ev, 'hit').find((h) => h.source === 'turret')!;
     expect(hit.enemyId).toBe(e.id);
-    expect(hit.damage).toBeCloseTo(worldStats(w, data).damage * 0.2, 6);
+    expect(hit.damage).toBeCloseTo(worldStats(w, data).damage * fusionStructure(w, data, 'turret')!.dmgFrac!, 6);
   });
 
   it('a virus out of range is left alone; the turret waits at its cooldown', () => {
@@ -692,7 +692,7 @@ describe('structures: Relay Stations (spec 2026-10-15, phase 3)', () => {
     expect(Math.hypot(e.x - s.x, e.y - s.y)).toBeCloseTo(data.structures.station.radius + e.radius, 6);
     expect(ofType(events, 'coreHit')).toHaveLength(0);
     expect(w.core.hp).toBe(1000);
-    expect(s.share).toBeCloseTo(1 - (hits.length * e.damage) / (1000 * 0.1), 6);
+    expect(s.share).toBeCloseTo(1 - (hits.length * e.damage) / (1000 * fusionStructure(w, data, 'station')!.hpFrac!), 6);
     expect(e.hp).toBeLessThan(e.maxHp);
   });
 
@@ -779,7 +779,7 @@ describe('structures: Relay Stations (spec 2026-10-15, phase 3)', () => {
   it('pays Energy at wave end: energy × energyGrowth^wave × Energy bonus, once, and nothing before', () => {
     const { data, w } = setupFusion(MINING, 1);
     const st = worldStats(w, data);
-    const expected = 12 * powInt(data.config.energyGrowth, 1) * (1 + st.energyBonus);
+    const expected = fusionStructure(w, data, 'station')!.energy! * powInt(data.config.energyGrowth, 1) * (1 + st.energyBonus);
     const mid = stepN(w, data, 700);
     expect(ofType(mid, 'stationPay')).toHaveLength(0);
     const pay = ofType(stepN(w, data, 100), 'stationPay');
@@ -813,7 +813,7 @@ describe('structures: Relay Stations (spec 2026-10-15, phase 3)', () => {
   it('streak (tier II): +10 % per wave survived up to the cap; a loss resets it', () => {
     const { data, w } = setupFusion(MINING, 3);
     const st = worldStats(w, data);
-    const base = (wave: number) => 12 * powInt(data.config.energyGrowth, wave) * (1 + st.energyBonus);
+    const base = (wave: number) => fusionStructure(w, data, 'station')!.energy! * powInt(data.config.energyGrowth, wave) * (1 + st.energyBonus);
     const one = ofType(untilWaveEnd(w, data, 1), 'stationPay');
     expect(one.map((e) => e.energy)).toEqual([base(1), base(1)].map((v) => expect.closeTo(v, 9)));
     const two = ofType(untilWaveEnd(w, data, 2), 'stationPay');
@@ -824,7 +824,7 @@ describe('structures: Relay Stations (spec 2026-10-15, phase 3)', () => {
     // Tier I has no streak at all.
     const t1 = setupFusion(MINING, 1);
     stations(t1.w)[0]!.streak = 50;
-    expect(ofType(untilWaveEnd(t1.w, t1.data, 1), 'stationPay')[0]!.energy).toBeCloseTo(12 * 1.02 * (1 + worldStats(t1.w, t1.data).energyBonus), 9);
+    expect(ofType(untilWaveEnd(t1.w, t1.data, 1), 'stationPay')[0]!.energy).toBeCloseTo(fusionStructure(t1.w, t1.data, 'station')!.energy! * 1.02 * (1 + worldStats(t1.w, t1.data).energyBonus), 9);
   });
 
   it('tier III also pays Bits like a kill: scaleForWave of the tier', () => {

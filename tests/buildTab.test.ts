@@ -174,7 +174,7 @@ describe('BUILD tab: effects', () => {
       const { data, w } = setup(MINING, workshop);
       return ofType(stepN(w, data, 800), 'stationPay')[0]!.energy;
     };
-    expect(pay({ stationIncome: 10 }) / pay({})).toBeCloseTo(2, 6);
+    expect(pay({ stationIncome: 10 }) / pay({})).toBeCloseTo(1.5, 6);
   });
 });
 
@@ -184,7 +184,7 @@ describe('BUILD tab: workshop and saves', () => {
     expect(w.workshop.turretDamage).toBe(5);
     expect(w.levels.turretDamage).toBe(0);
     expect(worldStats(w, data).turretDamage).toBeCloseTo(1.5, 9);
-    expect(worldStats(w, data).structRegen).toBeCloseTo(0.02, 9);
+    expect(worldStats(w, data).structRegen).toBeCloseTo(0.006, 9);
   });
 
   it('a save from before the BUILD tab restores with those levels at 0 and plays on', () => {

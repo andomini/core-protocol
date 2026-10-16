@@ -340,7 +340,7 @@
       "tab": "build",
       "name": "Structure Regen",
       "base": 0,
-      "per": 0.005,
+      "per": 0.0015,
       "mode": "add",
       "maxLevel": 30,
       "needs": [
@@ -415,7 +415,7 @@
       "tab": "build",
       "name": "Station Income",
       "base": 1,
-      "per": 0.1,
+      "per": 0.05,
       "mode": "add",
       "needs": [
         "station"
