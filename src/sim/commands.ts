@@ -102,14 +102,18 @@ function revive(w: World, data: GameData, hp: unknown, events: SimEvent[]): Prot
   const r2 = data.config.reviveClearRadius * data.config.reviveClearRadius;
   w.enemies = w.enemies.filter((e) => e.x * e.x + e.y * e.y > r2);
   w.projectiles = [];
-  // Structures stand again with the core (nothing the revived run could not have rebuilt later).
+  // Structures stand again with the core (nothing the revived run could not have rebuilt later). Only what is on the
+  // field now: an unlinked kind stays as it was (a damaged one counted as destroyed when the link broke) and so does
+  // a station above the current count.
   for (const s of w.structs) {
+    const built = fusionStructure(w, data, s.kind);
+    if (built === undefined) continue;
+    if (s.kind === 'wall' ? s.slot >= data.structures.wall.segments : s.kind !== 'mine' && s.slot >= (built.count ?? 0)) continue;
     if (s.share > 0 && s.share < 1) s.share = 1;
     else if (s.share <= 0) {
       s.share = 1;
       s.downUntilTick = 0;
-      // A dormant entry (link broken) is not on the field: it is restored without a rebuild effect.
-      if (fusionStructure(w, data, s.kind) !== undefined) events.push({ type: 'structUp', sid: s.id, kind: s.kind, x: s.x, y: s.y });
+      events.push({ type: 'structUp', sid: s.id, kind: s.kind, x: s.x, y: s.y });
     }
   }
   // Second Wind (card) revives with its own HP share; the rewarded revive uses config.reviveHp.

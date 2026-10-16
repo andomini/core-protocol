@@ -223,6 +223,28 @@ describe('structures: the Ice Wall (spec 2026-10-15, phase 1)', () => {
     expect(() => restore(JSON.stringify({ ...raw, world: { ...raw.world, structs: 5 } }))).toThrow(/snapshot/);
   });
 
+  it('a pre-feature save drops the old firewall fusion mods and tiers, keeps the other fusions', () => {
+    const { w } = setup(1);
+    w.fusionTiers['cryo+firewall'] = 3;
+    w.fusionTiers['overload+cryo'] = 1;
+    w.mods.push({ stat: 'defense', op: 'add', value: 0.05, source: 'fusion:chain+firewall:5' });
+    w.mods.push({ stat: 'thorns', op: 'add', value: 0.25, source: 'fusion:cryo+firewall:3' });
+    w.mods.push({ stat: 'damage', op: 'mul', value: 1.1, source: 'fusion:overload+cryo:1' });
+    w.timers['fusion:mining+firewall:3:0'] = { next: 10, until: -1 };
+    w.timers['fusion:overload+cryo:1:0'] = { next: 10, until: -1 };
+    const raw = JSON.parse(snapshot(w)) as { world: Record<string, unknown> };
+    delete raw.world.structs;
+    delete raw.world.wallR;
+    const old = restore(JSON.stringify(raw));
+    expect(old.mods.map((m) => m.source).filter((src) => src.includes('firewall'))).toEqual([]);
+    expect(old.mods.some((m) => m.source === 'fusion:overload+cryo:1')).toBe(true);
+    expect(Object.keys(old.timers).filter((k) => k.includes('firewall'))).toEqual([]);
+    expect('fusion:overload+cryo:1:0' in old.timers).toBe(true);
+    expect(old.fusionTiers).toEqual({ 'overload+cryo': 1 });
+    // A save that already has structures is left alone.
+    expect(restore(snapshot(w)).mods.some((m) => m.source === 'fusion:chain+firewall:5')).toBe(true);
+  });
+
   it('restore rejects a malformed structure entry instead of crashing the first tick', () => {
     const { w } = setup(1);
     const raw = JSON.parse(snapshot(w)) as { world: { structs: Record<string, unknown>[] } };
@@ -315,15 +337,37 @@ describe('structures: the Ice Wall (spec 2026-10-15, phase 1)', () => {
     applyCommands(w, data, [{ type: 'revive' }], events);
     expect(w.structs.map((s) => s.share)).toEqual([1, 1, 1, 1, 1, 1]);
     expect(ofType(events, 'structUp').map((e) => e.sid)).toEqual([seg(w, 1).id]);
-    // Link broken: dormant entries are restored quietly.
+    // Link broken: a kind that is not on the field is left as it was (a destroyed segment stays destroyed).
     const dormant = setup(1, { health: 100 });
     dormant.w.fusionTiers['cryo+firewall'] = 0;
     seg(dormant.w, 3).share = 0;
     dormant.w.dead = true;
     const quiet: SimEvent[] = [];
     applyCommands(dormant.w, dormant.data, [{ type: 'revive' }], quiet);
-    expect(seg(dormant.w, 3).share).toBe(1);
+    expect(seg(dormant.w, 3).share).toBe(0);
     expect(ofType(quiet, 'structUp')).toHaveLength(0);
+  });
+
+  it('revive leaves a surplus station and a destroyed-by-unlink kind as they were', () => {
+    const { data, w } = setupFusion(MINING, 5, { health: 100 });
+    w.fusionTiers[MINING] = 3;
+    const [a, , c] = stations(w) as [Struct, Struct, Struct];
+    a.share = 0.3;
+    c.share = 0.4; // dormant surplus above the count of 2
+    w.dead = true;
+    const events: SimEvent[] = [];
+    applyCommands(w, data, [{ type: 'revive' }], events);
+    expect([a.share, c.share]).toEqual([1, 0.4]);
+    // The kind is unlinked: nothing is brought back.
+    const { data: d2, w: w2 } = setupFusion(MINING, 3, { health: 100 });
+    const s0 = stations(w2)[0]!;
+    destroyStation(w2, d2, perkProfile(w2, d2), s0, []);
+    w2.fusionTiers[MINING] = 0;
+    w2.dead = true;
+    const ev2: SimEvent[] = [];
+    applyCommands(w2, d2, [{ type: 'revive' }], ev2);
+    expect(s0.share).toBe(0);
+    expect(ofType(ev2, 'structUp')).toHaveLength(0);
   });
 
   it('a segment that went down with the link regrows after regrowSec once the wall is back at tier II', () => {
@@ -360,7 +404,7 @@ describe('structures: the Ice Wall (spec 2026-10-15, phase 1)', () => {
   });
 
   it('no nest is planted inside the wall ring', () => {
-    const { data, w } = setup(0);
+    const { data, w } = setup(1);
     w.wave = data.config.arenaGrowEvery * 3 - 1;
     w.phase = 'pause';
     w.phaseTick = 1e6;
@@ -614,6 +658,55 @@ describe('structures: the Minefield (spec 2026-10-15, phase 2)', () => {
     expect(turret.kill.bits / mine.kill.bits).toBeCloseTo(turret.far, 6);
   });
 
+  it('a lone tank or boss that sets a mine off from outside the blast radius still takes the blast', () => {
+    for (const kind of ['tank', 'boss'] as const) {
+      const { data, w } = setupFusion('chain+firewall', 1);
+      const m = mines(w)[0]!;
+      const r = data.enemies[kind].radius;
+      const reach = data.structures.mine.trigger + r - 0.5;
+      // Past the blast radius by centre distance, inside trigger + radius.
+      expect(reach).toBeGreaterThan(40);
+      const e = spawnEnemy(w, data, kind, m.x + reach, m.y, [], TANK);
+      e.speed = 0;
+      const ev = stepN(w, data, 2);
+      expect(ofType(ev, 'mineBlast'), kind).toHaveLength(1);
+      const hits = ofType(ev, 'hit').filter((h) => h.source === 'mine');
+      expect(hits.map((h) => h.enemyId), kind).toEqual([e.id]);
+    }
+  });
+
+  it('a small virus beyond the blast does not crowd out a big one inside it', () => {
+    const { data, w } = setupFusion('chain+firewall', 1);
+    const m = mines(w)[0]!;
+    const boss = spawnEnemy(w, data, 'boss', m.x + data.structures.mine.trigger + data.enemies.boss.radius - 0.5, m.y, [], TANK);
+    boss.speed = 0;
+    // Three small viruses nearer by centre than the boss but outside the blast (40 + their radius) are not hit.
+    const smalls = [0, 1, 2].map((i) => {
+      const e = spawnEnemy(w, data, 'basic', m.x - 60 - i, m.y + (i - 1) * 3, [], TANK);
+      e.speed = 0;
+      return e;
+    });
+    const hits = ofType(stepN(w, data, 2), 'hit').filter((h) => h.source === 'mine');
+    expect(hits.map((h) => h.enemyId)).toEqual([boss.id]);
+    expect(smalls.every((e) => e.hp === e.maxHp)).toBe(true);
+  });
+
+  it('a lowered cap trims the oldest mines at the next planting', () => {
+    const { data, w } = setupFusion('chain+firewall', 5);
+    for (let i = 0; i < 5; i++) {
+      w.wave += 1;
+      prepareStructures(w, data, worldStats(w, data), perkProfile(w, data), []);
+    }
+    expect(mines(w)).toHaveLength(12);
+    const ids = mines(w).map((m) => m.id);
+    w.fusionTiers['chain+firewall'] = 1;
+    w.wave += 1;
+    prepareStructures(w, data, worldStats(w, data), perkProfile(w, data), []);
+    expect(mines(w)).toHaveLength(6);
+    expect(mines(w).map((m) => m.id)).toEqual(ids.slice(6));
+    expect(mines(w).map((m) => m.slot)).toEqual([0, 1, 2, 3, 4, 5]);
+  });
+
   it('a mine far from any virus stays put', () => {
     const { data, w } = setupFusion('chain+firewall', 1);
     const before = mines(w).length;
@@ -788,7 +881,7 @@ describe('structures: Relay Stations (spec 2026-10-15, phase 3)', () => {
     expect(pay[0]!.bits).toBe(0);
     expect(pay[0]).toMatchObject({ sid: stations(w)[0]!.id });
     expect(stations(w)[0]!.powered).toBe(0);
-    expect(stations(w)[0]!.streak).toBe(1);
+    expect(stations(w)[0]!.streak).toBe(0); // tier I defines no streak
   });
 
   it('pays only for the share of the wave it was powered: unlinking for half the wave halves the pay', () => {
@@ -825,6 +918,17 @@ describe('structures: Relay Stations (spec 2026-10-15, phase 3)', () => {
     const t1 = setupFusion(MINING, 1);
     stations(t1.w)[0]!.streak = 50;
     expect(ofType(untilWaveEnd(t1.w, t1.data, 1), 'stationPay')[0]!.energy).toBeCloseTo(fusionStructure(t1.w, t1.data, 'station')!.energy! * 1.02 * (1 + worldStats(t1.w, t1.data).energyBonus), 9);
+  });
+
+  it('tier I builds no streak: the waves survived there do not boost the pay once tier II is reached', () => {
+    const { data, w } = setupFusion(MINING, 1);
+    untilWaveEnd(w, data, 1);
+    untilWaveEnd(w, data, 2);
+    expect(stations(w)[0]!.streak).toBe(0);
+    w.fusionTiers[MINING] = 3;
+    const st = worldStats(w, data);
+    const pay = ofType(untilWaveEnd(w, data, 3), 'stationPay');
+    expect(pay[0]!.energy).toBeCloseTo(fusionStructure(w, data, 'station')!.energy! * powInt(data.config.energyGrowth, 3) * (1 + st.energyBonus), 9);
   });
 
   it('tier III also pays Bits like a kill: scaleForWave of the tier', () => {

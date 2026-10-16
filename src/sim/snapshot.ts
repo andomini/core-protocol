@@ -1,6 +1,6 @@
 import { SECTOR_DIRS } from './hex';
 import { assertFiniteDeep } from './num';
-import { STRUCTURE_KINDS } from './perkData';
+import { fusionKeys, STRUCTURE_KINDS } from './perkData';
 import { type World, WORLD_VERSION } from './state';
 import { canonicalLevels } from './stats';
 
@@ -104,8 +104,19 @@ export function restore(s: string): World {
   ) {
     throw new Error('snapshot: malformed world');
   }
-  // Runs saved before structures (spec 2026-10-15): none built, no ring yet; the first tick builds them from the links.
-  if (w.structs === undefined) w.structs = [];
+  // Runs saved before structures (spec 2026-10-15): none built, no ring yet. The old firewall fusion ladders put stat
+  // mods and timers into the run under `fusion:<key>:<tier>` that the new ladders have no entry to remove; they are
+  // dropped with the tiers, and the next crystal change (pick or move) rebuilds the tiers from the new data. The ring
+  // and the structures then appear at the next wave start (syncStructures keeps wallR 0 until prepareStructures).
+  if (w.structs === undefined) {
+    w.structs = [];
+    for (const key of fusionKeys().filter((k) => k.endsWith('+firewall'))) {
+      const prefix = `fusion:${key}:`;
+      w.mods = w.mods.filter((m) => !m.source.startsWith(prefix));
+      for (const k of Object.keys(w.timers)) if (k.startsWith(prefix)) delete w.timers[k];
+      delete w.fusionTiers[key];
+    }
+  }
   if (w.wallR === undefined) w.wallR = 0;
   if (!Array.isArray(w.structs) || typeof w.wallR !== 'number' || !w.structs.every(validStruct)) {
     throw new Error('snapshot: malformed world');

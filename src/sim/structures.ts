@@ -30,15 +30,19 @@ export interface StructGeometry {
   stations: number;
 }
 
-/** Where the structures are right now. `built` = the folded values per kind (the profile's, or fusionStructure() per kind for the renderer). */
+const geoScratch: StructGeometry = { wallR: 0, segments: 0, turrets: 0, stations: 0 };
+
+/**
+ * Where the structures are right now. `built` = the folded values per kind (the profile's, or fusionStructure() per kind for the renderer).
+ * The result is one shared object (no allocation per tick): read it before the next call.
+ */
 export function structureGeometry(w: World, data: GameData, built: Partial<Record<StructureKind, StructureValues>>): StructGeometry {
   const ring = w.wallR > 0;
-  return {
-    wallR: w.wallR,
-    segments: built.wall !== undefined && ring ? data.structures.wall.segments : 0,
-    turrets: built.turret !== undefined && ring ? built.turret.count ?? 0 : 0,
-    stations: built.station !== undefined && ring ? built.station.count ?? 0 : 0,
-  };
+  geoScratch.wallR = w.wallR;
+  geoScratch.segments = built.wall !== undefined && ring ? data.structures.wall.segments : 0;
+  geoScratch.turrets = built.turret !== undefined && ring ? built.turret.count ?? 0 : 0;
+  geoScratch.stations = built.station !== undefined && ring ? built.station.count ?? 0 : 0;
+  return geoScratch;
 }
 
 /** The sector turret `slot` stands in: a fixed order, so a turret never moves when the Bastion grows (1 → 0; 2 → 0, 2; 3 → 0, 2, 4). */
@@ -46,6 +50,16 @@ export const TURRET_SECTORS: readonly number[] = [0, 2, 4, 1, 3, 5];
 
 /** The sector pair a station stands between (its midpoint): a fixed order, 120° apart for up to three (0|1, 2|3, 4|5, then 1|2, 3|4, 5|0). */
 export const STATION_SECTORS: readonly number[] = [0, 2, 4, 1, 3, 5];
+
+/** Unit vector of each station slot: the midpoint of its sector pair's axes, renormalised (no trig). Fixed, so computed once. */
+const STATION_DIRS: readonly (readonly [number, number])[] = STATION_SECTORS.map((sector) => {
+  const a = SECTOR_DIRS[sector]!;
+  const b = SECTOR_DIRS[(sector + 1) % 6]!;
+  const mx = a[0] + b[0];
+  const my = a[1] + b[1];
+  const len = dsqrt(mx * mx + my * my);
+  return [mx / len, my / len] as const;
+});
 
 /** Fills `out` with the standing stations in id order (empty when none); returns how many. */
 export function activeStations(w: World, prof: PerkProfile, out: Struct[]): number {
@@ -112,6 +126,8 @@ const standing: (Struct | null)[] = [null, null, null, null, null, null];
 const contested: boolean[] = [false, false, false, false, false, false];
 const haveStation: boolean[] = [false, false, false, false, false, false];
 const nearS: Enemy[] = [];
+/** The viruses one turret shot hits (scratch; the ids are copied into the event). */
+const hitS: Enemy[] = [];
 /** Wall segments that broke this tick with Shatter on; updateStructures resolves them against the fresh grid. */
 const shatterX: number[] = [];
 const shatterY: number[] = [];
@@ -147,15 +163,11 @@ export function syncStructures(w: World, data: GameData, prof: PerkProfile, even
   const standingNow = w.phase === 'wave';
   for (const s of w.structs) {
     if (s.kind === 'station') {
-      // Between the two sectors of its pair, `inset` inside the ring (the midpoint of two unit vectors, renormalised: no trig).
-      const a = SECTOR_DIRS[STATION_SECTORS[s.slot]!]!;
-      const b = SECTOR_DIRS[(STATION_SECTORS[s.slot]! + 1) % 6]!;
-      const mx = a[0] + b[0];
-      const my = a[1] + b[1];
-      const len = dsqrt(mx * mx + my * my);
+      // Between the two sectors of its pair, `inset` inside the ring.
+      const dir = STATION_DIRS[s.slot]!;
       const r = w.wallR - data.structures.station.inset;
-      s.x = (mx / len) * r;
-      s.y = (my / len) * r;
+      s.x = dir[0] * r;
+      s.y = dir[1] * r;
       if (s.slot >= geo.stations) {
         // Unlinked: inert, the streak is gone, and anything damaged counts as destroyed (it waits out the rubble time).
         s.streak = 0;
@@ -255,10 +267,20 @@ function repairStations(w: World, prof: PerkProfile, events: SimEvent[]): void {
 function plantMines(w: World, data: GameData, prof: PerkProfile): void {
   const mine = prof.structures.mine;
   if (mine === undefined) return;
+  const max = mine.max ?? 0;
+  // A tier drop (perk swap, reroll) lowered the cap: the oldest mines (lowest ids, the array is in id order) beyond it are removed.
+  let surplus = -max;
+  for (const s of w.structs) if (s.kind === 'mine') surplus += 1;
+  for (let i = 0; surplus > 0 && i < w.structs.length; ) {
+    if (w.structs[i]!.kind === 'mine') {
+      w.structs.splice(i, 1);
+      surplus -= 1;
+    } else i += 1;
+  }
   // Survivors are renumbered so `slot` stays the index among the mines.
   let placed = 0;
   for (const s of w.structs) if (s.kind === 'mine') s.slot = placed++;
-  const n = Math.min(mine.perWave ?? 0, (mine.max ?? 0) - placed);
+  const n = Math.min(mine.perWave ?? 0, max - placed);
   if (n <= 0) return;
   const rng = createStream(w.seed, `mines:${w.wave}`);
   const [near, far] = data.structures.mine.band;
@@ -308,7 +330,8 @@ export function payStations(w: World, data: GameData, st: CoreStats, prof: PerkP
       const bits = clampValue(scaleForWave(station.bits ?? 0, data.tiers[w.tier - 1]!.bitsMul, data.config.bitsGrowth, w.wave) * powered * st.stationIncome);
       w.energy = clampValue(w.energy + energy);
       w.bits = clampValue(w.bits + bits);
-      s.streak += 1;
+      // Only a tier that defines a streak builds one (else tier II would start with the waves survived at tier I).
+      if (station.streakStep !== undefined) s.streak += 1;
       if (energy > 0 || bits > 0) events.push({ type: 'stationPay', sid: s.id, x: s.x, y: s.y, energy, bits });
     }
     s.powered = 0;
@@ -347,33 +370,35 @@ function fireTurrets(w: World, data: GameData, st: CoreStats, prof: PerkProfile,
     // Dead viruses stay in this tick's grid: ask for one more per kill made so far.
     gridFor(data).kNearest(s.x, s.y, turret.range ?? 0, targets + (w.kills - kills0), nearS);
     if (nearS.length === 0) continue;
-    const ids: number[] = [];
-    const hit: Enemy[] = [];
+    hitS.length = 0;
     for (const e of nearS) {
       if (e.hp <= 0) continue;
-      if (hit.length >= targets) break;
-      hit.push(e);
-      ids.push(e.id);
+      if (hitS.length >= targets) break;
+      hitS.push(e);
     }
-    if (hit.length === 0) continue;
+    if (hitS.length === 0) continue;
     s.cd += period;
-    events.push({ type: 'turretShot', sid: s.id, targetIds: ids, x: s.x, y: s.y });
-    for (const e of hit) hitEnemy(w, data, st, prof, e, damage, false, 'turret', events);
+    events.push({ type: 'turretShot', sid: s.id, targetIds: hitS.map((e) => e.id), x: s.x, y: s.y });
+    for (const e of hitS) hitEnemy(w, data, st, prof, e, damage, false, 'turret', events);
   }
 }
 
 /**
  * Minefield: a mine goes off when a virus comes within the trigger distance (plus its radius): the blast hits the
- * nearest `targets` viruses around it, `arcs` of them throw lightning on, and the mine is spent.
+ * nearest `targets` viruses whose body it reaches (blast radius plus theirs, like the trigger), `arcs` of them throw
+ * lightning on, and the mine is spent.
  */
-function detonateMines(w: World, data: GameData, st: CoreStats, prof: PerkProfile, mine: StructureValues, kills0: number, events: SimEvent[]): void {
+function detonateMines(w: World, data: GameData, st: CoreStats, prof: PerkProfile, mine: StructureValues, events: SimEvent[]): void {
   const trigger = data.structures.mine.trigger;
-  const reach = trigger + maxEnemyRadius(data);
+  const maxR = maxEnemyRadius(data);
   const blast = mine.blast ?? 0;
   const targets = mine.targets ?? 1;
   const arcs = mine.arcs ?? 0;
   const damage = clampValue(st.damage * (mine.dmgMul ?? 0) * st.mineDamage);
   const grid = gridFor(data);
+  // Every virus in reach, nearest first: a big virus can set a mine off, or stand in its blast, from further out than a
+  // small one, so a short list (cut by centre distance) could crowd it out. The ones killed earlier this tick are still in the grid.
+  const all = w.enemies.length;
   for (let i = 0; i < w.structs.length; ) {
     const s = w.structs[i]!;
     if (s.kind !== 'mine') {
@@ -381,8 +406,7 @@ function detonateMines(w: World, data: GameData, st: CoreStats, prof: PerkProfil
       continue;
     }
     let tripped = false;
-    // Nearest few by centre distance: a big virus can set a mine off from further out than a small one.
-    grid.kNearest(s.x, s.y, reach, 4 + (w.kills - kills0), nearS);
+    grid.kNearest(s.x, s.y, trigger + maxR, all, nearS);
     for (const e of nearS) {
       if (e.hp <= 0) continue;
       const dx = e.x - s.x;
@@ -398,11 +422,16 @@ function detonateMines(w: World, data: GameData, st: CoreStats, prof: PerkProfil
       continue;
     }
     events.push({ type: 'mineBlast', x: s.x, y: s.y, r: blast });
-    grid.kNearest(s.x, s.y, blast, targets + (w.kills - kills0), nearS);
+    grid.kNearest(s.x, s.y, blast + maxR, all, nearS);
     let hits = 0;
     for (const e of nearS) {
+      // A kill by an earlier victim's arc leaves its entry here: skip the dead.
       if (e.hp <= 0) continue;
       if (hits >= targets) break;
+      const dx = e.x - s.x;
+      const dy = e.y - s.y;
+      const reach = blast + e.radius;
+      if (dx * dx + dy * dy > reach * reach) continue;
       hitEnemy(w, data, st, prof, e, damage, false, 'mine', events);
       // The first `arcs` victims throw lightning on (their own neighbours, at the core's Damage like a shot's lightning).
       if (hits < arcs) lightning(w, data, st, prof, e, clampValue(st.damage), events);
@@ -462,5 +491,5 @@ export function updateStructures(w: World, data: GameData, st: CoreStats, prof: 
   const turret = prof.structures.turret;
   if (turret !== undefined && w.wallR > 0) fireTurrets(w, data, st, prof, turret, kills0, events);
   const mine = prof.structures.mine;
-  if (mine !== undefined) detonateMines(w, data, st, prof, mine, kills0, events);
+  if (mine !== undefined) detonateMines(w, data, st, prof, mine, events);
 }

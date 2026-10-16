@@ -38,7 +38,7 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   const before = arenaRadius(data, w.wave - 1);
   if (radius !== before) {
     const ring = crystalRing(data, w.wave);
-    const nests = plantNests(w, data, st, before);
+    const nests = plantNests(w, data, st, prof, before);
     events.push({ type: 'arenaGrow', radius, ring, ringGrew: ring !== crystalRing(data, w.wave - 1), nests });
   }
   const boss = isBossWave(data, w.wave, w.tier);
@@ -118,10 +118,10 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
 }
 
 /** Plants nests on infected cells just inside the old spawn ring `r0` (rng.spawn); returns how many. */
-function plantNests(w: World, data: GameData, st: CoreStats, r0: number): number {
+function plantNests(w: World, data: GameData, st: CoreStats, prof: PerkProfile, r0: number): number {
   const t = data.territory;
-  // No nest inside the wall ring (a nest planted there would spawn viruses behind the wall).
-  const ring = wallRadius(data, st, w.wave) + data.structures.wall.contestDist;
+  // No nest inside the wall ring (a nest planted there would spawn viruses behind the wall); without a wall the pool is untouched.
+  const ring = prof.structures.wall !== undefined ? wallRadius(data, st, w.wave) + data.structures.wall.contestDist : 0;
   const g = terrainFor(data);
   // The band just inside the old edge (now well within the wider ring), capped at nestMaxRadius.
   const hi = Math.min(r0, t.nestMaxRadius);
