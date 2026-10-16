@@ -46,7 +46,8 @@
     },
     "chain": {
       "2": [
-        { "type": "ruleChange", "rule": "bounceDamage", "op": "mul", "value": 1.2 }
+        { "type": "ruleChange", "rule": "bounceDamage", "op": "mul", "value": 1.2 },
+        { "type": "ruleChange", "rule": "bounces", "op": "add", "value": 1 }
       ],
       "4": [
         { "type": "onCrit", "action": "lightning" }
@@ -58,7 +59,8 @@
     },
     "mining": {
       "2": [
-        { "type": "statAdd", "stat": "energyBonus", "value": 0.2 }
+        { "type": "statAdd", "stat": "energyBonus", "value": 0.2 },
+        { "type": "statAdd", "stat": "bitsPerKill", "value": 0.1 }
       ],
       "4": [
         { "type": "ruleChange", "rule": "runEndBits", "op": "mul", "value": 1.25 }
@@ -81,6 +83,7 @@
     }
   },
   "fusionTiers": [1, 3, 5],
+  "howCap": 4,
   "fusions": {
     "overload+cryo": {
       "name": "Thermal Shock",
@@ -148,9 +151,7 @@
         "3": [
           { "type": "ruleChange", "rule": "lightningRange", "op": "mul", "value": 1.3 }
         ],
-        "5": [
-          { "type": "ruleChange", "rule": "freezeSeconds", "op": "mul", "value": 1.5 }
-        ]
+        "5": []
       }
     },
     "cryo+mining": {

@@ -10,7 +10,7 @@ import { clusterCounts, type CrystalShape, crystalShape, freeSlots, fusionLinkCo
 import { geneKeep } from './mutations';
 import { clampValue, powInt } from './num';
 import { ownedShare } from './territory';
-import { type Effect, fusionKeys, RARITIES, type Rarity, RULE_IDS, type Rules, type StructureKind, type StructureValues, TAGS, type Tag } from './perkData';
+import { type Effect, FREEZE_ALL_MAX_SHARE, fusionKeys, RARITIES, type Rarity, RULE_IDS, type Rules, type StructureKind, type StructureValues, TAGS, type Tag } from './perkData';
 import { createStream, nextInt, pickWeighted } from './rng';
 import type { World } from './state';
 import { effectiveStats, type Modifier } from './stats';
@@ -636,6 +636,7 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
 
 /** Ticks a periodic effect lasts (freeze-all is stretched by the freezeSeconds rule, like every freeze). */
 export function periodicTicks(data: GameData, prof: PerkProfile, e: PeriodicEffect): number {
-  const s = e.action === 'freezeAll' ? e.seconds * prof.rules.freezeSeconds : e.seconds;
+  // Freeze-all is stretched by freezeSeconds but never beyond FREEZE_ALL_MAX_SHARE of its period (no freeze lock).
+  const s = e.action === 'freezeAll' ? Math.min(e.seconds * prof.rules.freezeSeconds, FREEZE_ALL_MAX_SHARE * e.everySec) : e.seconds;
   return Math.max(1, Math.round(s * data.config.tickHz));
 }

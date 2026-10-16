@@ -12,6 +12,8 @@ import { type GameData, STAT_IDS, type StatId, type TabId } from '../../src/sim/
 import type { World } from '../../src/sim/state';
 import { TAGS, type Tag } from '../../src/sim/perkData';
 import { tagCounts } from '../../src/sim/perks';
+import { type CrystalDiff, crystalSlots, freeSlots, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
+import { crystalRing } from '../../src/sim/territory';
 import { createStream, nextInt } from '../../src/sim/rng';
 
 export type PolicyName = 'none' | 'greedy' | 'atk-first' | 'def-first' | 'round-robin';
@@ -92,11 +94,12 @@ export function makeBot(name: PolicyName): Bot {
 //   first        always the first card (baseline)
 //   greedy-pick  highest rarity; among equals, a card of a held tag (most-held first); else offer order
 //   random-pick  a uniform random card (its own seeded stream: replayable)
+//   fusion-pick  the card (and free hex) whose module raises the crystal score most (set/fusion tiers and links, see bot.json "crystal"), rarity as a tie-break; used by --crystal arrange
 //   tag:<tag>    the best card of its tag when offered (rarity first); otherwise greedy-pick
 
-export type PickPolicyName = 'first' | 'greedy-pick' | 'random-pick' | `tag:${Tag}`;
+export type PickPolicyName = 'first' | 'greedy-pick' | 'random-pick' | 'fusion-pick' | `tag:${Tag}`;
 export const TAG_PICKS: PickPolicyName[] = TAGS.map((t) => `tag:${t}` as const);
-export const PICK_POLICIES: PickPolicyName[] = ['first', 'greedy-pick', 'random-pick', ...TAG_PICKS];
+export const PICK_POLICIES: PickPolicyName[] = ['first', 'greedy-pick', 'random-pick', 'fusion-pick', ...TAG_PICKS];
 
 const RANK = { common: 0, rare: 1, epic: 2 } as const;
 
@@ -124,6 +127,7 @@ function greedyIndex(w: World, data: GameData, filter: (id: string) => boolean =
 
 export function makePicker(name: PickPolicyName, seed: number): Picker {
   if (name === 'first') return { name, choose: () => 0 };
+  if (name === 'fusion-pick') return { name, choose: (w, data) => fusionPick(w, data).index };
   if (name === 'greedy-pick') return { name, choose: (w, data) => Math.max(0, greedyIndex(w, data)) };
   if (name === 'random-pick') {
     const rng = createStream(seed, 'bot-random-pick');
@@ -136,6 +140,104 @@ export function makePicker(name: PickPolicyName, seed: number): Picker {
     choose(w, data) {
       const own = greedyIndex(w, data, (id) => data.perks.perks[id]!.tag === tag);
       return own >= 0 ? own : Math.max(0, greedyIndex(w, data));
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// Crystal play (spec 2026-10-16 phase 0). 'auto' leaves every module where autoSlot puts it; 'arrange' picks
+// the card + hex with the best crystal score (fusion-pick) and then hill-climbs over movePreview after each
+// pick: the best single move or swap that raises the score, repeated until none does.
+
+export type CrystalMode = 'auto' | 'arrange';
+const CW = botJson.crystal;
+
+/** Number of ladder steps reached by `tier` (0 = none): the step index the score counts. */
+const stepOf = (ladder: readonly number[], tier: number) => ladder.filter((t) => t <= tier).length;
+
+/** The value of a crystal change for the bot: set and fusion tier steps weigh most, stacks and links (capped at the top tier) are progress. */
+export function diffScore(data: GameData, d: CrystalDiff): number {
+  let score = 0;
+  const top = data.sets.fusionTiers.at(-1)!;
+  for (const s of d.sets) score += CW.setTier * (stepOf(data.sets.tiers, s.tierTo) - stepOf(data.sets.tiers, s.tierFrom)) + CW.setCount * (s.to - s.from);
+  for (const f of d.fusions) {
+    score += CW.fusionTier * (stepOf(data.sets.fusionTiers, f.tierTo) - stepOf(data.sets.fusionTiers, f.tierFrom)) + CW.link * (Math.min(f.to, top) - Math.min(f.from, top));
+  }
+  return score;
+}
+
+/** The offered card with the best crystal gain (+ rarity, + a held tag) and, for a new module, the free hex that gains most. */
+export function fusionPick(w: World, data: GameData): { index: number; slot?: [number, number] } {
+  const counts = tagCounts(w, data);
+  let best = { index: 0, slot: undefined as [number, number] | undefined };
+  let bestScore = -Infinity;
+  w.offer.forEach((id, i) => {
+    const p = data.perks.perks[id]!;
+    let gain = 0;
+    let slot: [number, number] | undefined;
+    if (needsPlacement(w, id)) {
+      gain = -Infinity;
+      for (const s of freeSlots(w, data)) {
+        const d = slotGains(w, data, id, s);
+        const g = d === null ? -Infinity : diffScore(data, d);
+        if (g > gain) {
+          gain = g;
+          slot = s;
+        }
+      }
+      if (slot === undefined) gain = 0;
+    } else {
+      const d = slotGains(w, data, id);
+      gain = d === null ? 0 : diffScore(data, d);
+    }
+    const score = gain + CW.rarity * RANK[p.rarity] + CW.held * counts[p.tag];
+    if (score > bestScore) {
+      bestScore = score;
+      best = { index: i, slot };
+    }
+  });
+  return best;
+}
+
+export interface Arranger {
+  /** Zero or one moveModule command for this step; it re-evaluates after each pick (and when the crystal grows a ring). */
+  decide(w: World, data: GameData): Command[];
+}
+
+export function makeArranger(): Arranger {
+  let key = '';
+  let moves = 0;
+  let done = true;
+  return {
+    decide(w, data) {
+      if (w.phase === 'pick' || w.dead || w.crystal.length < 2) return [];
+      const k = `${w.picks}:${crystalRing(data, w.wave)}`;
+      if (k !== key) {
+        key = k;
+        moves = 0;
+        done = false;
+      }
+      if (done) return [];
+      const slots = crystalSlots(data, crystalRing(data, w.wave));
+      let best: Command | null = null;
+      let bestGain = 1e-9;
+      for (const m of w.crystal) {
+        for (const [q, r] of slots) {
+          if (q === m.q && r === m.r) continue;
+          const d = movePreview(w, data, [m.q, m.r], [q, r]);
+          if (d === null) continue;
+          const g = diffScore(data, d);
+          if (g > bestGain) {
+            bestGain = g;
+            best = { type: 'moveModule', from: [m.q, m.r], to: [q, r] };
+          }
+        }
+      }
+      if (best === null || ++moves > CW.maxMoves) {
+        done = true;
+        return [];
+      }
+      return [best];
     },
   };
 }

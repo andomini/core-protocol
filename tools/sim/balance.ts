@@ -1,4 +1,6 @@
-// npm run sim:balance -- [--seeds 24] [--tier 1] [--out reports/balance-m3.md] [--override patch.json]
+// npm run sim:balance -- [--seeds 24] [--tier 1] [--out reports/balance-m3.md] [--override patch.json] [--crystal auto|arrange]
+// --crystal arrange adds the combo 'greedy + fusion-pick (arrange)' (fusion-pick cards + best hex + hill-climb moves, tools/sim/bot.ts)
+// and a per-fusion table (share of runs reaching each tier, Energy/Bits share by killing-hit source) next to the auto-placed one.
 // --override deep-merges a JSON patch into the game data (for tuning experiments; the report says so).
 // Runs bot policies (buy policy × protocol pick policy) on N seeds — first run: no workshop, nothing
 // unlocked, no cards — and writes a Markdown report with the M3 gate: B1, B2, B5, B6 (spec §7).
@@ -6,7 +8,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import botJson from './bot.json';
 import { DEFAULT_DATA, type GameData, STAT_IDS, validateData } from '../../src/sim/data';
 import { fusionKeys, TAGS } from '../../src/sim/perkData';
-import { type PickPolicyName, POLICIES, type PolicyName, TAG_PICKS } from './bot';
+import { type CrystalMode, type PickPolicyName, POLICIES, type PolicyName, TAG_PICKS } from './bot';
 import { type RunResult, runBot } from './runner';
 
 const args = process.argv.slice(2);
@@ -15,6 +17,9 @@ const seeds = Number(arg('seeds', '24'));
 const tier = Number(arg('tier', '1'));
 const out = arg('out', 'reports/balance-m3.md');
 const override = arg('override', '');
+const crystalArg = arg('crystal', 'auto');
+if (crystalArg !== 'auto' && crystalArg !== 'arrange') throw new Error(`--crystal must be auto or arrange, got ${crystalArg}`);
+const crystalMode: CrystalMode = crystalArg;
 
 function merge(t: Record<string, unknown>, p: Record<string, unknown>): void {
   for (const [k, v] of Object.entries(p)) {
@@ -39,19 +44,22 @@ interface Combo {
   buy: PolicyName;
   pick: PickPolicyName;
   protocols: boolean;
+  crystal?: CrystalMode;
 }
+const ARRANGE = 'greedy + fusion-pick (arrange)';
 const combos: Combo[] = [
   ...POLICIES.map((buy) => ({ key: `${buy} + greedy-pick`, buy, pick: 'greedy-pick' as PickPolicyName, protocols: true })),
   { key: 'greedy + random-pick', buy: 'greedy', pick: 'random-pick', protocols: true },
   { key: 'greedy + first', buy: 'greedy', pick: 'first', protocols: true },
   ...TAG_PICKS.map((pick) => ({ key: `greedy + ${pick}`, buy: 'greedy' as PolicyName, pick, protocols: true })),
   { key: 'greedy, no protocols (M2b)', buy: 'greedy', pick: 'first', protocols: false },
+  ...(crystalMode === 'arrange' ? [{ key: ARRANGE, buy: 'greedy' as PolicyName, pick: 'fusion-pick' as PickPolicyName, protocols: true, crystal: 'arrange' as CrystalMode }] : []),
 ];
 
 const by: Record<string, RunResult[]> = {};
 for (const c of combos) {
   by[c.key] = [];
-  for (let s = 1; s <= seeds; s++) by[c.key]!.push(runBot(data, c.buy, { seed: s, tier, protocols: c.protocols }, 60, c.pick));
+  for (let s = 1; s <= seeds; s++) by[c.key]!.push(runBot(data, c.buy, { seed: s, tier, protocols: c.protocols }, 60, c.pick, c.crystal ?? 'auto'));
 }
 
 const med = (key: string) => quantile(by[key]!.map((r) => r.wave), 0.5);
@@ -172,6 +180,38 @@ function fusionTable(key: string): string {
     .join(' · ');
 }
 
+/** Per fusion: share of runs that reached each tier at any moment (fusion events), for the given combos. */
+function fusionTierTable(keys: string[]): string[] {
+  const tiers = data.sets.fusionTiers;
+  const head = `| fusion | ${keys.flatMap((k) => tiers.map((_, i) => `${k.startsWith('greedy + fusion') ? 'arr' : 'auto'} ${'I'.repeat(i + 1).replace('IIII', 'IV')}`)).join(' | ')} |`;
+  const rowsOut = fusionKeys().map((fk) => {
+    const cells = keys.flatMap((k) => tiers.map((t) => pct(by[k]!.filter((r) => (r.fusionMax[fk] ?? 0) >= t).length, by[k]!.length)));
+    return `| ${data.sets.fusions[fk]!.name} (${fk}) | ${cells.join(' | ')} |`;
+  });
+  return [head, `|---|${keys.flatMap(() => tiers.map(() => '---')).join('|')}|`, ...rowsOut];
+}
+
+/** Median share of a run's kill Energy / kill Bits that came from each killing-hit source, over the runs of one combo. */
+function sourceShares(key: string): string {
+  const rs = by[key]!;
+  const sources = [...new Set(rs.flatMap((r) => [...Object.keys(r.energyBySource), ...Object.keys(r.bitsBySource)]))].sort();
+  return sources
+    .map((src) => {
+      const e = rs.map((r) => (r.energyBySource[src] ?? 0) / Math.max(1, r.killEnergy));
+      const b = rs.map((r) => (r.bitsBySource[src] ?? 0) / Math.max(1, Object.values(r.bitsBySource).reduce((a, x) => a + x, 0)));
+      return { src, e: quantile(e, 0.5), b: quantile(b, 0.5) };
+    })
+    .filter((x) => x.e > 0.005 || x.b > 0.005)
+    .map((x) => `${x.src} ${pct(x.e * 100, 100)} E / ${pct(x.b * 100, 100)} B`)
+    .join(' · ');
+}
+
+const crystalKeys = crystalMode === 'arrange' ? ['greedy + greedy-pick', ARRANGE] : ['greedy + greedy-pick'];
+const crystalCompare =
+  crystalMode === 'arrange'
+    ? `Median wave ${med('greedy + greedy-pick')} (auto) vs ${med(ARRANGE)} (arrange); median in-run Bits at death ${f1(quantile(by['greedy + greedy-pick']!.map((r) => r.bits), 0.5))} vs ${f1(quantile(by[ARRANGE]!.map((r) => r.bits), 0.5))}; median picks ${quantile(by['greedy + greedy-pick']!.map((r) => r.picks), 0.5)} vs ${quantile(by[ARRANGE]!.map((r) => r.picks), 0.5)}.`
+    : 'Run with `--crystal arrange` to add the arrange + fusion-pick player.';
+
 const md = [
   '# Balance report — M3 (protocols, tags, sets; first run)',
   '',
@@ -212,6 +252,14 @@ const md = [
   `Station share of Energy income (stations / kills + stations; target ≤ 20 % at III), greedy + greedy-pick: ${stationShare(g)}. The tag:mining / tag:firewall bots: ${stationShare(by['greedy + tag:mining']!)} / ${stationShare(by['greedy + tag:firewall']!)}.`,
   '',
   `Decoy share (damage the stations soaked / core + wall + stations), greedy + greedy-pick: ${stationSoak(g)}. The tag:mining / tag:firewall bots: ${stationSoak(by['greedy + tag:mining']!)} / ${stationSoak(by['greedy + tag:firewall']!)}.`,
+  '',
+  `## Crystal fusions (spec 2026-10-16 phase 0) — report only`,
+  '',
+  `Share of runs that reached each fusion tier at any moment (tiers = links ${data.sets.fusionTiers.join(' / ')}); auto = autoSlot placement, arr = fusion-pick + hill-climb arrangement. ${crystalCompare}`,
+  '',
+  ...fusionTierTable(crystalKeys),
+  '',
+  ...crystalKeys.map((k) => `- **Kill Energy / Bits by killing-hit source, ${k}** (median share per run): ${sourceShares(k) || '—'}`),
   '',
   '## All policies',
   '',

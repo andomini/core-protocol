@@ -158,6 +158,8 @@ export interface SetsData {
   sets: Record<Tag, Record<string, Effect[]>>;
   /** Fusion tiers (spec 2026-10-15 §1): links (shared edges between the pair's modules) each tier needs. */
   fusionTiers: number[];
+  /** Cap on the product of the kill-Energy fusion multipliers (crit x frozen x chain) in hitEnemy. */
+  howCap: number;
   /** One fusion per tag pair, keyed "a+b" in TAGS order (fusionKey). */
   fusions: Record<string, FusionDef>;
 }
@@ -232,6 +234,8 @@ export function validateEffect(e: Effect, at: string, allowStructure = false): v
         pos(e.value, `${at}.value`);
       } else if (e.action === 'freezeAll') {
         pos(e.everySec, `${at}.everySec`);
+        // Freeze-lock guard: the base freeze may cover at most this share of its period (periodicTicks clamps the multiplied one).
+        check(e.seconds <= FREEZE_ALL_MAX_SHARE * e.everySec, `${at}.seconds must be <= ${FREEZE_ALL_MAX_SHARE} x everySec`);
       } else if (e.action === 'immunity') {
         wholePos(e.everyWaves, `${at}.everyWaves`);
         frac(e.hpBelow, `${at}.hpBelow`);
@@ -329,9 +333,14 @@ export function validatePerks(p: PerksData): void {
   }
 }
 
+/** Largest share of its period a freeze-all may keep the field frozen (validator and clamp). */
+export const FREEZE_ALL_MAX_SHARE = 0.6;
+
 export function validateSets(s: SetsData): void {
   check(s !== undefined && s.sets !== undefined && s.tags !== undefined, 'sets is missing');
   check(Array.isArray(s.tiers) && s.tiers.length > 0, 'sets.tiers must be a non-empty list');
+  pos(s.howCap, 'sets.howCap');
+  check(s.howCap >= 1, 'sets.howCap must be >= 1');
   s.tiers.forEach((t, i) => {
     wholePos(t, `sets.tiers[${i}]`);
     if (i > 0) check(t > s.tiers[i - 1]!, 'sets.tiers must be increasing');
@@ -363,7 +372,8 @@ export function validateSets(s: SetsData): void {
     for (const t of Object.keys(f!.tiers)) check(s.fusionTiers.includes(Number(t)), `sets.fusions.${key}.tiers.${t} is not a fusion tier`);
     for (const t of s.fusionTiers) {
       const eff = f!.tiers[String(t)];
-      check(Array.isArray(eff) && eff.length > 0, `sets.fusions.${key}.tiers.${t} must list effects`);
+      // An empty ladder step is allowed (a tier kept for the link count whose effects are pending a redesign).
+      check(Array.isArray(eff), `sets.fusions.${key}.tiers.${t} must list effects`);
       eff!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.tiers.${t}[${i}]`, true));
     }
     validateStructureLadder(key, f!, s.fusionTiers);

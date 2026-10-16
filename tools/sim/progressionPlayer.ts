@@ -9,7 +9,7 @@ import { settleRun } from '../../src/meta/runEnd';
 import { defaultMeta, type MetaState } from '../../src/meta/state';
 import { buyWorkshop, workshopCost, workshopMax, workshopUnlocked } from '../../src/meta/workshop';
 import { DEFAULT_DATA as D, STAT_IDS, type StatId } from '../../src/sim/data';
-import type { PickPolicyName, PolicyName } from './bot';
+import type { CrystalMode, PickPolicyName, PolicyName } from './bot';
 import { runBot } from './runner';
 
 export type Strategy = 'balanced' | 'workshop' | 'labs' | 'casual';
@@ -25,6 +25,8 @@ export interface PlayerConfig {
   runCapMin: number;
   /** Keep playing after the last tier's unlock wave (measures the endless late game). */
   endless?: boolean;
+  /** 'arrange': fusion-pick cards, best hex and hill-climb moves after each pick (tools/sim/bot.ts); the casual strategy always plays 'auto'. */
+  crystal?: CrystalMode;
 }
 
 export interface RunRow {
@@ -146,7 +148,8 @@ export function simulatePlayer(cfg: PlayerConfig): PlayerResult {
   let plateau = { hours: 0, runs: 0, tier: 1, wave: 0 };
   let streak = { start: 0, runs: 0, tier: 1, best: 0 };
   const buy: PolicyName = cfg.strategy === 'casual' ? 'round-robin' : 'greedy';
-  const pick: PickPolicyName = cfg.strategy === 'casual' ? 'random-pick' : 'greedy-pick';
+  const crystal: CrystalMode = cfg.strategy === 'casual' ? 'auto' : (cfg.crystal ?? 'auto');
+  const pick: PickPolicyName = cfg.strategy === 'casual' ? 'random-pick' : crystal === 'arrange' ? 'fusion-pick' : 'greedy-pick';
   /** Bits per real minute last observed on each tier (players farm the best one). */
   const rate: Record<number, number> = {};
   for (let run = 1; run <= cfg.maxRuns && hours < cfg.maxHours; run++) {
@@ -155,7 +158,7 @@ export function simulatePlayer(cfg: PlayerConfig): PlayerResult {
     if (run % 3 !== 0 && rate[tier] !== undefined) {
       for (let t = 1; t < m.tierUnlocked; t++) if ((rate[t] ?? 0) > (rate[tier] ?? 0)) tier = t;
     }
-    const res = runBot(D, buy, buildRunOptions(m, D, M, tier, cfg.id * 100003 + run), cfg.runCapMin, pick);
+    const res = runBot(D, buy, buildRunOptions(m, D, M, tier, cfg.id * 100003 + run), cfg.runCapMin, pick, crystal);
     const speed = cfg.strategy === 'casual' ? Math.min(2, labEffects(m, M).speeds.at(-1)!) : labEffects(m, M).speeds.at(-1)!;
     hours += (res.simMinutes / speed + MENU_MIN) / 60;
     const capped = !res.dead;

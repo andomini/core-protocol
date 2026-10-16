@@ -9,6 +9,7 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 - `npm run typecheck`, `npm run build` (`build:crazygames`, `build:poki`)
 - `npm run sim:smoke -- <seed> <tier> [policy] [--unlockall]` — one run until death in Node (policy: none|greedy|atk-first|def-first|round-robin)
 - `npm run sim:balance` — bot policies × 24 seeds → `reports/balance-m2b.md` (B2 check)
+- `npm run sim:balance -- --crystal arrange` adds the fusion-pick + hill-climb arrange player and per-fusion tier columns; `npx tsx tools/sim/crystalGeometry.ts` → `reports/crystal-geometry.md` (pairs touchable with one cluster per tag, modules for a 7-link pair)
 - `npm run replay:record -- --update` — re-record `tests/replays/golden-01.json` (only for a deliberate sim/data change)
 - `npm run ui` — Playwright UI smoke, both orientations + portal checks (starts its own Vite server on `UI_PORT`, default 5180; `-- --only portal`)
 - `npm run build:all`, `npm run package` → `dist/core-protocol-<portal>.zip`; every build runs `tools/postbuild.mjs` (size ≤ 1 MB transfer, one SDK, no dev hooks, relative paths)

@@ -5,7 +5,7 @@ import type { GameData } from '../../src/sim/data';
 import type { SimEvent } from '../../src/sim/events';
 import { createWorld, type RunOptions, type World } from '../../src/sim/state';
 import { step } from '../../src/sim/step';
-import { makeBot, makePicker, type PickPolicyName, type PolicyName } from './bot';
+import { type CrystalMode, fusionPick, makeArranger, makeBot, makePicker, type PickPolicyName, type PolicyName } from './bot';
 import type { Tag } from '../../src/sim/perkData';
 
 export interface RunResult {
@@ -47,12 +47,22 @@ export interface RunResult {
   killEnergy: number;
   /** Energy the Relay Stations paid over the run (stationPay events), against all kill Energy above. */
   stationEnergy: number;
+  /** Highest tier each fusion reached at any moment of the run (fusion events; absent = never), and the crystal mode. */
+  fusionMax: Record<string, number>;
+  crystal: CrystalMode;
+  /** Kill Energy and kill Bits by the source of the killing hit (hit.source: bullet, bounce, lightning, tesla, mine, turret, ...). */
+  energyBySource: Record<string, number>;
+  bitsBySource: Record<string, number>;
 }
 
-export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, maxMinutes = 60, pick: PickPolicyName = 'greedy-pick'): RunResult {
+export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, maxMinutes = 60, pick: PickPolicyName = 'greedy-pick', crystal: CrystalMode = 'auto'): RunResult {
   const w = createWorld(data, opts);
   const bot = makeBot(policy);
   const picker = makePicker(pick, opts.seed);
+  const arranger = crystal === 'arrange' ? makeArranger() : null;
+  const fusionMax: Record<string, number> = {};
+  const energyBySource: Record<string, number> = {};
+  const bitsBySource: Record<string, number> = {};
   const firstPickS = w.phase === 'pick' ? 0 : -1;
   let set2Wave = 0;
   let set4Wave = 0;
@@ -77,7 +87,12 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
   const lastHit = new Map<number, string>();
   while (!w.dead && w.tick < maxTicks) {
     const cmds: Command[] = bot.decide(w, data);
-    if (w.phase === 'pick') cmds.push({ type: 'pickPerk', index: picker.choose(w, data) });
+    if (w.phase === 'pick') {
+      if (arranger) {
+        const fp = fusionPick(w, data);
+        cmds.push(fp.slot ? { type: 'pickPerk', index: fp.index, slot: fp.slot } : { type: 'pickPerk', index: fp.index });
+      } else cmds.push({ type: 'pickPerk', index: picker.choose(w, data) });
+    } else if (arranger) cmds.push(...arranger.decide(w, data));
     for (const cmd of cmds) log.push({ tick: w.tick, cmd });
     step(w, data, cmds, events);
     for (const e of events) {
@@ -88,6 +103,8 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
       else if (e.type === 'kill') {
         killEnergy += e.energy;
         const src = lastHit.get(e.enemyId);
+        energyBySource[src ?? '?'] = (energyBySource[src ?? '?'] ?? 0) + e.energy;
+        bitsBySource[src ?? '?'] = (bitsBySource[src ?? '?'] ?? 0) + e.bits;
         if (src === 'turret') {
           turretKills += 1;
           turretEnergy += e.energy;
@@ -95,7 +112,8 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
           mineKills += 1;
           mineEnergy += e.energy;
         }
-      } else if (e.type === 'structHit') {
+      } else if (e.type === 'fusion') fusionMax[e.key] = Math.max(fusionMax[e.key] ?? 0, e.tier);
+      else if (e.type === 'structHit') {
         if (e.kind === 'wall') wallTaken += e.damage;
         else if (e.kind === 'station') stationTaken += e.damage;
       } else if (e.type === 'stationPay') stationEnergy += e.energy;
@@ -134,6 +152,10 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
     mineEnergy,
     killEnergy,
     stationEnergy,
+    fusionMax,
+    crystal,
+    energyBySource,
+    bitsBySource,
     seed: opts.seed,
     wave: w.wave,
     dead: w.dead,

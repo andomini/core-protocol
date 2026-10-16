@@ -101,6 +101,8 @@ export function hitEnemy(
     if (crit) how *= prof.critKillMul;
     if (isFrozen(w, e)) how *= prof.frozenKillMul;
     if (source === 'bounce' || source === 'lightning' || source === 'tesla' || source === 'mine') how *= prof.chainKillMul;
+    // The crit x frozen x chain product is capped (data.sets.howCap) so stacked fusions cannot blow a kill up.
+    how = Math.min(how, data.sets.howCap);
     const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how);
     const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far);
     const keys = data.enemies[e.kind].keys + (boss ? prof.bossKeys : 0);

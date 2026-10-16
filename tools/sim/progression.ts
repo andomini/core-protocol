@@ -1,13 +1,14 @@
 // Mass progression test: many simulated players (strategies × ads) in parallel worker threads, each playing
 // from a fresh save until maxHours of real play or the last tier. Reports when tiers unlock, where progress
 // stalls (longest stretch without a new best wave), runaway runs (hit the run cap) and what stays unbought.
-// Usage: npm run sim:progression -- [--players 128] [--hours 40] [--runs 600] [--cap 180] [--out reports/progression.md]
+// Usage: npm run sim:progression -- [--players 128] [--hours 40] [--runs 600] [--cap 180] [--out reports/progression.md] [--crystal auto|arrange]
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { Experiment } from './experiment';
 import { cpus } from 'node:os';
 import { Worker } from 'node:worker_threads';
 import { DEFAULT_META_DATA as M } from '../../src/meta/metaData';
 import { DEFAULT_DATA as D } from '../../src/sim/data';
+import type { CrystalMode } from './bot';
 import type { PlayerConfig, PlayerResult, Strategy } from './progressionPlayer';
 
 const args = process.argv.slice(2);
@@ -21,6 +22,8 @@ const expArg = arg('exp', '');
 const exp: Experiment | undefined = expArg ? (JSON.parse(expArg.startsWith('{') ? expArg : readFileSync(expArg, 'utf8')) as Experiment) : undefined;
 const stratArg = arg('strats', '');
 const endless = args.includes('--endless');
+const crystal = arg('crystal', 'auto') as CrystalMode;
+if (crystal !== 'auto' && crystal !== 'arrange') throw new Error(`--crystal must be auto or arrange, got ${crystal}`);
 const threads = Math.max(1, Math.min(cpus().length - 2, players));
 
 const ALL_STRATS: { strategy: Strategy; ads: boolean }[] = [
@@ -31,7 +34,7 @@ const ALL_STRATS: { strategy: Strategy; ads: boolean }[] = [
   { strategy: 'casual', ads: false },
 ];
 const STRATS = stratArg ? ALL_STRATS.filter((s) => stratArg.split(',').includes(`${s.strategy}${s.ads ? '+ads' : ''}`)) : ALL_STRATS;
-const queue: PlayerConfig[] = Array.from({ length: players }, (_, i) => ({ id: i + 1, ...STRATS[i % STRATS.length]!, maxHours, maxRuns, runCapMin, endless }));
+const queue: PlayerConfig[] = Array.from({ length: players }, (_, i) => ({ id: i + 1, ...STRATS[i % STRATS.length]!, maxHours, maxRuns, runCapMin, endless, crystal }));
 const total = queue.length;
 const results: PlayerResult[] = [];
 const t0 = Date.now();
