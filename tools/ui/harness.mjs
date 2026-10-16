@@ -114,6 +114,17 @@ export async function open(browser, base, device, query = '', opts = {}) {
       });
       await p.mouse.move(box.x + x * box.s, box.y + y * box.s);
     },
+    /** Mouse press / move / release at a logical point (drags). */
+    mouseLogical: async (kind, x, y) => {
+      const box = await p.evaluate(() => {
+        const r = document.querySelector('canvas').getBoundingClientRect();
+        const L = window.__cp.game.registry.get('layout');
+        return { x: r.x, y: r.y, s: r.width / L.w };
+      });
+      await p.mouse.move(box.x + x * box.s, box.y + y * box.s, { steps: kind === 'move' ? 6 : 1 });
+      if (kind === 'down') await p.mouse.down();
+      if (kind === 'up') await p.mouse.up();
+    },
     /** Committed screenshot (JPEG, small) + a full-quality PNG for review in .superpowers/. */
     shot: async (name) => {
       mkdirSync('reports/screens', { recursive: true });

@@ -724,6 +724,36 @@ const scenarios = {
       await tapDone(h);
       const back = await h.state();
       check(results, `${label} editor: DONE returns to the pause menu`, !(await h.call('editor')).open && back.paused, back.paused);
+      // Field drag (no editor): press a module, drag it — the battle pauses and targets light up — drop on one.
+      await h.call('pause', false);
+      await h.p.waitForTimeout(150);
+      const mods = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').session.world.crystal.map((m) => [m.q, m.r]));
+      let dragged = null;
+      for (const [q, r] of mods) {
+        const a = await h.p.evaluate(([q, r]) => window.__cp.game.scene.getScene('Battle').crystal.hexScreen(q, r), [q, r]);
+        await h.mouseLogical('down', a[0], a[1]);
+        await h.mouseLogical('move', a[0] + 40, a[1] + 40);
+        await h.p.waitForTimeout(80);
+        const mid = await h.p.evaluate(() => {
+          const b = window.__cp.game.scene.getScene('Battle');
+          const t = b.crystal.edit?.targets[0];
+          return { d: b.fieldDragState(), paused: b.paused, menu: b.exitBtn.bg.visible, to: t ? [t.q, t.r] : null, at: t ? b.crystal.hexScreen(t.q, t.r) : null };
+        });
+        if (!mid.to) {
+          await h.mouseLogical('up', a[0], a[1]);
+          await h.p.waitForTimeout(80);
+          continue;
+        }
+        check(results, `${label} field drag: dragging a module pauses the battle without the pause menu`, mid.d?.moved && mid.paused && !mid.menu, mid);
+        await h.mouseLogical('move', mid.at[0], mid.at[1]);
+        await h.shot(`field-drag-${label}`);
+        await h.mouseLogical('up', mid.at[0], mid.at[1]);
+        await h.p.waitForTimeout(150);
+        dragged = { from: [q, r], to: mid.to };
+        break;
+      }
+      const fd = await h.state();
+      check(results, `${label} field drag: dropping on a lit hex moves the module and resumes`, dragged !== null && fd.crystal.some((m) => m[0] === dragged.to[0] && m[1] === dragged.to[1]) && !fd.paused, { dragged, crystal: fd.crystal, paused: fd.paused });
       check(results, `${label} editor: no console errors`, h.errors.length === 0, h.errors);
       await h.close();
     }

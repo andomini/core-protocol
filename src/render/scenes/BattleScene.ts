@@ -16,7 +16,7 @@ import { showToast } from '../../portal/toast';
 import { clusterCounts, freeSlots, fusionLinkCounts, fusionLinks, moduleCluster, needsPlacement, sectorTags } from '../../sim/crystal';
 import { arenaRadius } from '../../sim/territory';
 import { formatNum, formatPrice } from '../../ui/format';
-import { CrystalEditor } from '../../ui/CrystalEditor';
+import { CrystalEditor, moveTargets } from '../../ui/CrystalEditor';
 import { GenomeStrip } from '../../ui/GenomeStrip';
 import { CrystalView } from '../CrystalView';
 import { StructureView } from '../StructureView';
@@ -91,6 +91,8 @@ export class BattleScene extends Phaser.Scene {
     return this.editor?.visible && this.editor.mode === 'place' ? this.editor.index : -1;
   }
   private pausedBeforeEditor = false;
+  /** A press on a crystal module in the battle view; past a few px it becomes a drag that moves the module. */
+  private fieldDrag: { i: number; x: number; y: number; moved: boolean; pausedBefore: boolean; tiers: { sets: Record<Tag, number>; fusions: Record<string, number> } | null } | null = null;
   private tiersBeforeEditor: { sets: Record<Tag, number>; fusions: Record<string, number> } | null = null;
   crystalBtn!: Button;
   /** The lifecycle 'perkPick' hold is on (the pick or its placement step is open). */
@@ -158,6 +160,7 @@ export class BattleScene extends Phaser.Scene {
     this.pausedBeforePanel = false;
     this.tiersBeforeEditor = null;
     this.pausedBeforeEditor = false;
+    this.fieldDrag = null;
   }
 
   create(): void {
@@ -230,8 +233,17 @@ export class BattleScene extends Phaser.Scene {
     this.crystal = new CrystalView(this, this.L, this.gd);
     this.modTip = new SetTooltip(this, this.L, this.gd, DEPTH.overlay - 2);
     // Mouse hover (or a tap on touch) over a crystal module: what it does and whether its cluster counts.
-    this.input.on('pointermove', (p: Phaser.Input.Pointer) => this.hoverModule(p.worldX, p.worldY, false));
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => this.hoverModule(p.worldX, p.worldY, true));
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      this.fieldMove(p.worldX, p.worldY);
+      this.hoverModule(p.worldX, p.worldY, false);
+    });
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      this.fieldDown(p.worldX, p.worldY);
+      this.hoverModule(p.worldX, p.worldY, true);
+    });
+    // Drag a module straight on the field (no editor): drop on an outlined hex moves or swaps it.
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => this.fieldUp(p.worldX, p.worldY));
+    this.input.on('pointerupoutside', (p: Phaser.Input.Pointer) => this.fieldUp(p.worldX, p.worldY));
     this.genome = new GenomeStrip(this, this.L);
     this.editor = new CrystalEditor(this, this.L, this.gd, this.crystal, () => this.session.world, {
       place: (slot) => this.placeModule(slot),
@@ -586,7 +598,7 @@ export class BattleScene extends Phaser.Scene {
 
   private hoverModule(x: number, y: number, tap = false): void {
     const w = this.session.world;
-    const blocked = w.dead || w.phase === 'pick' || this.editor.visible || this.protocols.visible || this.statsPanel.visible;
+    const blocked = w.dead || w.phase === 'pick' || this.editor.visible || this.protocols.visible || this.statsPanel.visible || this.fieldDrag?.moved === true;
     const mod = blocked ? -1 : this.crystal.moduleAt(w, x, y);
     // A structure is only opened by a tap and stays up until the next tap elsewhere (or a module hover).
     const struct = mod < 0 && tap && !blocked ? this.structureAt(w, x, y) : null;
@@ -641,6 +653,56 @@ export class BattleScene extends Phaser.Scene {
       note: fuse.length > 0 ? `${note}\n${fuse.join('\n')}` : note,
       noteColor: counts ? TAG_CSS[m.tag] : TEXT_RED,
     });
+  }
+
+  /** Field drag (no editor): a press on a module arms it; the battle pauses only once the drag starts. */
+  private fieldDown(x: number, y: number): void {
+    const w = this.session.world;
+    this.fieldDrag = null;
+    if (w.dead || w.phase === 'pick' || this.editor.visible || this.protocols.visible || this.statsPanel.visible || this.exitBtn.bg.visible) return;
+    const i = this.crystal.moduleAt(w, x, y);
+    if (i >= 0) this.fieldDrag = { i, x, y, moved: false, pausedBefore: this.paused, tiers: null };
+  }
+
+  private fieldMove(x: number, y: number): void {
+    const d = this.fieldDrag;
+    if (!d) return;
+    if (!d.moved) {
+      if (Math.hypot(x - d.x, y - d.y) < this.crystal.R * 0.5) return;
+      const w = this.session.world;
+      if (w.dead || w.phase === 'pick' || this.editor.visible || !w.crystal[d.i]) {
+        this.fieldDrag = null;
+        return;
+      }
+      d.moved = true;
+      d.pausedBefore = this.paused;
+      d.tiers = { sets: { ...w.setTiers }, fusions: { ...w.fusionTiers } };
+      this.paused = true;
+      this.life.hold('fieldDrag', true);
+      if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
+      this.crystal.edit = { selected: d.i, targets: moveTargets(w, this.gd, d.i), ghost: null };
+    }
+    if (this.crystal.edit) this.crystal.edit.ghost = [x, y];
+  }
+
+  private fieldUp(x: number, y: number): void {
+    const d = this.fieldDrag;
+    this.fieldDrag = null;
+    if (!d?.moved) return;
+    const e = this.crystal.edit;
+    this.crystal.edit = null;
+    const [q, r] = this.crystal.hexAt(x, y);
+    const m = this.session.world.crystal[d.i];
+    if (m && e?.targets.some((t) => t.q === q && t.r === r)) this.command({ type: 'moveModule', from: [m.q, m.r], to: [q, r] });
+    this.life.hold('fieldDrag', false);
+    this.paused = d.pausedBefore;
+    if (d.tiers) this.announceTiers(d.tiers);
+  }
+
+  /** Field drag state, for the UI smoke. */
+  fieldDragState(): { i: number; moved: boolean; targets: number } | null {
+    const d = this.fieldDrag;
+    return d ? { i: d.i, moved: d.moved, targets: this.crystal.edit?.targets.length ?? 0 } : null;
   }
 
   openProtocols(): void {
@@ -1176,7 +1238,7 @@ export class BattleScene extends Phaser.Scene {
     this.crystal.draw(this.session.world, sectorTags(this.session.world, this.gd), time);
     this.genome.update(this.session.world.genome);
     this.fx.update();
-    this.hud.update(this.session.world, this.session.stats, this.speed, this.paused && !this.editor.visible, time, delta);
+    this.hud.update(this.session.world, this.session.stats, this.speed, this.paused && !this.editor.visible && !this.fieldDrag?.moved, time, delta);
     this.upgrades.update(time);
     if (this.bannerUntil > 0) {
       const left = this.bannerUntil - time;
@@ -1228,7 +1290,7 @@ export class BattleScene extends Phaser.Scene {
       this.endPlacing();
       this.life.hold('perkPick', false);
     }
-    const pauseMenu = this.paused && !w.dead && !this.editor.visible && !this.protocols.visible && !this.statsPanel.visible && w.phase !== 'pick';
+    const pauseMenu = this.paused && !w.dead && !this.editor.visible && !this.fieldDrag?.moved && !this.protocols.visible && !this.statsPanel.visible && w.phase !== 'pick';
     this.exitBtn.setVisible(pauseMenu);
     this.statsBtn.setVisible(pauseMenu);
     this.crystalBtn.setVisible(pauseMenu && w.crystal.length > 0);

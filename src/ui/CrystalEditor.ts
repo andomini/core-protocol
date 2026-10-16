@@ -113,6 +113,19 @@ export function outcomeColor(d: CrystalDiff, tag: Tag): number {
   return CYAN;
 }
 
+/** Every hex module `i` may move (or swap) to, outlined in its outcome colour (the editor and the field drag). */
+export function moveTargets(w: World, data: GameData, i: number): EditState['targets'] {
+  const targets: EditState['targets'] = [];
+  const m = w.crystal[i];
+  if (!m) return targets;
+  for (const [q, r] of crystalSlots(data, crystalRing(data, w.wave))) {
+    if (q === m.q && r === m.r) continue;
+    const d = movePreview(w, data, [m.q, m.r], [q, r]);
+    if (d) targets.push({ q, r, color: outcomeColor(d, m.tag) });
+  }
+  return targets;
+}
+
 export class CrystalEditor {
   private readonly scrim: Phaser.GameObjects.Rectangle;
   private readonly panels: Phaser.GameObjects.Image[] = [];
@@ -356,16 +369,7 @@ export class CrystalEditor {
   }
 
   private editState(w: World): EditState {
-    const targets: EditState['targets'] = [];
-    const m = w.crystal[this.selected];
-    if (m) {
-      for (const [q, r] of crystalSlots(this.data, crystalRing(this.data, w.wave))) {
-        if (q === m.q && r === m.r) continue;
-        const d = movePreview(w, this.data, [m.q, m.r], [q, r]);
-        if (d) targets.push({ q, r, color: outcomeColor(d, m.tag) });
-      }
-    }
-    return { selected: this.selected, targets, ghost: this.crystal.edit?.ghost ?? null };
+    return { selected: this.selected, targets: moveTargets(w, this.data, this.selected), ghost: this.crystal.edit?.ghost ?? null };
   }
 
   private currentLines(): Line[] {
