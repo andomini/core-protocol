@@ -143,7 +143,7 @@ export function installDevHooks(game: Phaser.Game): void {
     editor: () => {
       const e = battle()?.editor;
       if (!e) return null;
-      return { open: e.visible, mode: e.mode, selected: e.selected, readout: [...e.readoutLines], strip: [...e.stripLines] };
+      return { open: e.visible, mode: e.mode, selected: e.selected, readout: [...e.readoutLines], strip: [...e.stripLines], chips: e.pairChips().map((c) => ({ ...c })), glow: e.glowing().map((x) => [...x]) };
     },
     /** Screen point (logical px) of crystal hex (q, r) at the current zoom. */
     slotScreen: (q: number, r: number) => battle()?.crystal.hexScreen(q, r) ?? null,

@@ -6,7 +6,7 @@ import type { SimEvent } from '../src/sim/events';
 import { hashWorld } from '../src/sim/hash';
 import { isNeighbour, ring } from '../src/sim/hex';
 import { fusionKey, fusionKeys, validateSets } from '../src/sim/perkData';
-import { grantPerk, perkProfile } from '../src/sim/perks';
+import { grantPerk, perkProfile, settleWeld } from '../src/sim/perks';
 import { hitEnemy } from '../src/sim/projectiles';
 import { replay } from '../src/sim/replay';
 import { restore, snapshot } from '../src/sim/snapshot';
@@ -21,9 +21,19 @@ type W = ReturnType<typeof quiet>;
 // Ring 2 is the inner module ring: every hex there touches the core block, and consecutive hexes touch.
 const R2 = ring(2);
 const at = (i: number): [number, number] => R2[i]!;
+// Ring 3 hexes: o(1) touches at(0) and at(1), o(2) touches at(1) and at(2), consecutive ones touch.
+const R3 = ring(3);
+const o = (i: number): [number, number] => R3[i]!;
+
+/** Lets every pending fusion rise weld (spec 2026-10-16 §3). */
+function settle(w: W, events: SimEvent[] | null = null): void {
+  w.tick += D.sets.weldTicks;
+  settleWeld(w, D, events);
+}
 
 function grant(w: W, id: string, slot: [number, number], times = 1, events: SimEvent[] | null = null): void {
   for (let i = 0; i < times; i++) grantPerk(w, D, id, events, i === 0 ? slot : undefined);
+  settle(w, events);
 }
 
 function move(w: W, from: [number, number], to: [number, number]): SimEvent[] {
@@ -53,71 +63,94 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 �
     expect(() => validateSets(order)).toThrow(/sets\.fusionTiers must be increasing/);
   });
 
-  it('every shared edge is one link: two touching modules = 1, one module between two of the other tag = 2', () => {
-    expect(isNeighbour(...at(0), ...at(1)) && isNeighbour(...at(1), ...at(2)) && !isNeighbour(...at(0), ...at(2))).toBe(true);
+  it('every shared edge between the counted clusters is one link; a stray module adds none (spec 2026-10-16 §1)', () => {
+    expect(isNeighbour(...at(0), ...at(1)) && isNeighbour(...o(1), ...at(0)) && isNeighbour(...o(1), ...at(1)) && isNeighbour(...o(1), ...o(2))).toBe(true);
     const w = quiet();
     grant(w, 'overclockRounds', at(0));
     grant(w, 'bounce', at(1));
     expect(fusionLinks(w, D)).toEqual([{ a: 0, b: 1, key: 'overload+chain' }]);
     expect(fusionLinkCounts(w, D)).toEqual({ 'overload+chain': 1 });
-    grant(w, 'burstFire', at(2));
+    // ⚡ at o(1) joins the ⚡ cluster (touches at(0)) and touches 🔗 at(1): one more link.
+    grant(w, 'burstFire', o(1));
     expect(fusionLinkCounts(w, D)).toEqual({ 'overload+chain': 2 });
     // Same-tag neighbours are a set cluster, not a link.
-    grant(w, 'arc', at(11));
-    grant(w, 'conductive', at(10));
+    grant(w, 'arc', at(2));
+    grant(w, 'conductive', o(2));
     expect(fusionLinkCounts(w, D)).toEqual({ 'overload+chain': 3 });
+    // A stray ⚡ (its own 1-stack cluster, smaller than the counted one) touching 🔗 at(2) adds no link.
+    grant(w, 'hotBarrel', at(3));
+    expect(fusionLinkCounts(w, D)).toEqual({ 'overload+chain': 3 });
+    expect(fusionLinks(w, D).some((l) => l.a === 5 || l.b === 5)).toBe(false);
   });
 
   it('tiers I / II / III at 1 / 3 / 5 links, one event per change, effects add up', () => {
     const w = quiet();
     const ev: SimEvent[] = [];
-    const base = perkProfile(w, D).rules;
-    // Alternating ⚡ 🔗 ⚡ 🔗 ⚡ 🔗 along ring 2: each new module adds one link (no two ⚡ touch: no set).
-    const seq = ['overclockRounds', 'bounce', 'burstFire', 'arc', 'hotBarrel', 'overchargeLink'];
+    // A zipper: ⚡ on ring 2 (at 0, 1, 2), 🔗 on ring 3 outside it (o 0, 1, 2); each step adds one or two links.
+    const seq: [string, [number, number]][] = [
+      ['overclockRounds', at(0)],
+      ['bounce', o(0)],
+      ['arc', o(1)],
+      ['burstFire', at(1)],
+      ['overchargeLink', o(2)],
+      ['hotBarrel', at(2)],
+    ];
     const tiers: number[] = [];
-    seq.forEach((id, i) => {
-      grant(w, id, at(i), 1, ev);
+    const links: number[] = [];
+    for (const [id, slot] of seq) {
+      grant(w, id, slot, 1, ev);
       tiers.push(w.fusionTiers['overload+chain'] ?? 0);
-    });
+      links.push(fusionLinkCounts(w, D)['overload+chain'] ?? 0);
+    }
+    expect(links).toEqual([0, 1, 2, 3, 4, 5]);
     expect(tiers).toEqual([0, 1, 1, 3, 3, 5]);
     expect(ofType(ev, 'fusion')).toEqual([
-      { type: 'fusion', key: 'overload+chain', tier: 1, prev: 0, a: at(0), b: at(1) },
-      { type: 'fusion', key: 'overload+chain', tier: 3, prev: 1, a: at(0), b: at(1) },
-      { type: 'fusion', key: 'overload+chain', tier: 5, prev: 3, a: at(0), b: at(1) },
+      { type: 'fusion', key: 'overload+chain', tier: 1, prev: 0, a: at(0), b: o(0) },
+      { type: 'fusion', key: 'overload+chain', tier: 3, prev: 1, a: at(0), b: o(0) },
+      { type: 'fusion', key: 'overload+chain', tier: 5, prev: 3, a: at(0), b: o(0) },
     ]);
-    expect(ofType(ev, 'setTier')).toEqual([]);
+    // The same world without its fusion tiers: the ratios below are the fusion's alone.
+    const bare = structuredClone(w);
+    bare.fusionTiers = {};
+    const base = perkProfile(bare, D).rules;
     const p = perkProfile(w, D);
     // The ⚡/🔗 perks change no lightning rules themselves, so the ratios are the fusion's alone.
     expect(p.rules.lightningDamage).toBeCloseTo(base.lightningDamage * 1.3, 12);
     expect(p.rules.lightningTargets).toBeCloseTo(base.lightningTargets + 1, 12);
     expect(p.periodic.filter((x) => x.key === 'fusion:overload+chain:5:0').map((x) => x.e.action)).toEqual(['tesla']);
-    expect(w.timers['fusion:overload+chain:5:0']).toEqual({ next: Math.round(10 * D.config.tickHz), until: -1 });
+    expect(w.timers['fusion:overload+chain:5:0']).toEqual({ next: w.tick - D.sets.weldTicks + Math.round(10 * D.config.tickHz) + D.sets.weldTicks, until: -1 });
   });
 
-  it('live: a move that takes links away lowers the tier (mods and timers go), moving back restores it once', () => {
+  it('live: a move that takes links away lowers the tier at once (mods and timers go), moving back restores it once after the weld', () => {
     const w = quiet();
-    // ⚡ 💰 ⚡ 💰 → 3 links: Headhunter II adds +5 % Crit Chance as a stat mod.
-    ['overclockRounds', 'energySiphon', 'burstFire', 'dataMine'].forEach((id, i) => grant(w, id, at(i)));
+    // ⚡ at(0), at(1) and 💰 at o(1), o(2) → 3 links: Headhunter II adds +5 % Crit Chance as a stat mod.
+    grant(w, 'overclockRounds', at(0));
+    grant(w, 'burstFire', at(1));
+    grant(w, 'energySiphon', o(1));
+    grant(w, 'dataMine', o(2));
     expect(w.fusionTiers['overload+mining']).toBe(3);
     const crit = worldStats(w, D).critChance;
     expect(w.mods.filter((m) => m.source === 'fusion:overload+mining:3')).toHaveLength(1);
-    // 💰 at hex 3 goes to the far side of the ring: 2 links left → tier I.
-    let ev = move(w, at(3), at(8));
+    // 💰 at o(2) goes to the far side of the ring: 2 links left → tier I, at once.
+    let ev = move(w, o(2), at(6));
     expect(ofType(ev, 'commandRejected')).toEqual([]);
     expect(w.fusionTiers['overload+mining']).toBe(1);
-    expect(ofType(ev, 'fusion')).toEqual([{ type: 'fusion', key: 'overload+mining', tier: 1, prev: 3, a: at(0), b: at(1) }]);
+    expect(ofType(ev, 'fusion')).toEqual([{ type: 'fusion', key: 'overload+mining', tier: 1, prev: 3, a: at(0), b: o(1) }]);
     expect(w.mods.filter((m) => m.source.startsWith('fusion:overload+mining:3'))).toEqual([]);
     expect(worldStats(w, D).critChance).toBeCloseTo(crit - 0.05, 12);
-    ev = move(w, at(8), at(3));
+    ev = move(w, at(6), o(2));
+    expect(w.fusionTiers['overload+mining']).toBe(1);
+    expect(ofType(ev, 'fusion')).toEqual([]);
+    settle(w, ev);
     expect(w.fusionTiers['overload+mining']).toBe(3);
     expect(ofType(ev, 'fusion')).toHaveLength(1);
     expect(w.mods.filter((m) => m.source === 'fusion:overload+mining:3')).toHaveLength(1);
     expect(worldStats(w, D).critChance).toBeCloseTo(crit, 12);
     // Every module of one tag away from the other: the fusion is gone, with a tier-0 event and no link hexes.
-    move(w, at(1), at(6));
-    ev = move(w, at(3), at(7));
+    // (After the first move the tie between two 1-stack 💰 clusters goes to the lower module index, at(7): already 0 links.)
+    ev = [...move(w, o(1), at(7)), ...move(w, o(2), at(8))];
     expect(w.fusionTiers).toEqual({});
-    expect(ofType(ev, 'fusion')).toEqual([{ type: 'fusion', key: 'overload+mining', tier: 0, prev: 1, a: null, b: null }]);
+    expect(ofType(ev, 'fusion')).toEqual([{ type: 'fusion', key: 'overload+mining', tier: 0, prev: 3, a: null, b: null }]);
     expect(w.mods.some((m) => m.source.startsWith('fusion:'))).toBe(false);
   });
 
@@ -159,14 +192,21 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 �
 
   it('a dropped tier stops its periodic effects; rebuilding it does not recharge a spent immunity', () => {
     const w = quiet();
-    ['overclockRounds', 'bounce', 'burstFire', 'arc', 'hotBarrel', 'overchargeLink'].forEach((id, i) => grant(w, id, at(i)));
+    grant(w, 'overclockRounds', at(0));
+    grant(w, 'burstFire', at(1));
+    grant(w, 'hotBarrel', at(2));
+    grant(w, 'bounce', o(0));
+    grant(w, 'arc', o(1));
+    grant(w, 'overchargeLink', o(2));
+    expect(w.fusionTiers['overload+chain']).toBe(5);
     const tesla = 'fusion:overload+chain:5:0';
     expect(perkProfile(w, D).periodic.map((x) => x.key)).toContain(tesla);
-    move(w, at(5), at(9));
+    move(w, at(2), at(9));
     expect(w.fusionTiers['overload+chain']).toBe(3);
     expect(w.timers[tesla]).toBeUndefined();
     expect(perkProfile(w, D).periodic.map((x) => x.key)).not.toContain(tesla);
-    move(w, at(9), at(5));
+    move(w, at(9), at(2));
+    settle(w);
     expect(w.timers[tesla]).toEqual({ next: w.tick + Math.round(10 * D.config.tickHz), until: -1 });
 
     const f = quiet();

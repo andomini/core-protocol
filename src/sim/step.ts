@@ -4,7 +4,7 @@ import type { GameData } from './data';
 import { updateEnemies } from './enemies';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
-import { type PerkProfile, periodicTicks, perkProfile } from './perks';
+import { accumulateCrystal, latticeMul, type PerkProfile, periodicTicks, perkProfile, settleWeld } from './perks';
 import { hitEnemy, updateProjectiles } from './projectiles';
 import { gridFor } from './spatial';
 import { syncStructures, updateStructures } from './structures';
@@ -65,7 +65,7 @@ export function combatStats(w: World, data: GameData, prof: PerkProfile): CoreSt
 /**
  * Advances the world by one tick (1/tickHz s). A dead world, or one waiting for a protocol pick, does not
  * change (beyond the commands).
- * Order: commands → [pick? stop] → periodic effects → structures follow the links → waves/spawns → enemies move & attack →
+ * Order: commands → [pick? stop] → weld settles, Lattice/gene accumulators → periodic effects → structures follow the links → waves/spawns → enemies move & attack →
  * infection → death check → spatial hash → structures regrow, shatter, fire & detonate → core regen & fire → projectiles (hits, procs, bounces).
  * Commands come first, before anything else touches the world, so applying them between two steps is
  * exactly the same as passing them to the next step (RunSession relies on this while paused or picking).
@@ -74,6 +74,8 @@ export function step(w: World, data: GameData, commands: readonly Command[], eve
   if (commands.length > 0) applyCommands(w, data, commands, events);
   if (w.dead || w.phase === 'pick') return;
   w.tick += 1;
+  settleWeld(w, data, events);
+  accumulateCrystal(w, data);
   const prof = perkProfile(w, data);
   runPeriodic(w, data, prof, events);
   const st = combatStats(w, data, prof);
@@ -85,7 +87,8 @@ export function step(w: World, data: GameData, commands: readonly Command[], eve
   if (w.core.hp <= 0) {
     w.core.hp = 0;
     w.dead = true;
-    const bonusBits = clampValue(w.bits * (prof.rules.runEndBits - 1));
+    // Run-end Bits: the rules' multiplier (mining 4) × the Lattice (spec 2026-10-16 §4, tick-averaged fusion tiers).
+    const bonusBits = clampValue(w.bits * (prof.rules.runEndBits * latticeMul(w, data) - 1));
     w.bits = clampValue(w.bits + bonusBits);
     w.bitsBonus = bonusBits;
     events.push({ type: 'death', wave: w.wave, tick: w.tick, bonusBits });

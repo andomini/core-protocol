@@ -7,10 +7,10 @@
 // the moves of this session. Commands go through the scene (applied at once: the battle is paused).
 
 import Phaser from 'phaser';
-import { type CrystalDiff, crystalSlots, fusionLinkCounts, movePreview, slotGains, autoSlot, freeSlots } from '../sim/crystal';
+import { type CrystalDiff, crystalSlots, fusionLinkCounts, movePreview, slotGains, autoSlot, freeSlots, pairLinkSlots } from '../sim/crystal';
 import type { GameData } from '../sim/data';
 import { fusionKeys, TAGS, type Tag } from '../sim/perkData';
-import { tagCounts } from '../sim/perks';
+import { nextFusionTier, tagCounts } from '../sim/perks';
 import type { World } from '../sim/state';
 import { crystalRing } from '../sim/territory';
 import type { CrystalView, EditState } from '../render/CrystalView';
@@ -18,7 +18,7 @@ import { BG, CRIMSON, CYAN, PANEL_FILL, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, WHIT
 import { DEPTH } from '../render/WorldView';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
-import { fusionLevel, fusionTags } from './perkText';
+import { fusionLevel, fusionTags, latticeLine } from './perkText';
 import { drawTagIcon } from './tagIcon';
 
 const D = DEPTH.overlay - 4;
@@ -28,7 +28,8 @@ const SECTOR_NAMES = ['east', 'north-east', 'north-west', 'west', 'south-west', 
 const FLASH_MS = 1500;
 const RULES = [
   'Touching same-tag modules form a set',
-  'Tag-to-tag links: 1 / 3 / 5 → fusion I / II / III',
+  'Links between the largest clusters: 1 / 3 / 5 → fusion I / II / III (rises weld in 5 s)',
+  'Tap a pair chip: glowing hexes add a link to it',
   'Wedges: most modules in a 60° sector colour its ground',
   'Tap a module, then a hex: move or swap',
 ];
@@ -127,6 +128,10 @@ export class CrystalEditor {
   private drag: { from: number; x: number; y: number; moved: boolean; toggle: boolean } | null = null;
   private readonly undo: { from: [number, number]; to: [number, number] }[] = [];
   private flash: { lines: Line[]; until: number } | null = null;
+  /** The tapped pair chip (fusion key) whose link hexes glow, or null. */
+  private pair: string | null = null;
+  /** Tappable pair chips of the strip (logical px). */
+  private chipRects: { key: string; r: Rect }[] = [];
   visible = false;
   mode: EditorMode = 'arrange';
   /** Place mode: the offer index whose module is being placed. */
@@ -232,6 +237,7 @@ export class CrystalEditor {
     this.selected = -1;
     this.drag = null;
     this.hoverHex = null;
+    this.pair = null;
     this.scrim.setVisible(true).setInteractive();
     for (const p of this.panels) p.setVisible(true);
     this.title.setVisible(true);
@@ -260,6 +266,8 @@ export class CrystalEditor {
     this.crystal.setZoom(null);
     this.crystal.placing = null;
     this.crystal.edit = null;
+    this.crystal.pairGlow = null;
+    this.pair = null;
   }
 
   /** Per frame while open: the post-move readout expires. */
@@ -299,9 +307,36 @@ export class CrystalEditor {
       this.sub.setText(this.selected >= 0 ? 'Tap where it goes · a module swaps' : 'Tap a module to move it');
       this.undoBtn.label.setAlpha(this.undo.length > 0 ? 1 : 0.4);
     }
+    this.crystal.pairGlow = this.pair ? { hexes: this.glowHexes(w, this.pair), color: WHITE } : null;
     this.drawStrip(w);
     this.drawReadout();
     void now;
+  }
+
+  /** Hexes that add a link to pair `key`: place mode, the free slots for this module; arrange mode, the
+   * selected module's targets that add one, or (nothing selected) the free hexes where either tag adds one. */
+  private glowHexes(w: World, key: string): [number, number][] {
+    if (this.mode === 'place') {
+      const tag = this.data.perks.perks[this.perk]!.tag;
+      return fusionTags(key).includes(tag) ? pairLinkSlots(w, this.data, key, [tag]) : [];
+    }
+    const m = w.crystal[this.selected];
+    if (!m) return pairLinkSlots(w, this.data, key);
+    const out: [number, number][] = [];
+    for (const t of this.crystal.edit?.targets ?? []) {
+      const d = movePreview(w, this.data, [m.q, m.r], [t.q, t.r]);
+      if (d?.fusions.some((f) => f.key === key && f.to > f.from)) out.push([t.q, t.r]);
+    }
+    return out;
+  }
+
+  /** Pair chip text: `II · 2 → III` (tier · links → next level), `MAX` at the top, `weld` while a rise settles. */
+  pairLabel(w: World, key: string, links: number): string {
+    const tier = w.fusionTiers[key] ?? 0;
+    const next = nextFusionTier(this.data, links, key);
+    const pend = w.fusionPending[key];
+    const nxt = pend ? `${fusionLevel(this.data, pend.tier)} weld` : next > 0 ? fusionLevel(this.data, next) : 'MAX';
+    return `${tier > 0 ? fusionLevel(this.data, tier) : '–'} · ${links} → ${nxt}`;
   }
 
   private editState(w: World): EditState {
@@ -345,7 +380,9 @@ export class CrystalEditor {
     const g = this.stripG.clear();
     const counts = tagCounts(w, this.data);
     const links = fusionLinkCounts(w, this.data);
-    const entries: { tags: Tag[]; label: string; color: string; on: boolean; plain: string }[] = [];
+    const entries: { tags: Tag[]; label: string; color: string; on: boolean; plain: string; key?: string }[] = [];
+    const lattice = latticeLine(this.data, w);
+    entries.push({ tags: [], label: lattice, color: '#ffd23b', on: true, plain: lattice });
     for (const tag of TAGS) {
       const tier = w.setTiers[tag] ?? 0;
       entries.push({
@@ -356,18 +393,24 @@ export class CrystalEditor {
         plain: `${this.data.sets.tags[tag].name} ${counts[tag]}·${tier}`,
       });
     }
+    // Pair chips: every pair with a link or with both tags on the crystal (tap → its link hexes glow).
+    const present = new Set(w.crystal.map((m) => m.tag));
     for (const key of fusionKeys()) {
       const n = links[key] ?? 0;
-      if (n <= 0) continue;
+      const [ta, tb] = fusionTags(key);
+      if (n <= 0 && !(present.has(ta) && present.has(tb))) continue;
       const tier = w.fusionTiers[key] ?? 0;
+      const label = this.pairLabel(w, key, n);
       entries.push({
-        tags: fusionTags(key),
-        label: `${n} · ${tier > 0 ? fusionLevel(this.data, tier) : '–'}`,
-        color: tier > 0 ? '#ffffff' : TEXT_DIM,
+        tags: [ta, tb],
+        label,
+        color: this.pair === key ? '#2bffb0' : tier > 0 ? '#ffffff' : TEXT_DIM,
         on: true,
-        plain: `${this.data.sets.fusions[key]!.name} ${n}·${tier > 0 ? fusionLevel(this.data, tier) : '-'}`,
+        plain: `${this.data.sets.fusions[key]!.name} ${label}`,
+        key,
       });
     }
+    this.chipRects = [];
     this.stripLines = entries.map((e) => e.plain);
     const icon = Math.round(this.fs * 1.15);
     const rowH = Math.round(this.fs * 1.55);
@@ -383,14 +426,18 @@ export class CrystalEditor {
       }
       t.setText(e.label).setColor(e.color).setVisible(true);
       const wIcons = e.tags.length * (icon + 2);
-      const wd = wIcons + 6 + t.width;
+      const wd = wIcons + (e.tags.length > 0 ? 6 : 0) + t.width;
       if (x > this.area.x && x + wd > right) {
         x = this.area.x;
         y += rowH;
       }
       const cy = y + rowH / 2;
       e.tags.forEach((tag, k) => drawTagIcon(g, tag, x + icon / 2 + k * (icon + 2), cy, icon, TAG_COLOR[tag], e.on ? 1 : 0.35));
-      t.setPosition(x + wIcons + 6, cy);
+      t.setPosition(x + wIcons + (e.tags.length > 0 ? 6 : 0), cy);
+      if (e.key) {
+        this.chipRects.push({ key: e.key, r: { x: x - 4, y, w: wd + 8, h: rowH } });
+        if (this.pair === e.key) g.lineStyle(2, 0x2bffb0, 0.9).strokeRect(x - 4, y + 1, wd + 8, rowH - 2);
+      }
       x += wd + gapX;
     });
     for (let i = entries.length; i < this.stripT.length; i++) this.stripT[i]!.setVisible(false);
@@ -446,8 +493,29 @@ export class CrystalEditor {
     return this.crystal.edit?.targets.some((t) => t.q === q && t.r === r) ?? false;
   }
 
+  /** Toggles the glow of pair chip `key` (null clears it). */
+  tapPair(key: string | null): void {
+    this.pair = key === this.pair ? null : key;
+    this.refresh(this.scene.time.now);
+  }
+
+  /** Pair chip rects (logical px), for the UI smoke. */
+  pairChips(): { key: string; r: Rect }[] {
+    return this.chipRects;
+  }
+
+  /** Hexes glowing for the tapped pair chip, for the UI smoke. */
+  glowing(): [number, number][] {
+    return this.crystal.pairGlow?.hexes ?? [];
+  }
+
   private down(x: number, y: number): void {
     if (!this.visible || this.scene.time.now < this.armedAt) return;
+    const chip = this.chipRects.find((c) => x >= c.r.x && x <= c.r.x + c.r.w && y >= c.r.y && y <= c.r.y + c.r.h);
+    if (chip) {
+      this.tapPair(chip.key);
+      return;
+    }
     const [q, r] = this.crystal.hexAt(x, y);
     this.hoverHex = [q, r];
     if (this.mode === 'place') {

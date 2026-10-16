@@ -48,7 +48,7 @@ import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
 import { CRIMSON, ENERGY, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_RED } from '../palette';
 import { SetTooltip } from '../../ui/SetTooltip';
-import { fusionLevel, fusionLines, fusionReachedLines, fusionTags, totalLines } from '../../ui/perkText';
+import { fusionLevel, fusionLines, fusionReachedLines, fusionTags, latticeLine, totalLines } from '../../ui/perkText';
 import { RunSession } from '../RunSession';
 import { DEPTH, ENEMY_VIS, WorldView } from '../WorldView';
 import { RS } from '../resolution';
@@ -619,7 +619,7 @@ export class BattleScene extends Phaser.Scene {
       const tag = fusionTags(l.key).find((t) => t !== m.tag)!;
       const links = linkCounts[l.key] ?? 0;
       const tier = w.fusionTiers[l.key] ?? 0;
-      const next = nextFusionTier(this.gd, links);
+      const next = nextFusionTier(this.gd, links, l.key);
       const name = this.gd.sets.fusions[l.key]!.name;
       const cur = tier > 0 ? `${name} ${fusionLevel(this.gd, tier)}: ${fusionReachedLines(this.gd, l.key, tier).join(' · ')}` : name;
       const more = next > 0 ? ` (${fusionLevel(this.gd, next)} at ${next}: ${fusionLines(this.gd, l.key, next).join(' · ')})` : '';
@@ -1177,7 +1177,7 @@ export class BattleScene extends Phaser.Scene {
           kills: dw.kills,
           bits: p ? p.s.bits : Math.floor(dw.bits),
           keys: p ? p.s.keys : dw.keys,
-          note: p ? this.deathNote(p.s) : '',
+          note: [latticeLine(this.gd, dw, true), p ? this.deathNote(p.s) : ''].filter((x) => x).join(' · '),
           canRevive: !dw.revived && !this.flags.stress,
           canDouble: p !== null && !p.doubled,
         },

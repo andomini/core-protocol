@@ -6,7 +6,7 @@
 
 import type { GameData, StatId } from './data';
 import type { SimEvent } from './events';
-import { clusterCounts, type CrystalShape, crystalShape, freeSlots, fusionLinkCounts, fusionLinks, isSlot, ladderTier, moveModule, placeModule } from './crystal';
+import { type CrystalShape, crystalTagCounts, crystalShape, freeSlots, fusionEffects, fusionLinkCounts, fusionLinks, fusionSteps, fusionTierAt, fusionTierIndex, isSlot, ladderTier, moveModule, placeModule } from './crystal';
 import { geneKeep } from './mutations';
 import { clampValue, powInt } from './num';
 import { ownedShare } from './territory';
@@ -53,10 +53,8 @@ export function rawTagCounts(w: World, data: GameData): Record<Tag, number> {
  * Set count per tag (spec 2026-10-14 §A): the stacks of the largest connected cluster of that tag's
  * crystal modules, plus 1 per card tag.
  */
-export function tagCounts(w: World, data: GameData): Record<Tag, number> {
-  const out = clusterCounts(w, data);
-  for (const t of w.cardTags) out[t] += 1;
-  return out;
+export function tagCounts(w: World, _data: GameData): Record<Tag, number> {
+  return crystalTagCounts(w);
 }
 
 export function heldTags(w: World, data: GameData): Tag[] {
@@ -81,8 +79,8 @@ export function fusionTierFor(data: GameData, links: number): number {
 }
 
 /** Next fusion tier above `links`, or 0 when the top tier is reached. */
-export function nextFusionTier(data: GameData, links: number): number {
-  for (const t of data.sets.fusionTiers) if (links < t) return t;
+export function nextFusionTier(data: GameData, links: number, key?: string): number {
+  for (const t of key === undefined ? data.sets.fusionTiers : fusionSteps(data, key)) if (links < t) return t;
   return 0;
 }
 
@@ -222,6 +220,8 @@ export function refreshCrystal(w: World, data: GameData, events: SimEvent[] | nu
 
 function refreshTiers(w: World, data: GameData, events: SimEvent[] | null): void {
   const counts = tagCounts(w, data);
+  // Gene averaging (spec 2026-10-16 §5): the set counts held now, summed every tick by accumulateCrystal.
+  for (const tag of TAGS) w.tagCountsNow[tag] = counts[tag];
   for (const tag of TAGS) {
     const prev = w.setTiers[tag];
     const tier = tierFor(data, counts[tag]);
@@ -230,19 +230,71 @@ function refreshTiers(w: World, data: GameData, events: SimEvent[] | null): void
     w.setTiers[tag] = tier;
     events?.push({ type: 'setTier', tag, tier, prev });
   }
+  // Weld (spec 2026-10-16 §3): a rise waits in fusionPending until settleWeld (weldTicks with the link count
+  // unchanged; a new link count or target restarts the wait); a drop applies at once and cancels the wait.
   const links = fusionLinkCounts(w, data);
   for (const key of fusionKeys()) {
+    const n = links[key] ?? 0;
     const prev = w.fusionTiers[key] ?? 0;
-    const tier = fusionTierFor(data, links[key] ?? 0);
-    if (tier === prev) continue;
-    shiftTier(w, data, `fusion:${key}`, data.sets.fusionTiers, (t) => data.sets.fusions[key]!.tiers[String(t)]!, prev, tier);
-    if (tier > 0) w.fusionTiers[key] = tier;
-    else delete w.fusionTiers[key];
-    const l = fusionLinks(w, data).find((f) => f.key === key);
-    const a = l ? w.crystal[l.a]! : null;
-    const b = l ? w.crystal[l.b]! : null;
-    events?.push({ type: 'fusion', key, tier, prev, a: a ? [a.q, a.r] : null, b: b ? [b.q, b.r] : null });
+    const tier = fusionTierAt(data, key, n, counts);
+    if (tier > prev) {
+      const p = w.fusionPending[key];
+      if (p === undefined || p.links !== n || p.tier !== tier) w.fusionPending[key] = { tier, links: n, sinceTick: w.tick };
+      continue;
+    }
+    delete w.fusionPending[key];
+    if (tier !== prev) setFusionTier(w, data, key, prev, tier, events);
   }
+}
+
+function setFusionTier(w: World, data: GameData, key: string, prev: number, tier: number, events: SimEvent[] | null): void {
+  shiftTier(w, data, `fusion:${key}`, fusionSteps(data, key), (t) => fusionEffects(data, key, t), prev, tier);
+  if (tier > 0) w.fusionTiers[key] = tier;
+  else delete w.fusionTiers[key];
+  const l = fusionLinks(w, data).find((f) => f.key === key);
+  const a = l ? w.crystal[l.a]! : null;
+  const b = l ? w.crystal[l.b]! : null;
+  events?.push({ type: 'fusion', key, tier, prev, a: a ? [a.q, a.r] : null, b: b ? [b.q, b.r] : null });
+}
+
+/**
+ * Weld (spec 2026-10-16 §3), once per tick before the profile: pending fusion rises whose link count held for
+ * weldTicks apply now (HP share kept, like any crystal change).
+ */
+export function settleWeld(w: World, data: GameData, events: SimEvent[] | null): void {
+  if (Object.keys(w.fusionPending).length === 0) return;
+  for (const key of fusionKeys()) {
+    const p = w.fusionPending[key];
+    if (p === undefined || w.tick - p.sinceTick < data.sets.weldTicks) continue;
+    delete w.fusionPending[key];
+    const prev = w.fusionTiers[key] ?? 0;
+    if (p.tier !== prev) keepHealthShare(w, data, () => setFusionTier(w, data, key, prev, p.tier, events));
+  }
+}
+
+/** Every tick: Lattice (sum of fusion tier indices, spec 2026-10-16 §4) and gene (set counts, §5) accumulators. */
+export function accumulateCrystal(w: World, data: GameData): void {
+  w.latticeSum = clampValue(w.latticeSum + latticeNow(w, data));
+  w.latticeTicks += 1;
+  for (const t of TAGS) w.geneAcc[t] = clampValue(w.geneAcc[t] + w.tagCountsNow[t]);
+  w.geneTicks += 1;
+}
+
+/** The Lattice now: the sum of fusion tier indices (I = 1 … Apex = 4) on the crystal this tick. */
+export function latticeNow(w: World, data: GameData): number {
+  let sum = 0;
+  for (const key in w.fusionTiers) sum += fusionTierIndex(data, key, w.fusionTiers[key]!);
+  return sum;
+}
+
+/** The run's tick-averaged Lattice (what run-end Bits are multiplied by): 0 before the first tick. */
+export function latticeMean(w: World): number {
+  return w.latticeTicks > 0 ? w.latticeSum / w.latticeTicks : 0;
+}
+
+/** Run-end Bits multiplier from the Lattice: 1 + latticeCoef × the tick-averaged Lattice. */
+export function latticeMul(w: World, data: GameData): number {
+  return 1 + data.sets.latticeCoef * latticeMean(w);
 }
 
 /** Run start: sets completed by card tags alone, then the opening (wave-1) pick. */
@@ -612,9 +664,9 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
   for (const key of fusionKeys()) {
     const tier = w.fusionTiers[key] ?? 0;
     if (tier === 0) continue;
-    for (const t of data.sets.fusionTiers) {
+    for (const t of fusionSteps(data, key)) {
       if (t > tier) break;
-      data.sets.fusions[key]!.tiers[String(t)]!.forEach((e, i) => fold(e, 1, `fusion:${key}:${t}:${i}`));
+      fusionEffects(data, key, t).forEach((e, i) => fold(e, 1, `fusion:${key}:${t}:${i}`));
     }
   }
   for (const c of w.cards) c.effects.forEach((e, i) => fold(e, 1, `card:${c.id}:${i}`));

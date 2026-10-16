@@ -34,6 +34,22 @@ export interface Enemy {
   frozenUntil: number;
   /** Tick before which this enemy cannot be knocked back again. */
   kbUntil: number;
+  /** Bounty Mark (spec 2026-10-16, phase 2): absent = not marked. */
+  marked?: boolean;
+}
+
+/** A fusion tier rise waiting for its weld (spec 2026-10-16 §3): the target tier, the link count it needs held, since when. */
+export interface WeldPending {
+  tier: number;
+  links: number;
+  sinceTick: number;
+}
+
+/** One painted blueprint hex (spec 2026-10-16 Planning UI, phase 6): the tag the auto-placer should put there. */
+export interface BlueprintHex {
+  q: number;
+  r: number;
+  tag: Tag;
 }
 
 export interface Projectile {
@@ -119,6 +135,21 @@ export interface World {
   setTiers: Record<Tag, number>;
   /** Fusion tier per tag pair ("a+b" in TAGS order; absent = 0), from the links on the crystal now. */
   fusionTiers: Record<string, number>;
+  /** Weld: fusion rises waiting to apply, by pair key (spec 2026-10-16 §3). */
+  fusionPending: Record<string, WeldPending>;
+  /** Lattice: Σ fusion tier indices summed every tick, and the ticks summed (§4). */
+  latticeSum: number;
+  latticeTicks: number;
+  /** Gene averaging (§5): set counts summed every tick since the last wave start, the ticks summed, the counts now. */
+  geneAcc: Record<Tag, number>;
+  geneTicks: number;
+  tagCountsNow: Record<Tag, number>;
+  /** Frost Web (phase 5): territory cell id → frosted until tick. */
+  frost: Record<string, number>;
+  /** Blueprint copied in at run start (phase 6); empty = none. */
+  blueprint: BlueprintHex[];
+  /** Bounty Marks (phase 2): Marks killed and jackpots paid this run. */
+  marks: { killed: number; jackpots: number };
   /** Perk ids on offer (display order) while `phase === 'pick'`; empty otherwise. */
   offer: string[];
   /** Rerolls used on the open offer. */
@@ -262,6 +293,15 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     cardTags,
     setTiers,
     fusionTiers: {},
+    fusionPending: {},
+    latticeSum: 0,
+    latticeTicks: 0,
+    geneAcc: blankGenome(),
+    geneTicks: 0,
+    tagCountsNow: blankGenome(),
+    frost: {},
+    blueprint: [],
+    marks: { killed: 0, jackpots: 0 },
     offer: [],
     rerolls: 0,
     picks: 0,

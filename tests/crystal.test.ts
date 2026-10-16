@@ -301,7 +301,7 @@ describe('moving modules and previews (spec 2026-10-15 §2–3)', () => {
     grantPerk(w, D, 'patch', null, at(0));
     const s = autoSlot(w, D, 'chain')!;
     expect(isNeighbour(...s, ...at(0))).toBe(true);
-    const noLink = testData({ crystal: { auto: { link: 0 } } });
+    const noLink = testData({ crystal: { auto: { link: 0, linkNear: 0 } } });
     const w2 = createWorld(noLink, { seed: 7, tier: 1, protocols: false });
     grantPerk(w2, noLink, 'patch', null, at(0));
     expect(isNeighbour(...autoSlot(w2, noLink, 'chain')!, ...at(0))).toBe(false);

@@ -283,19 +283,20 @@ describe('structures: the Ice Wall (spec 2026-10-15, phase 1)', () => {
     }
   });
 
-  it('a tier reached by a command on the tick a wave starts already sees this wave: six segments and its ring', () => {
-    const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 } }, { damage: 0, regen: 0, thorns: 0 });
+  it('a tier welded on the tick a wave starts already sees this wave: six segments and its ring', () => {
+    const data = testData({ config: { baseEnemiesPerWave: 0, enemiesPerWaveGrowth: 0 }, sets: { weldTicks: 1 } }, { damage: 0, regen: 0, thorns: 0 });
     const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
     const at = (i: number) => ring(2)[i]!;
     grantPerk(w, data, 'frostShot', null, at(0));
     grantPerk(w, data, 'patch', null, at(2));
     expect(w.fusionTiers['cryo+firewall'] ?? 0).toBe(0);
     expect(w.wave).toBe(0);
-    // The first step starts wave 1; the move links the two modules in the same step, before the wave starts.
+    // The first step starts wave 1; the move links the two modules, and the (1-tick) weld settles in that step before the wave starts.
     const events: SimEvent[] = [];
     applyCommands(w, data, [{ type: 'moveModule', from: at(2), to: at(1) }], events);
-    expect(w.fusionTiers['cryo+firewall']).toBe(1);
+    expect(w.fusionPending['cryo+firewall']?.tier).toBe(1);
     stepN(w, data, 1);
+    expect(w.fusionTiers['cryo+firewall']).toBe(1);
     expect(w.wave).toBe(1);
     expect(w.wallR).toBeGreaterThanOrEqual(data.structures.wall.minRadius);
     expect(w.structs).toHaveLength(6);

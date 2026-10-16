@@ -7,7 +7,7 @@
 import type { GameData } from './data';
 import { dsqrt } from './num';
 import { hexDist, hexToPixel, isNeighbour, ring, sectorOf } from './hex';
-import { fusionKey, fusionKeys, TAGS, type Tag } from './perkData';
+import { type Effect, fusionKey, fusionKeys, TAGS, type Tag } from './perkData';
 import type { World } from './state';
 import { crystalRing } from './territory';
 
@@ -70,13 +70,28 @@ export function sectorTags(w: World, data: GameData): (Tag | null)[] {
   return sectorTagsOf(w.crystal, w.perks, data);
 }
 
-/** Deterministic best slot for a new `tag` module (spec §A), or null when the crystal is full. */
+/** Placeholder perk id for the module a placement preview adds (counts as 1 stack). */
+const PROBE = '\u0000probe';
+
+/**
+ * Deterministic best slot for a new `tag` module (spec §A), or null when the crystal is full. Pair-aware
+ * (spec 2026-10-16 §6): a slot that lifts a pair's fusion to its next tier (cluster-scoped links) earns
+ * `linkNear` × that tier's index (I = 1 … IV = 4) on top of the plain neighbour weights.
+ */
 export function autoSlot(w: World, data: GameData, tag: Tag): [number, number] | null {
   const a = data.crystal.auto;
   const sectors = sectorTags(w, data);
+  const free = freeSlots(w, data);
+  // Pair-aware bonus inputs (skipped when the weight is 0): links and set counts now, a probe module per slot.
+  const near = a.linkNear > 0 && w.crystal.length > 0;
+  const perks: Record<string, number> = near ? { ...w.perks, [PROBE]: 1 } : {};
+  const l0 = near ? linkCountsOf(w.crystal, w.perks) : {};
+  const c0 = near ? withCards(w, clusterCountsOf(w.crystal, w.perks)) : null;
+  const probe: Module[] = near ? [...w.crystal, { q: 0, r: 0, perk: PROBE, tag }] : [];
+  const pm = probe[probe.length - 1];
   let best: [number, number] | null = null;
   let bestScore = -Infinity;
-  for (const [q, r] of freeSlots(w, data)) {
+  for (const [q, r] of free) {
     let same = 0;
     let links = 0;
     for (const m of w.crystal) {
@@ -85,13 +100,45 @@ export function autoSlot(w: World, data: GameData, tag: Tag): [number, number] |
       else links += 1;
     }
     const st = sectors[moduleSector(data, q, r)];
-    const score = same * a.sameTag + links * a.link + (st === tag ? a.sectorMatch : 0) + (st === null ? a.sectorEmpty : 0) - hexDist(q, r) * a.ring;
+    let score = same * a.sameTag + links * a.link + (st === tag ? a.sectorMatch : 0) + (st === null ? a.sectorEmpty : 0) - hexDist(q, r) * a.ring;
+    if (near && links > 0) {
+      pm!.q = q;
+      pm!.r = r;
+      const l1 = linkCountsOf(probe, perks);
+      const c1 = withCards(w, clusterCountsOf(probe, perks));
+      for (const key of fusionKeys()) {
+        const t0 = fusionTierAt(data, key, l0[key] ?? 0, c0!);
+        const t1 = fusionTierAt(data, key, l1[key] ?? 0, c1);
+        if (t1 > t0) score += a.linkNear * fusionTierIndex(data, key, t1);
+      }
+    }
     if (score > bestScore) {
       bestScore = score;
       best = [q, r];
     }
   }
   return best;
+}
+
+/**
+ * Free slots where a new module of one of `tags` (default: both tags of the pair) adds a cluster-scoped link
+ * to fusion `key` (the editor's pair-chip glow, spec 2026-10-16 §6).
+ */
+export function pairLinkSlots(w: World, data: GameData, key: string, tags?: readonly Tag[]): [number, number][] {
+  const ts = tags ?? (key.split('+') as Tag[]);
+  const perks: Record<string, number> = { ...w.perks, [PROBE]: 1 };
+  const l0 = linkCountsOf(w.crystal, w.perks)[key] ?? 0;
+  const out: [number, number][] = [];
+  for (const [q, r] of freeSlots(w, data)) {
+    if (!w.crystal.some((m) => isNeighbour(q, r, m.q, m.r))) continue;
+    if (ts.some((tag) => (linkCountsOf([...w.crystal, { q, r, perk: PROBE, tag }], perks)[key] ?? 0) > l0)) out.push([q, r]);
+  }
+  return out;
+}
+
+function withCards(w: World, c: Record<Tag, number>): Record<Tag, number> {
+  for (const t of w.cardTags) c[t] += 1;
+  return c;
 }
 
 export function isSlot(s: unknown): s is [number, number] {
@@ -144,6 +191,22 @@ export function moduleCluster(w: World, i: number): { members: number[]; stacks:
   return clusterOf(w.crystal, w.perks, i);
 }
 
+/** Per module: whether it belongs to its tag's counted (largest; ties → lowest module index) cluster. */
+function countedOf(modules: readonly Module[], perks: Stacks): boolean[] {
+  const out: boolean[] = modules.map(() => false);
+  const seen: boolean[] = modules.map(() => false);
+  const best = {} as Record<Tag, { members: number[]; stacks: number }>;
+  for (let i = 0; i < modules.length; i++) {
+    if (seen[i]) continue;
+    const c = clusterOf(modules, perks, i);
+    for (const j of c.members) seen[j] = true;
+    const tag = modules[i]!.tag;
+    if (c.stacks > (best[tag]?.stacks ?? 0)) best[tag] = c;
+  }
+  for (const t of TAGS) for (const j of best[t]?.members ?? []) out[j] = true;
+  return out;
+}
+
 function clusterCountsOf(modules: readonly Module[], perks: Stacks): Record<Tag, number> {
   const out = {} as Record<Tag, number>;
   for (const t of TAGS) out[t] = 0;
@@ -158,6 +221,16 @@ function clusterCountsOf(modules: readonly Module[], perks: Stacks): Record<Tag,
   return out;
 }
 
+/** Set count per tag: the largest cluster's stacks plus 1 per card tag (perks.tagCounts; also used by snapshot migration). */
+export function crystalTagCounts(w: World): Record<Tag, number> {
+  return withCards(w, clusterCountsOf(w.crystal, w.perks));
+}
+
+/** Per module index: true when it is in its tag's counted cluster (the one set counts and fusion links use). */
+export function clusterMembers(w: World): boolean[] {
+  return countedOf(w.crystal, w.perks);
+}
+
 /** Per tag: the stacks of its largest connected cluster of modules. */
 export function clusterCounts(w: World, _data: GameData): Record<Tag, number> {
   return clusterCountsOf(w.crystal, w.perks);
@@ -170,32 +243,85 @@ export interface FusionLink {
   key: string;
 }
 
-function linksOf(modules: readonly Module[]): FusionLink[] {
+/**
+ * Links are cluster-scoped (spec 2026-10-16 §1): an edge between two tags counts only when both modules are in
+ * their tag's counted cluster, so a stray module adds neither set stacks nor links.
+ */
+function linksOf(modules: readonly Module[], perks: Stacks): FusionLink[] {
   const out: FusionLink[] = [];
+  const counted = countedOf(modules, perks);
   for (let i = 0; i < modules.length; i++) {
+    if (!counted[i]) continue;
     const m = modules[i]!;
     for (let j = i + 1; j < modules.length; j++) {
       const n = modules[j]!;
-      if (n.tag !== m.tag && isNeighbour(m.q, m.r, n.q, n.r)) out.push({ a: i, b: j, key: fusionKey(m.tag, n.tag) });
+      if (counted[j] && n.tag !== m.tag && isNeighbour(m.q, m.r, n.q, n.r)) out.push({ a: i, b: j, key: fusionKey(m.tag, n.tag) });
     }
   }
   return out;
 }
 
-function linkCountsOf(modules: readonly Module[]): Record<string, number> {
+function linkCountsOf(modules: readonly Module[], perks: Stacks): Record<string, number> {
   const out: Record<string, number> = {};
-  for (const l of linksOf(modules)) out[l.key] = (out[l.key] ?? 0) + 1;
+  for (const l of linksOf(modules, perks)) out[l.key] = (out[l.key] ?? 0) + 1;
   return out;
 }
 
-/** Every link on the crystal, in module index order. */
+/** Every counted link on the crystal, in module index order. */
 export function fusionLinks(w: World, _data: GameData): FusionLink[] {
-  return linksOf(w.crystal);
+  return linksOf(w.crystal, w.perks);
 }
 
-/** Links per tag pair (pairs without a link are absent). */
+/** Counted links per tag pair (pairs without a link are absent). */
 export function fusionLinkCounts(w: World, _data: GameData): Record<string, number> {
-  return linkCountsOf(w.crystal);
+  return linkCountsOf(w.crystal, w.perks);
+}
+
+/** Link counts after a hypothetical crystal (`modules` with `perks`), e.g. for the editor's target glow. */
+export function linkCountsFor(modules: readonly Module[], perks: Stacks): Record<string, number> {
+  return linkCountsOf(modules, perks);
+}
+
+const STEPS = new WeakMap<GameData, Record<string, readonly number[]>>();
+
+/** A fusion's ladder of link counts: sets.fusionTiers, plus its apexLinks when it has an Apex. Cached per GameData. */
+export function fusionSteps(data: GameData, key: string): readonly number[] {
+  let all = STEPS.get(data);
+  if (all === undefined) STEPS.set(data, (all = {}));
+  let s = all[key];
+  if (s === undefined) {
+    const f = data.sets.fusions[key]!;
+    s = f.apex !== undefined && f.apexLinks !== undefined ? [...data.sets.fusionTiers, f.apexLinks] : data.sets.fusionTiers;
+    all[key] = s;
+  }
+  return s;
+}
+
+/** The effects a fusion's step `t` adds (its Apex at apexLinks). */
+export function fusionEffects(data: GameData, key: string, t: number): readonly Effect[] {
+  const f = data.sets.fusions[key]!;
+  if (f.apex !== undefined && t === f.apexLinks) return f.apex;
+  return f.tiers[String(t)] ?? [];
+}
+
+/**
+ * The fusion tier `links` reach (0 if none): a step of sets.fusionTiers, or the Apex (stored as apexLinks) when
+ * the fusion has one, links ≥ apexLinks and both tags' set counts (`counts`, card tags included) are ≥ sets.apexSet.
+ */
+export function fusionTierAt(data: GameData, key: string, links: number, counts: Readonly<Record<Tag, number>>): number {
+  const f = data.sets.fusions[key]!;
+  if (f.apex !== undefined && f.apexLinks !== undefined && links >= f.apexLinks) {
+    const [a, b] = key.split('+') as [Tag, Tag];
+    if (counts[a] >= data.sets.apexSet && counts[b] >= data.sets.apexSet) return f.apexLinks;
+  }
+  return ladderTier(data.sets.fusionTiers, links);
+}
+
+/** A stored fusion tier's index: I = 1, II = 2, III = 3, Apex = 4 (0 = none). */
+export function fusionTierIndex(data: GameData, key: string, tier: number): number {
+  if (tier <= 0) return 0;
+  const i = fusionSteps(data, key).indexOf(tier);
+  return i < 0 ? 0 : i + 1;
 }
 
 /** Highest step of an ascending `ladder` reached with `n` (0 if none): set tiers by stacks, fusion tiers by links. */
@@ -282,12 +408,16 @@ export function crystalDiff(w: World, data: GameData, modules: readonly Module[]
     const to = c1[tag] + cards;
     if (from !== to) out.sets.push({ tag, from, to, tierFrom: ladderTier(data.sets.tiers, from), tierTo: ladderTier(data.sets.tiers, to) });
   }
-  const l0 = linkCountsOf(w.crystal);
-  const l1 = linkCountsOf(modules);
+  const l0 = linkCountsOf(w.crystal, w.perks);
+  const l1 = linkCountsOf(modules, perks);
+  const k0 = withCards(w, { ...c0 });
+  const k1 = withCards(w, { ...c1 });
   for (const key of fusionKeys()) {
     const from = l0[key] ?? 0;
     const to = l1[key] ?? 0;
-    if (from !== to) out.fusions.push({ key, from, to, tierFrom: ladderTier(data.sets.fusionTiers, from), tierTo: ladderTier(data.sets.fusionTiers, to) });
+    const tierFrom = fusionTierAt(data, key, from, k0);
+    const tierTo = fusionTierAt(data, key, to, k1);
+    if (from !== to || tierFrom !== tierTo) out.fusions.push({ key, from, to, tierFrom, tierTo });
   }
   const s0 = sectorTagsOf(w.crystal, w.perks, data);
   const s1 = sectorTagsOf(modules, perks, data);

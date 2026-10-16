@@ -640,6 +640,29 @@ const scenarios = {
       await h.p.waitForTimeout(250);
       const e2 = await h.call('editor');
       check(results, `${label} editor: the pause menu's CRYSTAL opens Arrange`, e2?.open && e2.mode === 'arrange', e2);
+      check(results, `${label} editor: the strip leads with the Lattice chip`, /^LATTICE \d+ · \+[\d.]+ % Bits$/.test(e2.strip[0] ?? ''), e2.strip[0]);
+      // A pair chip tap glows the hexes that add a link to that pair; a second tap clears it.
+      // (Some pairs have no hex that adds a cluster link: try the chips in turn.)
+      if (e2.chips.length > 0) {
+        let g1 = null;
+        let g2 = null;
+        let chip = null;
+        for (const c of e2.chips) {
+          await h.tapLogical(...centre(c.r));
+          await h.p.waitForTimeout(100);
+          const a = await h.call('editor');
+          if (a.glow.length > 0) {
+            await h.shot(`editor-pair-${label}`);
+            g1 = a;
+            chip = c.key;
+          }
+          await h.tapLogical(...centre(c.r));
+          await h.p.waitForTimeout(100);
+          g2 = await h.call('editor');
+          if (g1) break;
+        }
+        check(results, `${label} editor: a pair chip tap glows its link hexes, a second tap clears them`, g1 !== null && g2.glow.length === 0 && g2.strip.join() === e2.strip.join(), { chip, g1: g1?.glow, g2: g2?.glow, chips: e2.chips.map((c) => c.key) });
+      } else check(results, `${label} editor: the showcase crystal shows pair chips`, false, e2.strip);
       const before = await h.state();
       // Tap a module, then a target that changes a tier (coloured, not cyan or white).
       const pick = await h.p.evaluate(() => {
@@ -654,7 +677,8 @@ const scenarios = {
         const t = await h.p.evaluate(() => {
           const b = window.__cp.game.scene.getScene('Battle');
           const e = b.crystal.edit;
-          return e ? e.targets.find((x) => x.color !== 0x22e5ff && x.color !== 0xffffff) ?? null : null;
+          // Not crimson (a fall): undoing a rise drops at once, undoing a fall would weld (the strip would differ).
+          return e ? e.targets.find((x) => x.color !== 0x22e5ff && x.color !== 0xffffff && x.color !== 0xff2d55) ?? null : null;
         });
         if (t) {
           moved = { from: [q, r], to: [t.q, t.r] };

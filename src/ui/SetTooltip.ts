@@ -62,7 +62,7 @@ export class SetTooltip {
     this.w = L.o === 'portrait' ? 600 : 380;
     this.g = scene.add.graphics().setDepth(depth);
     this.head = text(scene, 0, 0, '', this.f + 2).setDepth(depth + 0.1);
-    for (let i = 0; i < Math.max(data.sets.tiers.length, data.sets.fusionTiers.length); i++) {
+    for (let i = 0; i < Math.max(data.sets.tiers.length, data.sets.fusionTiers.length + 1); i++) {
       this.nums.push(text(scene, 0, 0, '', this.f).setOrigin(0.5, 0.5).setDepth(depth + 0.1));
       this.lines.push(text(scene, 0, 0, '', this.f).setDepth(depth + 0.1));
     }
@@ -107,7 +107,7 @@ export class SetTooltip {
         color: TAG_COLOR[ta],
         css: TEXT,
         icon: (g, x, y, s) => drawPairDisc(g, TAG_COLOR[ta], TAG_COLOR[tb], x, y, s / 2),
-        rows: ladder.map((r) => ({ label: fusionLevel(this.data, r.tier), on: r.on, text: `${r.tier} link${r.tier === 1 ? '' : 's'}: ${r.text}` })),
+        rows: ladder.map((r) => ({ label: fusionLevel(this.data, r.tier), on: r.on, text: `${r.tier} link${r.tier === 1 ? '' : 's'}${r.tier > this.data.sets.fusionTiers[this.data.sets.fusionTiers.length - 1]! ? ` + both sets ${this.data.sets.apexSet}` : ''}: ${r.text}` })),
         foot: this.fusionFoot,
       },
       anchor,

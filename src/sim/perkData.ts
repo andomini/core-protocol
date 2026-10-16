@@ -150,6 +150,9 @@ export interface FusionDef {
   /** Phone-row label ("Wall", "Relay") for the BUILD rows' "needs ..." text; defaults to `name`. */
   short?: string;
   tiers: Record<string, Effect[]>;
+  /** Apex (spec 2026-10-16 §2): one optional step past the top tier at `apexLinks` links, only while both tags' set counts are ≥ sets.apexSet. Stored as tier `apexLinks`. */
+  apex?: Effect[];
+  apexLinks?: number;
 }
 
 export interface SetsData {
@@ -160,6 +163,12 @@ export interface SetsData {
   fusionTiers: number[];
   /** Cap on the product of the kill-Energy fusion multipliers (crit x frozen x chain) in hitEnemy. */
   howCap: number;
+  /** Apex gate: both tags' set counts must be at least this (spec 2026-10-16 §2). */
+  apexSet: number;
+  /** Weld: a fusion tier rise applies after this many ticks with the pair's link count unchanged (§3). */
+  weldTicks: number;
+  /** Lattice: run-end Bits × (1 + latticeCoef × the tick-averaged sum of fusion tier indices) (§4). */
+  latticeCoef: number;
   /** One fusion per tag pair, keyed "a+b" in TAGS order (fusionKey). */
   fusions: Record<string, FusionDef>;
 }
@@ -341,6 +350,9 @@ export function validateSets(s: SetsData): void {
   check(Array.isArray(s.tiers) && s.tiers.length > 0, 'sets.tiers must be a non-empty list');
   pos(s.howCap, 'sets.howCap');
   check(s.howCap >= 1, 'sets.howCap must be >= 1');
+  wholePos(s.apexSet, 'sets.apexSet');
+  wholePos(s.weldTicks, 'sets.weldTicks');
+  check(finite(s.latticeCoef) && s.latticeCoef >= 0, 'sets.latticeCoef must be a finite number >= 0');
   s.tiers.forEach((t, i) => {
     wholePos(t, `sets.tiers[${i}]`);
     if (i > 0) check(t > s.tiers[i - 1]!, 'sets.tiers must be increasing');
@@ -377,6 +389,13 @@ export function validateSets(s: SetsData): void {
       eff!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.tiers.${t}[${i}]`, true));
     }
     validateStructureLadder(key, f!, s.fusionTiers);
+    if (f!.apex !== undefined || f!.apexLinks !== undefined) {
+      check(!key.endsWith('+firewall'), `sets.fusions.${key}: firewall fusions have no apex`);
+      check(Array.isArray(f!.apex) && f!.apex.length > 0, `sets.fusions.${key}.apex must list effects`);
+      wholePos(f!.apexLinks as number, `sets.fusions.${key}.apexLinks`);
+      check(f!.apexLinks! > s.fusionTiers[s.fusionTiers.length - 1]!, `sets.fusions.${key}.apexLinks must be above the top fusion tier`);
+      f!.apex!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.apex[${i}]`));
+    }
   }
 }
 

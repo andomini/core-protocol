@@ -2,8 +2,8 @@ import { ENEMY_KINDS, type EnemyKind, type GameData } from './data';
 import { pauseTicks, scaleForWave, waveTicks } from './economy';
 import type { SimEvent } from './events';
 import { clampValue, powInt } from './num';
-import { mutate } from './mutations';
-import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile, tagCounts } from './perks';
+import { geneMean, mutate, resetGeneAcc } from './mutations';
+import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile } from './perks';
 import { chance, createStream, nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
 import type { CoreStats } from './stats';
@@ -31,8 +31,9 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   w.wave += 1;
   w.phase = 'wave';
   w.phaseTick = 0;
-  // The virus learns the build's dominant tag (spec 2026-10-14 §C).
-  mutate(w, data, tagCounts(w, data), events);
+  // The virus learns the build's dominant tag (spec 2026-10-14 §C), from the tick-averaged set counts (2026-10-16 §5).
+  mutate(w, data, geneMean(w), events);
+  resetGeneAcc(w);
   // The breach widens (config.arenaGrowEvery): new ground with nests, and the crystal may gain a ring.
   const radius = arenaRadius(data, w.wave);
   const before = arenaRadius(data, w.wave - 1);

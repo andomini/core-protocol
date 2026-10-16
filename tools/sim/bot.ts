@@ -12,7 +12,7 @@ import { type GameData, STAT_IDS, type StatId, type TabId } from '../../src/sim/
 import type { World } from '../../src/sim/state';
 import { TAGS, type Tag } from '../../src/sim/perkData';
 import { tagCounts } from '../../src/sim/perks';
-import { type CrystalDiff, crystalSlots, freeSlots, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
+import { type CrystalDiff, crystalSlots, freeSlots, fusionSteps, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
 import { crystalRing } from '../../src/sim/territory';
 import { createStream, nextInt } from '../../src/sim/rng';
 
@@ -161,7 +161,7 @@ export function diffScore(data: GameData, d: CrystalDiff): number {
   const top = data.sets.fusionTiers.at(-1)!;
   for (const s of d.sets) score += CW.setTier * (stepOf(data.sets.tiers, s.tierTo) - stepOf(data.sets.tiers, s.tierFrom)) + CW.setCount * (s.to - s.from);
   for (const f of d.fusions) {
-    score += CW.fusionTier * (stepOf(data.sets.fusionTiers, f.tierTo) - stepOf(data.sets.fusionTiers, f.tierFrom)) + CW.link * (Math.min(f.to, top) - Math.min(f.from, top));
+    score += CW.fusionTier * (stepOf(fusionSteps(data, f.key), f.tierTo) - stepOf(fusionSteps(data, f.key), f.tierFrom)) + CW.link * (Math.min(f.to, top) - Math.min(f.from, top));
   }
   return score;
 }

@@ -1,6 +1,7 @@
+import { crystalTagCounts } from './crystal';
 import { SECTOR_DIRS } from './hex';
 import { assertFiniteDeep } from './num';
-import { fusionKeys, STRUCTURE_KINDS } from './perkData';
+import { fusionKeys, STRUCTURE_KINDS, TAGS } from './perkData';
 import { type World, WORLD_VERSION } from './state';
 import { canonicalLevels } from './stats';
 
@@ -34,6 +35,20 @@ function validStruct(x: unknown): boolean {
     num('powered') &&
     num('downUntilTick')
   );
+}
+
+function isRecord(x: unknown): x is Record<string, unknown> {
+  return x !== null && typeof x === 'object' && !Array.isArray(x);
+}
+
+function isTagRecord(x: unknown): boolean {
+  return isRecord(x) && TAGS.every((t) => typeof x[t] === 'number');
+}
+
+function tagRecord(v: number): Record<(typeof TAGS)[number], number> {
+  const out = {} as Record<(typeof TAGS)[number], number>;
+  for (const t of TAGS) out[t] = v;
+  return out;
 }
 
 /** Parses a snapshot back into a World; every failure is an Error mentioning "snapshot". */
@@ -119,6 +134,33 @@ export function restore(s: string): World {
   }
   if (w.wallR === undefined) w.wallR = 0;
   if (!Array.isArray(w.structs) || typeof w.wallR !== 'number' || !w.structs.every(validStruct)) {
+    throw new Error('snapshot: malformed world');
+  }
+  // Runs saved before crystal combos v2 (spec 2026-10-16 phase 1): no weld waiting, empty Lattice and gene
+  // accumulators (the gene mean falls back to the counts now), no frost, blueprint or Marks yet.
+  w.fusionPending ??= {};
+  w.latticeSum ??= 0;
+  w.latticeTicks ??= 0;
+  w.geneAcc ??= tagRecord(0);
+  w.geneTicks ??= 0;
+  w.tagCountsNow ??= crystalTagCounts(w as World);
+  w.frost ??= {};
+  w.blueprint ??= [];
+  w.marks ??= { killed: 0, jackpots: 0 };
+  if (
+    !isRecord(w.fusionPending) ||
+    !Object.values(w.fusionPending).every((p) => isRecord(p) && Number.isInteger(p.tier) && Number.isInteger(p.links) && Number.isInteger(p.sinceTick)) ||
+    typeof w.latticeSum !== 'number' ||
+    !Number.isInteger(w.latticeTicks) ||
+    !Number.isInteger(w.geneTicks) ||
+    !isTagRecord(w.geneAcc) ||
+    !isTagRecord(w.tagCountsNow) ||
+    !isRecord(w.frost) ||
+    !Array.isArray(w.blueprint) ||
+    !isRecord(w.marks) ||
+    typeof w.marks.killed !== 'number' ||
+    typeof w.marks.jackpots !== 'number'
+  ) {
     throw new Error('snapshot: malformed world');
   }
   // Runs saved before the BUILD tab (spec 2026-10-15 Upgrades): its six stats start at level 0, in canonical key order.

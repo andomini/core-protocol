@@ -179,8 +179,9 @@ export interface CrystalDef {
   ringEvery: number;
   maxRingCap: number;
   /** Auto-placement score weights. */
-  /** `link`: per neighbour of another tag (a fusion link, spec 2026-10-15 §1). */
-  auto: { sameTag: number; sectorMatch: number; sectorEmpty: number; ring: number; link: number };
+  /** `link`: per neighbour of another tag (a fusion link, spec 2026-10-15 §1). `linkNear` × the tier index
+   * reached: when the slot completes a pair's next fusion tier from exactly one link short (spec 2026-10-16 §6). */
+  auto: { sameTag: number; sectorMatch: number; sectorEmpty: number; ring: number; link: number; linkNear: number };
 }
 
 /** The arena's hex territory: ours vs infected cells. */
@@ -390,7 +391,7 @@ export function validateData(d: GameData): GameData {
   check(Number.isInteger(cr.maxRing) && cr.maxRing > cr.coreRing, 'crystal.maxRing must be a whole number > coreRing');
   check(Number.isInteger(cr.ringEvery) && cr.ringEvery > 0, 'crystal.ringEvery must be a positive integer');
   check(Number.isInteger(cr.maxRingCap) && cr.maxRingCap >= cr.maxRing, 'crystal.maxRingCap must be a whole number ≥ maxRing');
-  for (const k of ['sameTag', 'sectorMatch', 'sectorEmpty', 'ring', 'link'] as const) nonNeg(cr.auto?.[k], `crystal.auto.${k}`);
+  for (const k of ['sameTag', 'sectorMatch', 'sectorEmpty', 'ring', 'link', 'linkNear'] as const) nonNeg(cr.auto?.[k], `crystal.auto.${k}`);
   const tr = d.territory;
   positive(tr?.cellSize, 'territory.cellSize');
   nonNeg(tr.startRadius, 'territory.startRadius');

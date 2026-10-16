@@ -3,6 +3,9 @@
 
 import type { GameData, StatId } from '../sim/data';
 import type { Effect, Tag } from '../sim/perkData';
+import { fusionEffects, fusionSteps } from '../sim/crystal';
+import { latticeMean, latticeNow } from '../sim/perks';
+import type { World } from '../sim/state';
 import type { ModTarget } from '../sim/stats';
 
 const round = (x: number): string => String(Math.round(x * 100) / 100);
@@ -253,22 +256,23 @@ export function setLadder(data: GameData, tag: Tag, reached: number): SetLadderR
 
 /** Lines for one fusion tier (`tier` = its link count, sets.fusionTiers): what that tier adds. */
 export function fusionLines(data: GameData, key: string, tier: number): string[] {
-  return (data.sets.fusions[key]!.tiers[String(tier)] ?? []).map((e) => effectLine(data, e));
+  return fusionEffects(data, key, tier).map((e) => effectLine(data, e));
 }
 
 /** What a fusion at `tier` does in all: the lines of every tier up to it (tiers add up). */
 export function fusionReachedLines(data: GameData, key: string, tier: number): string[] {
-  return data.sets.fusionTiers.filter((t) => t <= tier).flatMap((t) => fusionLines(data, key, t));
+  return fusionSteps(data, key).filter((t) => t <= tier).flatMap((t) => fusionLines(data, key, t));
 }
 
 /** Every tier of a fusion with its bonus, lit up to the reached tier. */
 export function fusionLadder(data: GameData, key: string, reached: number): SetLadderRow[] {
-  return data.sets.fusionTiers.map((t) => ({ tier: t, on: t <= reached, text: fusionLines(data, key, t).join(' · ') }));
+  return fusionSteps(data, key).map((t) => ({ tier: t, on: t <= reached, text: fusionLines(data, key, t).join(' · ') }));
 }
 
-/** A fusion tier's level as a roman numeral (link counts 1 / 3 / 5 → I / II / III); '' for none. */
+/** A fusion tier's level as a roman numeral (link counts 1 / 3 / 5 → I / II / III; any tier above the top one is the Apex, IV); '' for none. */
 export function fusionLevel(data: GameData, tier: number): string {
-  const i = data.sets.fusionTiers.indexOf(tier);
+  const ft = data.sets.fusionTiers;
+  const i = tier > ft[ft.length - 1]! ? ft.length : ft.indexOf(tier);
   return i < 0 ? '' : (['I', 'II', 'III', 'IV', 'V'][i] ?? String(i + 1));
 }
 
@@ -281,4 +285,15 @@ export function fusionTags(key: string): [Tag, Tag] {
 /** Lines for a set tier (all its effects). */
 export function setTierLines(data: GameData, tag: Tag, tier: number): string[] {
   return (data.sets.sets[tag][String(tier)] ?? []).map((e) => effectLine(data, e));
+}
+
+/**
+ * The Lattice chip (spec 2026-10-16 §4/§6): the fusion tier sum now and the run-end Bits bonus from its tick
+ * average so far, e.g. `LATTICE 14 · +21 % Bits`; `final` (the death screen) shows the run's average.
+ */
+export function latticeLine(data: GameData, w: World, final = false): string {
+  const mean = latticeMean(w);
+  const pct = Math.round(data.sets.latticeCoef * mean * 1000) / 10;
+  const shown = final ? `avg ${Math.round(mean * 10) / 10}` : `${latticeNow(w, data)}`;
+  return `LATTICE ${shown} · +${pct} % Bits`;
 }

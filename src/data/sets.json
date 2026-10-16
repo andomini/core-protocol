@@ -84,9 +84,16 @@
   },
   "fusionTiers": [1, 3, 5],
   "howCap": 4,
+  "apexSet": 4,
+  "weldTicks": 150,
+  "latticeCoef": 0.015,
   "fusions": {
     "overload+cryo": {
       "name": "Thermal Shock",
+      "apexLinks": 7,
+      "apex": [
+        { "type": "conditional", "when": "targetFrozen", "damageMul": 1.2 }
+      ],
       "tiers": {
         "1": [
           { "type": "conditional", "when": "targetSlowed", "damageMul": 1.2 }
@@ -101,6 +108,10 @@
     },
     "overload+chain": {
       "name": "Overcharge",
+      "apexLinks": 7,
+      "apex": [
+        { "type": "ruleChange", "rule": "lightningDamage", "op": "mul", "value": 1.15 }
+      ],
       "tiers": {
         "1": [
           { "type": "ruleChange", "rule": "lightningDamage", "op": "mul", "value": 1.3 }
@@ -115,6 +126,10 @@
     },
     "overload+mining": {
       "name": "Headhunter",
+      "apexLinks": 7,
+      "apex": [
+        { "type": "statAdd", "stat": "critChance", "value": 0.03 }
+      ],
       "tiers": {
         "1": [
           { "type": "killBonus", "when": "crit", "energyMul": 1.5 }
@@ -144,6 +159,10 @@
     },
     "cryo+chain": {
       "name": "Superconductor",
+      "apexLinks": 7,
+      "apex": [
+        { "type": "ruleChange", "rule": "lightningRange", "op": "mul", "value": 1.15 }
+      ],
       "tiers": {
         "1": [
           { "type": "lightningFreeze", "seconds": 0.5 }
@@ -156,6 +175,10 @@
     },
     "cryo+mining": {
       "name": "Cold Storage",
+      "apexLinks": 7,
+      "apex": [
+        { "type": "killBonus", "when": "frozen", "energyMul": 1.2 }
+      ],
       "tiers": {
         "1": [
           { "type": "killBonus", "when": "frozen", "energyMul": 1.5 }
@@ -187,6 +210,10 @@
     },
     "chain+mining": {
       "name": "Network",
+      "apexLinks": 7,
+      "apex": [
+        { "type": "killBonus", "when": "chain", "energyMul": 1.2 }
+      ],
       "tiers": {
         "1": [
           { "type": "killBonus", "when": "chain", "energyMul": 1.5 }

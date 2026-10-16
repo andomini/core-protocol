@@ -106,6 +106,8 @@ export class CrystalView {
   placing: Placement | null = null;
   /** Non-null while the editor arranges the crystal. */
   edit: EditState | null = null;
+  /** The editor's tapped pair chip: hexes that add a link to that pair, glowing in `color` (null = none). */
+  pairGlow: { hexes: [number, number][]; color: number } | null = null;
   /** Module indices outlined as the hovered cluster (empty = none). */
   hover: number[] = [];
 
@@ -571,6 +573,17 @@ export class CrystalView {
         this.hex(g, cx, cy, R * 0.86 * k, true);
         g.lineStyle(3, TAG_COLOR[p.tag], 1);
         this.hex(g, cx, cy, R * 0.92 * k, false);
+      }
+    }
+    const gl = this.pairGlow;
+    if (gl) {
+      const k = 0.5 + 0.5 * Math.sin(now / 110);
+      for (const [q, r] of gl.hexes) {
+        const [cx, cy] = this.local(q, r);
+        g.fillStyle(gl.color, 0.18 + 0.2 * k);
+        this.hex(g, cx, cy, R * 0.8, true);
+        g.lineStyle(Math.max(3, R * 0.16), gl.color, 0.6 + 0.4 * k);
+        this.hex(g, cx, cy, R * 0.94, false);
       }
     }
     const e = this.edit;
