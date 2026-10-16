@@ -23,7 +23,11 @@ import { StructureView } from '../StructureView';
 import { worldStats } from '../../sim/state';
 import { sectorOf } from '../../sim/hex';
 import { grantStarter, type PackCard } from '../../meta/cards';
-import { type Settlement, settleRun } from '../../meta/runEnd';
+import { type Settlement, settleDaily, settleRun } from '../../meta/runEnd';
+import { claimFromMeta, dailyClaim, dailyRunOptions, dayKey, LEADERBOARD, type LoadoutClaim } from '../../meta/leaderboardRules';
+import type { RunBoard } from '../../meta/MetaStore';
+import { rankedBuild, type RunOutcome } from '../../portal/leaderboard';
+import { hashWorld } from '../../sim/hash';
 import { Button } from '../../ui/kit';
 import { PickOverlay } from '../../ui/PickOverlay';
 import { DamageNumbers } from '../../ui/DamageNumbers';
@@ -43,7 +47,7 @@ import { circleInRect, type Layout } from '../../ui/layout';
 import battleJson from '../../data/battle.json';
 import { RunLifecycle } from '../../portal/lifecycle';
 import { services } from '../../services';
-import { battleData, type DevFlags, readFlags, stressTuning } from '../devFlags';
+import { battleData, type DevFlags, leaderboardForce, readFlags, stressTuning } from '../devFlags';
 import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
 import { BG, CRIMSON, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
@@ -124,7 +128,17 @@ export class BattleScene extends Phaser.Scene {
   private readonly tmp = { x: 0, y: 0 };
   private deathAt = 0;
   private stressCount = 0;
-  private mode: 'new' | 'continue' = 'new';
+  private mode: 'new' | 'continue' | 'daily' = 'new';
+  /** Leaderboard: where this run goes, the loadout it claims, and whether its log is complete and clean. */
+  board: RunBoard = { kind: 'tier', day: null };
+  private claim: LoadoutClaim | null = null;
+  private ranked = false;
+  /** Why a run is not ranked (shown on the death screen when leaderboards are on). */
+  private unrankedWhy = '';
+  /** Bumped on restart: a late submit answer for an earlier run is ignored. */
+  private runGen = 0;
+  /** Last leaderboard outcome of this run (UI smoke reads it). */
+  lbOutcome: RunOutcome | null = null;
   private tier = 1;
   private speeds: number[] = SPEEDS;
   /** The death settlement already paid into the meta save (undone on a revive). */
@@ -147,9 +161,13 @@ export class BattleScene extends Phaser.Scene {
     super('Battle');
   }
 
-  /** `mode: 'continue'` resumes the saved run; otherwise a new run on `tier`. Resets per-run scene state. */
-  init(data: { mode?: 'new' | 'continue'; tier?: number } = {}): void {
-    this.mode = data.mode === 'continue' ? 'continue' : 'new';
+  /**
+   * `mode: 'continue'` resumes the saved run; `'daily'` starts today's challenge (shared seed, fixed loadout);
+   * otherwise a new run on `tier`. Resets per-run scene state.
+   */
+  init(data: { mode?: 'new' | 'continue' | 'daily'; tier?: number } = {}): void {
+    this.mode = data.mode === 'continue' || data.mode === 'daily' ? data.mode : 'new';
+    this.lbOutcome = null;
     this.tier = data.tier ?? services.meta?.meta.tier ?? 1;
     this.speed = 1;
     this.paused = false;
@@ -190,6 +208,14 @@ export class BattleScene extends Phaser.Scene {
       this.session = new RunSession(this.gd, saved.opts);
       this.session.adopt(saved.world, saved.opts);
       this.runStats = saved.stats;
+      // The replay needs every command since tick 0: a save without its log resumes unranked.
+      this.board = saved.board ?? { kind: 'tier', day: null };
+      this.claim = saved.claim;
+      const complete = saved.log !== null && saved.claim !== null;
+      if (complete) this.session.log = saved.log!;
+      this.setRanked(complete ? '' : 'resumed from an older save');
+    } else if (this.mode === 'daily') {
+      this.session = new RunSession(this.gd, this.dailyOptions());
     } else {
       this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
     }
@@ -328,14 +354,70 @@ export class BattleScene extends Phaser.Scene {
     const o = buildRunOptions(services.meta.meta, this.gd, DEFAULT_META_DATA, this.tier, seed);
     if (this.flags.unlockAll) o.unlocked = [...STAT_IDS];
     o.protocols = !this.flags.stress;
+    this.board = { kind: 'tier', day: null };
+    this.claim = claimFromMeta(services.meta.meta, DEFAULT_META_DATA);
+    this.setRanked('');
     return o;
+  }
+
+  /** Today's daily challenge (UTC day): its seed, tier and fixed loadout, whatever the meta save holds. */
+  private dailyOptions(): RunOptions {
+    const day = dayKey(Date.now());
+    const o = dailyRunOptions(day, this.gd, DEFAULT_META_DATA);
+    this.tier = o.tier;
+    this.board = { kind: 'daily', day };
+    this.claim = dailyClaim(day);
+    this.setRanked('');
+    return o;
+  }
+
+  /** Ranked = complete log + a clean build + no dev flags (dev ?lbforce=1 skips the last two for the UI smoke). */
+  private setRanked(why: string): void {
+    const force = leaderboardForce(location.search);
+    const f = this.flags;
+    if (!why && !force && (f.stress || f.weak || f.seed !== null || f.unlockAll)) why = 'dev flags';
+    if (!why && !force && !rankedBuild(__COMMIT__)) why = 'dev build';
+    this.ranked = why === '';
+    this.unrankedWhy = why;
+  }
+
+  /** The command log a save carries (null = unranked, or too long to keep — the run then resumes unranked). */
+  private replayInfo() {
+    const log = this.ranked && this.session.log.length <= LEADERBOARD.maxLogEntries ? this.session.log : null;
+    return { log, claim: this.claim, board: this.board };
+  }
+
+  /** Death: upload the run (queued offline) and put its rank on the death screen. */
+  private submitRun(): void {
+    const lb = services.leaderboard;
+    if (!lb?.enabled || this.flags.stress) return;
+    const w = this.session.world;
+    if (!this.ranked || !this.claim || this.session.log.length > LEADERBOARD.maxLogEntries || w.wave < LEADERBOARD.minWave) {
+      this.death.setRankLine(`not ranked · ${this.unrankedWhy || 'incomplete replay'}`);
+      return;
+    }
+    const opts = this.session.opts;
+    const replay = JSON.stringify({ v: 1, seed: opts.seed, tier: opts.tier, claim: this.claim, log: this.session.log });
+    const sub = { kind: this.board.kind, tier: w.tier, day: this.board.day, wave: w.wave, ticks: w.tick, hash: hashWorld(w), commit: __COMMIT__, replay };
+    const gen = this.runGen;
+    this.death.setRankLine('submitting…');
+    void lb.submit(sub).then(async (o) => {
+      if (gen !== this.runGen) return;
+      this.lbOutcome = o;
+      if (o.state === 'queued') return this.death.setRankLine('offline · will submit later');
+      if (o.state === 'dropped' || o.state === 'rejected') return this.death.setRankLine(`not ranked · ${o.error ?? o.state}`);
+      this.death.setRankLine(o.state === 'pending' ? 'submitted · verifying' : 'submitted');
+      const r = await lb.rankFor(sub.kind, sub.tier, sub.day);
+      if (gen !== this.runGen || !r) return;
+      this.death.setRankLine(`submitted · ${sub.kind === 'daily' ? 'daily ' : ''}rank ~${formatNum(r.rank)}${r.status === 'verifying' ? ' · verifying' : ''}`);
+    });
   }
 
   /** Snapshot of the run in progress (wave starts, tab hidden, pause → exit). Never in stress mode. */
   saveRun(): void {
     const w = this.session?.world;
     if (!w || w.dead || this.flags.stress) return;
-    services.meta.saveRun(w, this.session.opts, this.runStats);
+    services.meta.saveRun(w, this.session.opts, this.runStats, this.replayInfo());
   }
 
   private saveAndExit(): void {
@@ -381,7 +463,10 @@ export class BattleScene extends Phaser.Scene {
     const m = services.meta.meta;
     const lifetimeBefore = structuredClone(m.lifetime);
     const codexBefore = { ...m.codex };
-    const s = settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest });
+    const s =
+      this.board.kind === 'daily'
+        ? settleDaily(m, DEFAULT_META_DATA, { bits: w.bits, keys: w.keys, doubled: false })
+        : settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest });
     this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore, codexBefore };
     addRunToLifetime(m.lifetime, this.runStats, {
       waves: w.wave,
@@ -394,10 +479,12 @@ export class BattleScene extends Phaser.Scene {
     this.starter = m.starterGiven ? null : grantStarter(m);
     if (this.starter) this.registry.set('starterReveal', this.starter);
     services.meta.save();
+    this.submitRun();
   }
 
   private deathNote(s: Settlement): string {
     const parts: string[] = [];
+    if (this.board.kind === 'daily') parts.push(`DAILY ${this.board.day}`);
     if (s.newBest) parts.push('NEW BEST');
     if (s.milestones.length) parts.push(`MILESTONE ${s.milestones.map((m) => `W${m}`).join(' ')}`);
     if (s.tierUnlocked) parts.push(`TIER ${s.tierUnlocked} UNLOCKED`);
@@ -427,6 +514,7 @@ export class BattleScene extends Phaser.Scene {
         services.meta.save();
       }
       this.command({ type: 'revive' });
+      this.runGen += 1; // the next death submits the longer run
       this.death.hide();
       this.deathAt = 0;
       this.life.runStarted(this.session.world, []);
@@ -884,7 +972,10 @@ export class BattleScene extends Phaser.Scene {
     this.speedChosen = false;
     this.secondWindPending = 0;
     services.meta.clearRun();
-    this.session.restart(this.runOptions(newSeed()));
+    this.runGen += 1;
+    this.lbOutcome = null;
+    // RETRY on a daily run is another attempt at today's challenge.
+    this.session.restart(this.board.kind === 'daily' ? this.dailyOptions() : this.runOptions(newSeed()));
     this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.view.reset();
     this.structures.reset();

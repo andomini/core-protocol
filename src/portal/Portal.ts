@@ -2,6 +2,12 @@ import type { KeyValue } from './storage';
 
 export type PortalName = 'local' | 'crazygames' | 'poki';
 
+/** A signed-in portal account (CrazyGames): its name and a short-lived token the leaderboard server verifies. */
+export interface PortalUser {
+  username: string;
+  token: string;
+}
+
 /**
  * Thin adapter over a portal SDK (adapted from Merge Wall). Implementations may fail or never resolve;
  * the game talks to them only through PortalGuard, which adds timeouts, de-duplication, first-input
@@ -35,4 +41,6 @@ export interface Portal {
    * at request time.
    */
   onAdStarted?: (cb: () => void) => void;
+  /** The signed-in portal account, or null (none, signed out, SDK blocked). Never throws. */
+  user?(): Promise<PortalUser | null>;
 }

@@ -1,7 +1,7 @@
 // CrazyGames HTML5 SDK v3 adapter (from Merge Wall). API per docs.crazygames.com/sdk (intro, game,
 // video-ads, data). Every SDK call is guarded: if the script is blocked, init fails or the environment is
 // "disabled", the adapter degrades to no-ops and localStorage, and ads report "not available".
-import type { Portal } from './Portal';
+import type { Portal, PortalUser } from './Portal';
 import { type KeyValue, localKV } from './storage';
 
 interface CgAdCallbacks {
@@ -27,6 +27,12 @@ interface CgSdk {
     hasAdblock(): Promise<boolean>;
   };
   data: { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem(key: string): void };
+  /** User module (absent in older SDKs / the UI-smoke fake). */
+  user?: {
+    isUserAccountAvailable?: boolean;
+    getUser(): Promise<{ username: string } | null>;
+    getUserToken(): Promise<string>;
+  };
 }
 
 declare global {
@@ -166,6 +172,20 @@ export class CrazyGamesPortal implements Portal {
         resolve(false);
       }
     });
+  }
+
+  /** The signed-in CrazyGames account (leaderboard identity), or null. */
+  async user(): Promise<PortalUser | null> {
+    const u = this.sdk?.user;
+    if (!u || u.isUserAccountAvailable === false) return null;
+    try {
+      const p = await u.getUser();
+      if (!p || typeof p.username !== 'string') return null;
+      const token = await u.getUserToken();
+      return typeof token === 'string' && token ? { username: p.username, token } : null;
+    } catch {
+      return null;
+    }
   }
 
   storage(): KeyValue {

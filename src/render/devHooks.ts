@@ -106,6 +106,11 @@ export function installDevHooks(game: Phaser.Game): void {
     /** Issues a buy command exactly like a row tap would. */
     buy: (stat: StatId, count: BuyCount = 1) => battle()?.command({ type: 'buy', stat, count }),
     /** Dev cheat for manual testing: adds Energy outside the command log (breaks replay of this run). */
+    /** Drops the core far below 0 HP (past any regen) outside the command log (dies on the next tick): a quick death for any loadout. */
+    breach: () => {
+      const b = battle();
+      if (b) b.session.world.core.hp = -1e12;
+    },
     give: (energy: number) => {
       const b = battle();
       if (b) b.session.world.energy += energy;
@@ -175,5 +180,7 @@ export function installDevHooks(game: Phaser.Game): void {
     /** A rewarded ad through the real service (toast on failure); resolves true if it completed. */
     rewarded: (placement: RewardedPlacement) => services.ads.rewarded(placement),
     telemetry: () => services.telemetry.all(),
+    /** The leaderboard service (identity, queue, flush) for the UI smoke's mocked-API checks. */
+    lb: () => services.leaderboard,
   };
 }

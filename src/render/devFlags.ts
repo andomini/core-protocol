@@ -15,6 +15,23 @@ export interface DevFlags {
   unlockAll: boolean;
 }
 
+/**
+ * Leaderboard API origin: VITE_LEADERBOARD_URL at build time (empty → the feature is hidden).
+ * Dev only: ?lb=<origin> points at another server (the UI smoke mocks one at http://lb.test).
+ */
+export function leaderboardBase(search: string): string {
+  if (import.meta.env.DEV) {
+    const o = new URLSearchParams(search).get('lb');
+    if (o) return o;
+  }
+  return String(import.meta.env.VITE_LEADERBOARD_URL ?? '');
+}
+
+/** Dev only: ?lbforce=1 submits runs that dev flags / a dirty build would keep off the boards (UI smoke). */
+export function leaderboardForce(search: string): boolean {
+  return import.meta.env.DEV && new URLSearchParams(search).get('lbforce') === '1';
+}
+
 /** Stress-mode knobs, or null outside DEV (keeps dev.json out of production bundles). */
 export function stressTuning(): typeof devJson.stress | null {
   return import.meta.env.DEV ? devJson.stress : null;

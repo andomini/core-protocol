@@ -3,6 +3,7 @@ import type { Ads } from './portal/ads';
 import type { Portal } from './portal/Portal';
 import type { PortalGuard } from './portal/PortalGuard';
 import type { KeyValue } from './portal/storage';
+import type { Leaderboard } from './portal/leaderboard';
 import type { MetaStore } from './meta/MetaStore';
 import type { AudioBus } from './render/audio';
 import type { Telemetry } from './telemetry/Telemetry';
@@ -20,6 +21,8 @@ export interface Services {
   audio: AudioBus;
   /** Meta progress + the saved run (M4). */
   meta: MetaStore;
+  /** Online leaderboards (fail-soft; `enabled` is false when the build has no server URL). */
+  leaderboard: Leaderboard;
   /** Effective mute: portal mute OR ad audio. */
   isMuted(): boolean;
 }

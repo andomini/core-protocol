@@ -1,7 +1,8 @@
 // UI smoke for the battle view (M2a), the upgrade panel (M2b) and the portal layer (M6). Starts its own Vite dev server (or uses UI_BASE) and drives the
-// dev-only window.__cp hooks. Usage: npm run ui [-- --only portrait|landscape|stress|portal (comma-separated)]
+// dev-only window.__cp hooks. Usage: npm run ui [-- --only portrait|landscape|stress|portal|leaderboard (comma-separated)]
 // Screenshots: reports/screens/*.jpg (committed), full PNGs in .superpowers/screens/ (for review).
 import { writeFileSync } from 'node:fs';
+import { gunzipSync } from 'node:zlib';
 import { check, launch, open, startServer } from './harness.mjs';
 
 const args = process.argv.slice(2);
@@ -295,6 +296,79 @@ async function panelFitCheck(h, label, shotName) {
   await h.call('setTab', 'atk');
   if (shotName) await h.shot(shotName);
 }
+
+/**
+ * A mocked leaderboard API at http://lb.test/v1 (route interception): records what the game sends and
+ * answers like the Worker (docs/superpowers/specs/2026-10-16-leaderboards-design.md). `offline` makes run
+ * uploads fail at the network level (the offline queue keeps them).
+ */
+function lbMock() {
+  const m = { runs: [], boards: [], players: 0, renames: [], friends: [], offline: false, auth: [] };
+  const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, PATCH, DELETE, OPTIONS' };
+  const json = (route, status, body) => route.fulfill({ status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const me = { id: 'p_smoke', secret: 'sekret', name: 'NeonVirus-4821', friendCode: 'K7M2QX', portal: 'local', linked: false, badges: 0 };
+  m.routes = (ctx) =>
+    ctx.route('http://lb.test/**', async (route) => {
+      const req = route.request();
+      if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+      const url = new URL(req.url());
+      const path = url.pathname.replace(/^\/v1/, '');
+      const authz = req.headers()['authorization'] ?? '';
+      if (path !== '/players' || req.method() !== 'POST') m.auth.push(authz);
+      if (req.method() === 'POST' && path === '/players') {
+        m.players += 1;
+        return json(route, 201, { ...me, secret: me.secret });
+      }
+      if (req.method() === 'POST' && path === '/runs') {
+        if (m.offline) return route.abort('internetdisconnected');
+        m.runs.push(JSON.parse(req.postData() ?? '{}'));
+        return json(route, 202, { id: m.runs.length, status: 'pending' });
+      }
+      if (req.method() === 'PATCH' && path === '/players/me') {
+        const b = JSON.parse(req.postData() ?? '{}');
+        m.renames.push(b.name);
+        me.name = b.name;
+        return json(route, 200, { name: b.name });
+      }
+      if (req.method() === 'POST' && path === '/friends') {
+        const b = JSON.parse(req.postData() ?? '{}');
+        m.friends.push(b.code);
+        return b.code === 'ABCDEF' ? json(route, 200, { friend: { name: 'Pal', friendCode: b.code, badges: 1 } }) : json(route, 404, { error: 'code-not-found' });
+      }
+      if (req.method() === 'GET' && path.startsWith('/boards/')) {
+        m.boards.push(path + url.search);
+        const friends = url.searchParams.get('scope') === 'friends';
+        const lim = Number(url.searchParams.get('limit') ?? 50);
+        const n = Math.min(lim, friends ? 2 : 40);
+        const names = ['Viral-Load', 'xX_Kernel_Xx', 'NullPointer', 'ByteMe', 'Overclocked', 'Firewall.9', 'Glitch Queen', 'Packet Loss'];
+        const entries = Array.from({ length: n }, (_, i) => ({ rank: i + 1, name: friends ? ['Pal', 'Chum'][i] : names[i % names.length] + (i >= names.length ? `-${i}` : ''), friendCode: 'ABCDEF', badges: i < 2 ? 3 - i : 0, wave: 400 - i * 7, at: 0, status: i === 2 ? 'verifying' : 'verified' }));
+        const mine = m.runs.at(-1);
+        const kind = path.split('/')[2];
+        const body = { board: kind === 'daily' ? `d:${url.pathname.split('/')[4] ?? 'today'}` : kind === 'weekly' ? 'w:2026-10-12:1' : `t:${path.split('/')[3]}`, scope: friends ? 'friends' : 'global', total: 4210, entries, me: mine ? { rank: 1337, wave: mine.wave, status: 'verifying' } : null };
+        if (kind === 'daily') Object.assign(body, { day: '2026-10-16', seed: 1, endsAt: Date.now() + 5 * 3600e3 });
+        if (kind === 'weekly') Object.assign(body, { tier: 1, week: '2026-10-12', endsAt: Date.now() + 3 * 86400e3 });
+        return json(route, 200, body);
+      }
+      return json(route, 404, { error: 'not-found' });
+    });
+  return m;
+}
+
+/** Decodes a submitted replay (JSON, or gz: + base64 of it). */
+function decodeReplay(s) {
+  return JSON.parse(s.startsWith('gz:') ? gunzipSync(Buffer.from(s.slice(3), 'base64')).toString('utf8') : s);
+}
+
+const homeBtn = (h, label) =>
+  h.p.evaluate((l) => {
+    const b = window.__cp.game.scene.getScene('Home').buttons.find((x) => x.label.text === l && x.zone.input?.enabled);
+    return b ? b.r : null;
+  }, label);
+const lbPanel = (h) =>
+  h.p.evaluate(() => {
+    const p = window.__cp.game.scene.getScene('Home').lbPanel;
+    return p && { visible: p.visible, kind: p.kind, scope: p.scope, status: p.status, rows: p.board?.entries.length ?? -1, board: p.board?.board ?? null, me: p.board?.me ?? null, rects: p.rects };
+  });
 
 const scenarios = {
   async portal() {
@@ -917,6 +991,101 @@ const scenarios = {
       await minTextCheck(h, `${label} lifetime stats`);
       await h.shot(`lifetime-${label}`);
       check(results, `${label} stats: no console errors`, h.errors.length === 0, h.errors);
+      await h.close();
+    }
+  },
+
+  async leaderboard() {
+    for (const [device, label] of [['phone169', 'lb portrait 360×640'], ['desktop', 'lb landscape']]) {
+      const m = lbMock();
+      const q = '?home=1&weak=1&lb=http://lb.test&lbforce=1';
+      const h = await open(browser, srv.base, device, q, { routes: m.routes });
+      await h.p.waitForFunction(() => window.__cp.lb().identity !== null, null, { timeout: 10000 }).catch(() => {});
+      const id = await h.p.evaluate(() => window.__cp.lb().identity);
+      check(results, `${label}: registers once with the mocked API`, id?.friendCode === 'K7M2QX' && m.players === 1, { id, players: m.players });
+      // Home: RANKS opens the panel with the tier board.
+      const ranks = await homeBtn(h, 'RANKS');
+      const daily = await homeBtn(h, 'DAILY');
+      check(results, `${label}: Home shows DAILY and RANKS`, ranks && daily, { ranks, daily });
+      await h.tapLogical(...centre(ranks));
+      await h.p.waitForFunction(() => window.__cp.game.scene.getScene('Home').lbPanel?.board, null, { timeout: 5000 }).catch(() => {});
+      let p = await lbPanel(h);
+      check(results, `${label}: panel loads the tier board with my row pinned`, p.visible && p.board === 't:1' && p.rows >= 8 && !p.status, p);
+      check(results, `${label}: board calls are authenticated`, m.auth.length > 0 && m.auth.every((a) => a === 'Bearer p_smoke.sekret'), m.auth);
+      await minTextCheck(h, `${label} ranks panel`);
+      await h.shot(`ranks-${device}`);
+      // Fits the card: every button inside the layout.
+      const L = await h.p.evaluate(() => window.__cp.game.registry.get('layout'));
+      const out = Object.entries(p.rects).filter(([, r]) => r.x < 0 || r.y < 0 || r.x + r.w > L.w || r.y + r.h > L.h);
+      check(results, `${label}: panel buttons inside the screen`, out.length === 0, out);
+      await h.tapLogical(...centre(p.rects['kind:daily']));
+      await h.p.waitForTimeout(400);
+      await h.tapLogical(...centre((await lbPanel(h)).rects['scope:friends']));
+      await h.p.waitForTimeout(400);
+      p = await lbPanel(h);
+      check(results, `${label}: DAILY tab + FRIENDS toggle`, p.kind === 'daily' && p.scope === 'friends' && p.rows === 2 && m.boards.some((b) => b.startsWith('/boards/daily?scope=friends')), { p, boards: m.boards });
+      await h.tapLogical(...centre(p.rects['kind:weekly']));
+      await h.p.waitForTimeout(400);
+      p = await lbPanel(h);
+      check(results, `${label}: WEEKLY tab`, p.kind === 'weekly' && m.boards.some((b) => b.startsWith('/boards/weekly/1?')), m.boards);
+      await h.shot(`ranks-weekly-${device}`);
+      // Rename and add-friend go through the DOM prompt.
+      await h.tapLogical(...centre(p.rects.rename));
+      await h.p.waitForSelector('.cp-prompt input', { timeout: 3000 });
+      await h.p.fill('.cp-prompt input', 'x');
+      await h.p.click('.cp-prompt-ok');
+      const hint = await h.p.textContent('.cp-prompt-hint');
+      await h.p.fill('.cp-prompt input', 'Smoke Tester');
+      await h.p.click('.cp-prompt-ok');
+      await h.p.waitForTimeout(400);
+      const nm = await h.p.evaluate(() => window.__cp.lb().identity.name);
+      check(results, `${label}: rename validates locally, then PATCHes`, /3–20/.test(hint ?? '') && m.renames.join() === 'Smoke Tester' && nm === 'Smoke Tester', { hint, renames: m.renames, nm });
+      await h.tapLogical(...centre((await lbPanel(h)).rects.add));
+      await h.p.waitForSelector('.cp-prompt input', { timeout: 3000 });
+      await h.p.fill('.cp-prompt input', 'abc-def');
+      await h.p.click('.cp-prompt-ok');
+      await h.p.waitForTimeout(400);
+      check(results, `${label}: friend code is normalised before POST /friends`, m.friends.join() === 'ABCDEF', m.friends);
+      await h.tapLogical(...centre((await lbPanel(h)).rects.close));
+      await h.p.waitForTimeout(200);
+      check(results, `${label}: CLOSE hides the panel`, !(await lbPanel(h)).visible, null);
+      // DAILY: the day's seed and loadout; the death screen shows the submission and rank.
+      await h.tapLogical(...centre(daily));
+      await h.p.waitForFunction(() => window.__cp.game.scene.isActive('Battle') && window.__cp.ready(), null, { timeout: 10000 });
+      const board = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').board);
+      check(results, `${label}: DAILY starts a daily run`, board.kind === 'daily' && /^\d{4}-\d{2}-\d{2}$/.test(board.day), board);
+      await h.call('breach'); // the daily loadout outlives ?weak=1's core
+      await dieNow(h, label);
+      await h.p.waitForFunction(() => /rank ~/.test(window.__cp.game.scene.getScene('Battle').death.rankText), null, { timeout: 8000 }).catch(() => {});
+      const rank = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').death.rankText);
+      const st = await h.state();
+      const sub = m.runs[0];
+      const rp = sub ? decodeReplay(sub.replay) : null;
+      check(results, `${label}: death screen shows "submitted · rank ~N"`, /submitted · daily rank ~\S+/.test(rank), rank);
+      check(
+        results,
+        `${label}: the daily run is submitted with seed, claim, full log, wave, ticks, hash, commit`,
+        sub && sub.kind === 'daily' && sub.day === board.day && sub.wave === st.wave && sub.ticks === st.tick && /^[0-9a-f]{8}$/.test(sub.hash) && typeof sub.commit === 'string' && rp.v === 1 && rp.seed === st.seed && rp.claim && Array.isArray(rp.log) && rp.log.length === st.commands,
+        { sub: sub && { ...sub, replay: sub.replay.slice(0, 20) }, rp: rp && { ...rp, log: rp.log.length }, st: { wave: st.wave, tick: st.tick, seed: st.seed, commands: st.commands } },
+      );
+      await minTextCheck(h, `${label} death + rank`);
+      await h.shot(`death-rank-${device}`);
+      // Offline: the next run waits in the queue (and survives), then uploads once the API is back.
+      m.offline = true;
+      await h.call('restart');
+      await h.p.waitForTimeout(300);
+      await h.call('breach');
+      await dieNow(h, `${label} offline`);
+      await h.p.waitForFunction(() => /offline/.test(window.__cp.game.scene.getScene('Battle').death.rankText), null, { timeout: 8000 }).catch(() => {});
+      const off = await h.p.evaluate(() => ({ line: window.__cp.game.scene.getScene('Battle').death.rankText, queued: window.__cp.lb().queued.length }));
+      check(results, `${label}: offline → queued, death screen says so`, off.queued === 1 && /offline/.test(off.line) && m.runs.length === 1, off);
+      m.offline = false;
+      await h.p.evaluate(() => window.__cp.lb().flush());
+      const after = await h.p.evaluate(() => window.__cp.lb().queued.length);
+      check(results, `${label}: the queue uploads when back online`, after === 0 && m.runs.length === 2, { after, runs: m.runs.length });
+      // The browser logs the aborted (offline) upload itself; anything else is a game error.
+      const errs = h.errors.filter((e) => !/ERR_INTERNET_DISCONNECTED/.test(e));
+      check(results, `${label}: no console errors`, errs.length === 0, errs);
       await h.close();
     }
   },

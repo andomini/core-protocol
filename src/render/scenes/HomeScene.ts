@@ -9,6 +9,8 @@ import { CARDS, canFreePack, cardDef, cardSlots, claimFreePack, equip, openPack,
 import { cardEffectText } from '../../ui/cardText';
 import { CodexPanel } from '../../ui/CodexPanel';
 import { StatsPanel } from '../../ui/StatsPanel';
+import { LeaderboardPanel } from '../../ui/LeaderboardPanel';
+import { askText } from '../../ui/textPrompt';
 import { lifetimeTabs } from '../../ui/statsRows';
 import { addRunToLifetime } from '../../meta/runStats';
 import { drawTagIcon } from '../../ui/tagIcon';
@@ -59,6 +61,7 @@ export class HomeScene extends Phaser.Scene {
   private modalButtons: Button[] = [];
   statsPanel!: StatsPanel;
   codexPanel!: CodexPanel;
+  lbPanel: LeaderboardPanel | null = null;
 
   constructor() {
     super('Home');
@@ -99,6 +102,8 @@ export class HomeScene extends Phaser.Scene {
     services.audio.apply();
     this.statsPanel = new StatsPanel(this, this.L, () => this.statsPanel.hide());
     this.codexPanel = new CodexPanel(this, this.L, this.gd, () => this.codexPanel.hide());
+    const lb = services.leaderboard;
+    this.lbPanel = lb?.enabled ? new LeaderboardPanel(this, this.L, lb, { maxTier: Math.max(1, services.meta.meta.tierUnlocked), close: () => this.lbPanel?.hide() }) : null;
     this.refresh();
     services.guard.gameplayStop?.();
     const starter = this.registry.get('starterReveal') as PackCard[] | undefined;
@@ -276,9 +281,15 @@ export class HomeScene extends Phaser.Scene {
     }
     const sh = portrait ? 76 : 50;
     const sy = by + (saved ? (portrait ? 90 + 20 : 60 + 20) : 0);
-    const hw = (bw - 16) / 2;
-    this.btn({ x: cx - bw / 2, y: sy, w: hw, h: sh }, 'STATS', () => this.openStats(), { size: f, color: '#22e5ff' });
-    this.btn({ x: cx - bw / 2 + hw + 16, y: sy, w: hw, h: sh }, 'CODEX', () => this.openCodex(), { size: f, color: '#ffc93a' });
+    // With leaderboards: DAILY (today's challenge, not over a saved run) and RANKS join the row.
+    const row: [string, () => void, string, boolean][] = [
+      ['STATS', () => this.openStats(), '#22e5ff', true],
+      ['CODEX', () => this.openCodex(), '#ffc93a', true],
+    ];
+    if (this.lbPanel) row.push(['DAILY', () => this.startDaily(), '#2bffb0', !saved], ['RANKS', () => this.openRanks(), '#ff8be8', true]);
+    const gap = row.length > 2 ? 12 : 16;
+    const hw = (bw - gap * (row.length - 1)) / row.length;
+    row.forEach(([label, fn, color, enabled], i) => this.btn({ x: cx - bw / 2 + i * (hw + gap), y: sy, w: hw, h: sh }, label, fn, { size: f, color, enabled }));
     // Progress summary.
     const e = labEffects(m, this.md);
     const wsLevels = Object.values(m.workshop).reduce((a, b) => a + (b ?? 0), 0);
@@ -323,6 +334,15 @@ export class HomeScene extends Phaser.Scene {
     m.tier = Math.max(1, Math.min(m.tierUnlocked, t));
     this.save();
     this.refresh();
+  }
+
+  openRanks(): void {
+    this.lbPanel?.show(Math.min(services.meta.meta.tier, services.meta.meta.tierUnlocked));
+  }
+
+  /** Today's daily challenge: the shared seed and fixed loadout (spec §Daily). */
+  startDaily(): void {
+    this.scene.start('Battle', { mode: 'daily' });
   }
 
   startRun(tier: number): void {
@@ -657,7 +677,29 @@ export class HomeScene extends Phaser.Scene {
       }, { color: on ? '#2bffb0' : TEXT_DIM, edge: on ? 0x2bffb0 : LOCKED });
     });
     const e = labEffects(m, this.md);
-    this.t(c.x, c.y + (portrait ? 90 : 60) + 3 * (h + 16) + 20, `Progress is saved on this device.\nSpeeds unlocked: ${e.speeds.map((s) => `×${s}`).join(' ')}`, f, TEXT_DIM).setLineSpacing(8);
+    const ty = c.y + (portrait ? 90 : 60) + rows.length * (h + 16) + 4;
+    this.t(c.x, ty, `Progress is saved on this device.\nSpeeds unlocked: ${e.speeds.map((s) => `×${s}`).join(' ')}`, f, TEXT_DIM).setLineSpacing(8);
+    this.onlineRow({ x: c.x, y: ty + 2 * f + 8 + (portrait ? 24 : 14), w: c.w, h });
+  }
+
+  /** Settings: the online leaderboard profile, with "delete my online data". */
+  private onlineRow(r: Rect): void {
+    const lb = services.leaderboard;
+    if (!lb?.enabled) return;
+    const f = this.G.font;
+    const id = lb.identity;
+    this.card(r, 0xff3b5c, 0.7);
+    this.t(r.x + 20, r.y + r.h / 2, id ? `Online: ${id.name}` : 'Online profile: none', f + 2).setOrigin(0, 0.5);
+    const bw = this.L.o === 'portrait' ? 200 : 180;
+    this.btn({ x: r.x + r.w - bw - 20, y: r.y + 12, w: bw, h: r.h - 24 }, 'DELETE', () => void this.deleteOnline(), { color: '#ff8a9b', edge: 0xff3b5c, fill: 0x2a0610, enabled: !!id });
+  }
+
+  private async deleteOnline(): Promise<void> {
+    const ok = await askText({ title: 'DELETE ONLINE DATA?', hint: 'Removes your name, friend code, friends and every submitted run from the leaderboards. Progress on this device stays.', input: false, ok: 'DELETE', danger: true });
+    if (ok === null) return;
+    const r = await services.leaderboard.deleteMe();
+    showToast(r.ok ? 'Online data deleted' : 'Could not reach the leaderboards · try again later', 3000);
+    if (this.scene.isActive() && this.tab === 'settings') this.refresh();
   }
 
   // ---- Offline income ---------------------------------------------------------------------------------------

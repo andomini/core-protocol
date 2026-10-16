@@ -4,6 +4,8 @@ import { MidgamePolicy } from './portal/adPolicy';
 import { Ads } from './portal/ads';
 import { createPortal } from './portal';
 import { PortalGuard } from './portal/PortalGuard';
+import { Leaderboard } from './portal/leaderboard';
+import { leaderboardBase } from './render/devFlags';
 import { showToast } from './portal/toast';
 import { installDevHooks } from './render/devHooks';
 import { LETTERBOX } from './render/palette';
@@ -50,6 +52,14 @@ async function start(): Promise<void> {
   services.telemetry = telemetry;
   services.storage = portal.storage();
   services.portalInit = Promise.race([settled, new Promise<void>((r) => setTimeout(r, PORTAL_INIT_CAP_MS))]);
+  services.leaderboard = new Leaderboard({
+    base: leaderboardBase(location.search),
+    kv: services.storage,
+    portal: portal.name,
+    portalUser: portal.user ? () => portal.user!() : undefined,
+  });
+  // Identity and the offline queue may live in the portal's data module: load after its init.
+  void services.portalInit.then(() => services.leaderboard.start());
   services.ads = new Ads({
     guard,
     policy: new MidgamePolicy(rules, () => performance.now()),

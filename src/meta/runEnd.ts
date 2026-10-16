@@ -73,3 +73,19 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
   m.firstRunDone = true;
   return { bits, keys, milestones, newBest, tierUnlocked, codexBits, codexNew };
 }
+
+/**
+ * A daily-challenge run (fixed loadout, shared seed): pays its Bits (× the player's own lab and ad
+ * multipliers) and dropped Keys only — no best wave, milestones, tier unlock or Codex, which belong to the
+ * player's own loadout on their tier.
+ */
+export function settleDaily(m: MetaState, md: MetaData, r: Pick<RunResult, 'bits' | 'keys' | 'doubled'>): Settlement {
+  const e = labEffects(m, md);
+  const bits = Math.floor(r.bits * e.bitsMul * (r.doubled ? md.ads.doubleBits : 1));
+  const keys = Math.floor(r.keys);
+  m.bits += bits;
+  m.keys += keys;
+  m.runs += 1;
+  m.firstRunDone = true;
+  return { bits, keys, milestones: [], newBest: false, tierUnlocked: 0, codexBits: 0, codexNew: [] };
+}

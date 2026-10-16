@@ -57,11 +57,14 @@ export function fakeSdk(portal) {
 
 /**
  * Opens the game in a fresh context and waits for the Battle scene. `opts.sdk` ('crazygames'|'poki') injects
- * that fake SDK before any page script (use with ?portal=<name> on the dev server).
+ * that fake SDK before any page script (use with ?portal=<name> on the dev server); `opts.routes(ctx)`
+ * installs request mocks first.
  */
 export async function open(browser, base, device, query = '', opts = {}) {
   const ctx = await browser.newContext(VIEWPORTS[device]);
   if (opts.sdk) await ctx.addInitScript(fakeSdk(opts.sdk));
+  // Network mocks (e.g. the leaderboard API) must be in place before the page's first request.
+  if (opts.routes) await opts.routes(ctx);
   const p = await ctx.newPage();
   const errors = [];
   /** LocalPortal's `[local] <call>` lines, in order. */
