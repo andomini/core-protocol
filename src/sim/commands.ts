@@ -4,7 +4,7 @@
 import { type GameData, STAT_IDS, type StatId } from './data';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
-import { fusionStructure, moveCrystalModule, pickPerk, type ProtocolReject, rerollOffer, takeBoost } from './perks';
+import { fusionStructure, moveCrystalModule, pickPerk, type ProtocolReject, rerollOffer, structureBuilt, structureFusionNames, takeBoost } from './perks';
 import { chance } from './rng';
 import { quoteBuy, type BuyQuote } from './stats';
 import { type World, worldStats } from './state';
@@ -34,8 +34,22 @@ export function isStatId(s: unknown): s is StatId {
   return typeof s === 'string' && (STAT_IDS as readonly string[]).includes(s);
 }
 
+/** A BUILD stat is waiting for a structure: true while none of the structures it upgrades is built (its fusion is at tier 0). */
+export function awaitsStructure(w: World, data: GameData, stat: StatId): boolean {
+  const needs = data.stats.stats[stat].needs;
+  return needs !== undefined && !needs.some((kind) => structureBuilt(w, data, kind));
+}
+
+/** Open for purchase: not behind a lab node, and (BUILD stats) its structure stands. Bought levels persist through link breaks. */
 export function isUnlocked(w: World, data: GameData, stat: StatId): boolean {
-  return !data.stats.stats[stat].lockedByDefault || w.unlocked.includes(stat);
+  return (!data.stats.stats[stat].lockedByDefault || w.unlocked.includes(stat)) && !awaitsStructure(w, data, stat);
+}
+
+/** What a locked row tells the player: "needs Wall/Relay" (a short name for each structure that would open it) for a BUILD stat, else null (a lab node unlocks it). */
+export function buildNeedText(w: World, data: GameData, stat: StatId): string | null {
+  if (!awaitsStructure(w, data, stat)) return null;
+  const names = data.stats.stats[stat].needs!.flatMap((kind) => structureFusionNames(data, kind));
+  return `needs ${[...new Set(names)].join('/')}`;
 }
 
 function validCount(c: unknown): c is BuyCount {

@@ -2,6 +2,7 @@ import { SECTOR_DIRS } from './hex';
 import { assertFiniteDeep } from './num';
 import { STRUCTURE_KINDS } from './perkData';
 import { type World, WORLD_VERSION } from './state';
+import { canonicalLevels } from './stats';
 
 /** Bumped with the World shape: v1 (M1–M2a) derived core stats; v2 (M2b) had no protocols (M3). */
 export const SNAPSHOT_VERSION = 7;
@@ -109,6 +110,9 @@ export function restore(s: string): World {
   if (!Array.isArray(w.structs) || typeof w.wallR !== 'number' || !w.structs.every(validStruct)) {
     throw new Error('snapshot: malformed world');
   }
+  // Runs saved before the BUILD tab (spec 2026-10-15 Upgrades): its six stats start at level 0, in canonical key order.
+  w.levels = canonicalLevels(w.levels);
+  w.workshop = canonicalLevels(w.workshop);
   delete (w as { fusions?: unknown }).fusions;
   try {
     assertFiniteDeep(w);

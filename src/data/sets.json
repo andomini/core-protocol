@@ -126,6 +126,7 @@
     },
     "overload+firewall": {
       "name": "Bastion",
+      "short": "Bastion",
       "tiers": {
         "1": [
           { "type": "structure", "kind": "turret", "count": 1, "dmgFrac": 0.2, "rateMul": 1, "range": 220, "targets": 1 }
@@ -168,6 +169,7 @@
     },
     "cryo+firewall": {
       "name": "Ice Wall",
+      "short": "Wall",
       "tiers": {
         "1": [
           { "type": "structure", "kind": "wall", "hpFrac": 0.1 }
@@ -198,6 +200,7 @@
     },
     "chain+firewall": {
       "name": "Minefield",
+      "short": "Mines",
       "tiers": {
         "1": [
           { "type": "structure", "kind": "mine", "perWave": 2, "max": 6, "dmgMul": 1.5, "blast": 40, "targets": 3, "arcs": 0 }
@@ -213,6 +216,7 @@
     },
     "mining+firewall": {
       "name": "Relay Stations",
+      "short": "Relay",
       "tiers": {
         "1": [
           { "type": "structure", "kind": "station", "count": 1, "hpFrac": 0.1, "energy": 12, "rebuildWaves": 3, "bits": 0 },

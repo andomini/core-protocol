@@ -1,14 +1,14 @@
 {
-  "date": "2026-10-15T18:16:24.672Z",
+  "date": "2026-10-16T00:02:33.894Z",
   "metrics": {
-    "portrait.firstPickMs": 7,
-    "portrait.firstVisibleSimS": 0.03,
-    "landscape 1280×720.firstPickMs": 9,
+    "portrait.firstPickMs": 4,
+    "portrait.firstVisibleSimS": 0,
+    "landscape 1280×720.firstPickMs": 5,
     "landscape 1280×720.firstVisibleSimS": 0.03,
-    "landscape 907×510.firstPickMs": 10,
+    "landscape 907×510.firstPickMs": 5,
     "landscape 907×510.firstVisibleSimS": 0.03,
     "stress.desktop.fps": 60,
-    "stress.phone.cpu4x.fps": 34.8
+    "stress.phone.cpu4x.fps": 60
   },
   "results": [
     {
@@ -70,7 +70,13 @@
             "interest": 0,
             "bitsPerKill": 0,
             "bitsPerWave": 0,
-            "freeUpgrade": 0
+            "freeUpgrade": 0,
+            "structHealth": 0,
+            "structRegen": 0,
+            "turretDamage": 0,
+            "turretSpeed": 0,
+            "mineDamage": 0,
+            "stationIncome": 0
           },
           "unlocked": [],
           "tab": "atk",
@@ -178,7 +184,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -255,24 +267,24 @@
         {
           "seed": 3,
           "tier": 1,
-          "deviceId": "lslowvzqf9ijv8t6",
+          "deviceId": "cxouozow85b8uevq",
           "runIndex": 1,
-          "t": 1792087898700,
+          "t": 1792108678500,
           "type": "run_start",
-          "runId": "v1qkw7ac",
-          "sessionId": "44p0rhip",
-          "build": "local-202610151811"
+          "runId": "jle1rasg",
+          "sessionId": "npj2x9fm",
+          "build": "local-202610152357"
         },
         {
-          "seed": 1460609726,
+          "seed": 72397826,
           "tier": 1,
-          "deviceId": "lslowvzqf9ijv8t6",
+          "deviceId": "cxouozow85b8uevq",
           "runIndex": 2,
-          "t": 1792087903192,
+          "t": 1792108683055,
           "type": "run_start",
-          "runId": "61q4k21w",
-          "sessionId": "44p0rhip",
-          "build": "local-202610151811"
+          "runId": "sfvrab9a",
+          "sessionId": "npj2x9fm",
+          "build": "local-202610152357"
         }
       ]
     },
@@ -333,7 +345,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -410,7 +428,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -487,7 +511,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -564,7 +594,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -622,7 +658,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 178492164,
+        "seed": 1361243551,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -641,7 +677,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -651,9 +693,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "arc",
-          "energySiphon",
-          "overclockRounds"
+          "bunker",
+          "bounce",
+          "bounty"
         ],
         "picks": 0,
         "perks": {},
@@ -682,7 +724,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 10,
+        "tick": 7,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -692,11 +734,11 @@
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 5,
+        "coreHp": 7.700000000000001,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 178492164,
+        "seed": 1361243551,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -715,7 +757,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -732,14 +780,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "arc": 1
+          "bunker": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
         "fusionTiers": {},
         "keys": 0,
@@ -772,24 +820,24 @@
         {
           "kind": "midgame",
           "placement": "restart",
-          "t": 1792087907042,
+          "t": 1792108686835,
           "type": "ad_request",
-          "runId": "b8ppj56z",
-          "sessionId": "6v0zz2lo",
-          "deviceId": "6mn9cs8lfdpc9gzz",
-          "build": "local-202610151811"
+          "runId": "ptimy6tb",
+          "sessionId": "czvx1snx",
+          "deviceId": "zpig6z220ggyn3d1",
+          "build": "local-202610152357"
         },
         {
           "kind": "midgame",
           "placement": "restart",
           "result": "completed",
-          "ms": 2301,
-          "t": 1792087909343,
+          "ms": 2302,
+          "t": 1792108689137,
           "type": "ad_result",
-          "runId": "b8ppj56z",
-          "sessionId": "6v0zz2lo",
-          "deviceId": "6mn9cs8lfdpc9gzz",
-          "build": "local-202610151811"
+          "runId": "ptimy6tb",
+          "sessionId": "czvx1snx",
+          "deviceId": "zpig6z220ggyn3d1",
+          "build": "local-202610152357"
         }
       ]
     },
@@ -836,7 +884,7 @@
         "coreHp": 5,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 63,
         "seed": 3,
         "levels": {
           "damage": 0,
@@ -856,7 +904,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -940,7 +994,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1017,7 +1077,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1094,7 +1160,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1171,7 +1243,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1229,7 +1307,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 2046720745,
+        "seed": 28098748,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1248,7 +1326,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1258,9 +1342,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "hotBarrel",
-          "bounty",
-          "dataMine"
+          "patch",
+          "critSpike",
+          "reflect"
         ],
         "picks": 0,
         "perks": {},
@@ -1289,21 +1373,21 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 7,
+        "tick": 8,
         "phase": "wave",
         "enemies": 1,
-        "visible": 1,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 5,
+        "coreHp": 5.5,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 2046720745,
+        "seed": 28098748,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1322,7 +1406,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1339,14 +1429,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "hotBarrel": 1
+          "patch": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
         "fusionTiers": {},
         "keys": 0,
@@ -1462,7 +1552,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1539,7 +1635,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1616,7 +1718,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1693,7 +1801,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1751,7 +1865,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 555578244,
+        "seed": 2014127181,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1770,19 +1884,25 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
         "commands": 0,
-        "pickOpen": false,
+        "pickOpen": true,
         "placing": false,
         "crystal": [],
         "offer": [
-          "critSpike",
-          "shatter",
-          "hardening"
+          "burstFire",
+          "conductive",
+          "permafrost"
         ],
         "picks": 0,
         "perks": {},
@@ -1811,7 +1931,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 8,
+        "tick": 7,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1825,7 +1945,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 555578244,
+        "seed": 2014127181,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1844,7 +1964,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -1861,10 +1987,10 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "critSpike": 1
+          "burstFire": 1
         },
         "setTiers": {
-          "overload": 0,
+          "overload": 2,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
@@ -1954,7 +2080,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -2013,7 +2145,7 @@
           "speed": 5,
           "paused": false,
           "fps": 60,
-          "seed": 877373800,
+          "seed": 251246262,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2032,19 +2164,25 @@
             "interest": 0,
             "bitsPerKill": 0,
             "bitsPerWave": 0,
-            "freeUpgrade": 0
+            "freeUpgrade": 0,
+            "structHealth": 0,
+            "structRegen": 0,
+            "turretDamage": 0,
+            "turretSpeed": 0,
+            "mineDamage": 0,
+            "stationIncome": 0
           },
           "unlocked": [],
           "tab": "atk",
           "amount": 1,
           "commands": 0,
-          "pickOpen": false,
+          "pickOpen": true,
           "placing": false,
           "crystal": [],
           "offer": [
-            "reflect",
-            "frostShot",
-            "bounce"
+            "hotBarrel",
+            "bounce",
+            "greedyProtocol"
           ],
           "picks": 0,
           "perks": {},
@@ -2081,7 +2219,7 @@
       "ok": true,
       "detail": {
         "ok": false,
-        "ms": 152,
+        "ms": 153,
         "toast": {
           "text": "No ad right now",
           "opacity": "1",
@@ -2096,7 +2234,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 23,
+        "tick": 25,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2109,8 +2247,8 @@
         "coreHp": 5,
         "speed": 5,
         "paused": false,
-        "fps": 57,
-        "seed": 877373800,
+        "fps": 58,
+        "seed": 251246262,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2129,7 +2267,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -2146,10 +2290,10 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "reflect": 1
+          "hotBarrel": 1
         },
         "setTiers": {
-          "overload": 0,
+          "overload": 2,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
@@ -2193,7 +2337,7 @@
           "speed": 1,
           "paused": false,
           "fps": 67,
-          "seed": 603181154,
+          "seed": 2028942226,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2212,7 +2356,13 @@
             "interest": 0,
             "bitsPerKill": 0,
             "bitsPerWave": 0,
-            "freeUpgrade": 0
+            "freeUpgrade": 0,
+            "structHealth": 0,
+            "structRegen": 0,
+            "turretDamage": 0,
+            "turretSpeed": 0,
+            "mineDamage": 0,
+            "stationIncome": 0
           },
           "unlocked": [],
           "tab": "atk",
@@ -2222,9 +2372,9 @@
           "placing": false,
           "crystal": [],
           "offer": [
-            "burstFire",
+            "bounce",
             "hardening",
-            "dataMine"
+            "reflect"
           ],
           "picks": 0,
           "perks": {},
@@ -2305,7 +2455,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -2379,7 +2535,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -2414,11 +2576,11 @@
       }
     },
     {
-      "name": "portrait pick overlay: all 183 texts ≥ 28 px",
+      "name": "portrait pick overlay: all 184 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 183,
+        "count": 184,
         "bad": []
       }
     },
@@ -2562,7 +2724,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -2620,11 +2788,11 @@
       }
     },
     {
-      "name": "portrait: all 188 texts ≥ 28 px",
+      "name": "portrait: all 189 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 188,
+        "count": 189,
         "bad": []
       }
     },
@@ -2635,7 +2803,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2668,7 +2836,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -2745,7 +2919,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -2823,7 +3003,13 @@
             "interest": 0,
             "bitsPerKill": 0,
             "bitsPerWave": 0,
-            "freeUpgrade": 0
+            "freeUpgrade": 0,
+            "structHealth": 0,
+            "structRegen": 0,
+            "turretDamage": 0,
+            "turretSpeed": 0,
+            "mineDamage": 0,
+            "stationIncome": 0
           },
           "unlocked": [],
           "tab": "atk",
@@ -2896,7 +3082,13 @@
             "interest": 0,
             "bitsPerKill": 0,
             "bitsPerWave": 0,
-            "freeUpgrade": 0
+            "freeUpgrade": 0,
+            "structHealth": 0,
+            "structRegen": 0,
+            "turretDamage": 0,
+            "turretSpeed": 0,
+            "mineDamage": 0,
+            "stationIncome": 0
           },
           "unlocked": [],
           "tab": "atk",
@@ -2974,7 +3166,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -3018,7 +3216,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 915,
+        "tick": 916,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3051,7 +3249,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -3115,25 +3319,34 @@
             "rect": {
               "x": 18,
               "y": 930,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 196,
+              "x": 151.5,
               "y": 930,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 374,
+              "x": 285,
               "y": 930,
-              "w": 172,
+              "w": 127.5,
+              "h": 58
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 418.5,
+              "y": 930,
+              "w": 127.5,
               "h": 58
             }
           }
@@ -3309,7 +3522,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1025,
+        "tick": 1026,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3342,7 +3555,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -3430,25 +3649,34 @@
             "rect": {
               "x": 18,
               "y": 930,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 196,
+              "x": 151.5,
               "y": 930,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 374,
+              "x": 285,
               "y": 930,
-              "w": 172,
+              "w": 127.5,
+              "h": 58
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 418.5,
+              "y": 930,
+              "w": 127.5,
               "h": 58
             }
           }
@@ -3688,11 +3916,11 @@
       }
     },
     {
-      "name": "portrait 360×640: all 177 texts ≥ 28 px",
+      "name": "portrait 360×640: all 178 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 177,
+        "count": 178,
         "bad": []
       }
     },
@@ -3709,25 +3937,34 @@
             "rect": {
               "x": 18,
               "y": 858,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 196,
+              "x": 151.5,
               "y": 858,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 374,
+              "x": 285,
               "y": 858,
-              "w": 172,
+              "w": 127.5,
+              "h": 58
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 418.5,
+              "y": 858,
+              "w": 127.5,
               "h": 58
             }
           }
@@ -3903,7 +4140,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1033,
+        "tick": 1030,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3936,7 +4173,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4024,25 +4267,34 @@
             "rect": {
               "x": 18,
               "y": 858,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 196,
+              "x": 151.5,
               "y": 858,
-              "w": 172,
+              "w": 127.5,
               "h": 58
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 374,
+              "x": 285,
               "y": 858,
-              "w": 172,
+              "w": 127.5,
+              "h": 58
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 418.5,
+              "y": 858,
+              "w": 127.5,
               "h": 58
             }
           }
@@ -4312,7 +4564,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4369,8 +4627,8 @@
         "coreHp": 5,
         "speed": 5,
         "paused": false,
-        "fps": 55,
-        "seed": 661420170,
+        "fps": 58,
+        "seed": 1172000033,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -4389,7 +4647,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4399,9 +4663,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "arc",
+          "patch",
           "hotBarrel",
-          "coldAura"
+          "permafrost"
         ],
         "picks": 0,
         "perks": {},
@@ -4468,7 +4732,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4542,7 +4812,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4577,11 +4853,11 @@
       }
     },
     {
-      "name": "landscape 1280×720 pick overlay: all 183 texts ≥ 16 px",
+      "name": "landscape 1280×720 pick overlay: all 184 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 183,
+        "count": 184,
         "bad": []
       }
     },
@@ -4725,7 +5001,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4783,11 +5065,11 @@
       }
     },
     {
-      "name": "landscape 1280×720: all 188 texts ≥ 16 px",
+      "name": "landscape 1280×720: all 189 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 188,
+        "count": 189,
         "bad": []
       }
     },
@@ -4831,7 +5113,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4908,7 +5196,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -4985,7 +5279,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -5035,25 +5335,34 @@
             "rect": {
               "x": 790,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 914,
+              "x": 883,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 1038,
+              "x": 976,
               "y": 230,
-              "w": 118,
+              "w": 87,
+              "h": 44
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 1069,
+              "y": 230,
+              "w": 87,
               "h": 44
             }
           }
@@ -5262,7 +5571,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -5350,25 +5665,34 @@
             "rect": {
               "x": 790,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 914,
+              "x": 883,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 1038,
+              "x": 976,
               "y": 230,
-              "w": 118,
+              "w": 87,
+              "h": 44
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 1069,
+              "y": 230,
+              "w": 87,
               "h": 44
             }
           }
@@ -5633,7 +5957,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -5707,7 +6037,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -5742,11 +6078,11 @@
       }
     },
     {
-      "name": "landscape 907×510 pick overlay: all 183 texts ≥ 16 px",
+      "name": "landscape 907×510 pick overlay: all 184 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 183,
+        "count": 184,
         "bad": []
       }
     },
@@ -5890,7 +6226,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -5948,11 +6290,11 @@
       }
     },
     {
-      "name": "landscape 907×510: all 188 texts ≥ 16 px",
+      "name": "landscape 907×510: all 189 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 188,
+        "count": 189,
         "bad": []
       }
     },
@@ -5996,7 +6338,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -6040,7 +6388,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 3,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -6073,7 +6421,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -6117,7 +6471,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 915,
+        "tick": 914,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6150,7 +6504,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -6200,25 +6560,34 @@
             "rect": {
               "x": 790,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 914,
+              "x": 883,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 1038,
+              "x": 976,
               "y": 230,
-              "w": 118,
+              "w": 87,
+              "h": 44
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 1069,
+              "y": 230,
+              "w": 87,
               "h": 44
             }
           }
@@ -6394,7 +6763,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 917,
+        "tick": 914,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6427,7 +6796,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -6515,25 +6890,34 @@
             "rect": {
               "x": 790,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "def",
             "rect": {
-              "x": 914,
+              "x": 883,
               "y": 230,
-              "w": 118,
+              "w": 87,
               "h": 44
             }
           },
           {
             "tab": "util",
             "rect": {
-              "x": 1038,
+              "x": 976,
               "y": 230,
-              "w": 118,
+              "w": 87,
+              "h": 44
+            }
+          },
+          {
+            "tab": "build",
+            "rect": {
+              "x": 1069,
+              "y": 230,
+              "w": 87,
               "h": 44
             }
           }
@@ -6737,15 +7121,15 @@
       "ok": true,
       "detail": {
         "before": 0,
-        "after": 10
+        "after": 9
       }
     },
     {
       "name": "landscape 907×510 upgrades: releasing stops buying",
       "ok": true,
       "detail": {
-        "h1": 10,
-        "h2": 10
+        "h1": 9,
+        "h2": 9
       }
     },
     {
@@ -6798,7 +7182,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -6899,7 +7289,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -6988,16 +7384,16 @@
       "name": "portrait protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 1743,
-        "p2": 1743
+        "p1": 1740,
+        "p2": 1740
       }
     },
     {
-      "name": "portrait protocols panel: all 188 texts ≥ 28 px",
+      "name": "portrait protocols panel: all 189 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 188,
+        "count": 189,
         "bad": []
       }
     },
@@ -7092,7 +7488,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -7213,11 +7615,11 @@
       }
     },
     {
-      "name": "landscape protocols panel: all 188 texts ≥ 16 px",
+      "name": "landscape protocols panel: all 189 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 188,
+        "count": 189,
         "bad": []
       }
     },
@@ -7269,11 +7671,11 @@
       }
     },
     {
-      "name": "portrait editor (place): all 188 texts ≥ 28 px",
+      "name": "portrait editor (place): all 189 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 188,
+        "count": 189,
         "bad": []
       }
     },
@@ -7332,8 +7734,8 @@
           "Firewall 3·2",
           "Thermal Shock 2·I",
           "Overcharge 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ]
       }
     },
@@ -7363,8 +7765,8 @@
           "Firewall 3·2",
           "Thermal Shock 2·I",
           "Overcharge 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ],
         "after": [
           "Overload 4·4",
@@ -7374,17 +7776,17 @@
           "Firewall 3·2",
           "Thermal Shock 3·II",
           "Superconductor 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ]
       }
     },
     {
-      "name": "portrait editor (arrange): all 192 texts ≥ 28 px",
+      "name": "portrait editor (arrange): all 193 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 192,
+        "count": 193,
         "bad": []
       }
     },
@@ -7400,8 +7802,8 @@
           "Firewall 3·2",
           "Thermal Shock 2·I",
           "Overcharge 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ],
         "crystal": [
           [
@@ -7478,11 +7880,11 @@
       }
     },
     {
-      "name": "landscape editor (place): all 188 texts ≥ 16 px",
+      "name": "landscape editor (place): all 189 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 188,
+        "count": 189,
         "bad": []
       }
     },
@@ -7541,8 +7943,8 @@
           "Firewall 3·2",
           "Thermal Shock 2·I",
           "Overcharge 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ]
       }
     },
@@ -7572,8 +7974,8 @@
           "Firewall 3·2",
           "Thermal Shock 2·I",
           "Overcharge 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ],
         "after": [
           "Overload 4·4",
@@ -7583,17 +7985,17 @@
           "Firewall 3·2",
           "Thermal Shock 3·II",
           "Superconductor 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ]
       }
     },
     {
-      "name": "landscape editor (arrange): all 192 texts ≥ 16 px",
+      "name": "landscape editor (arrange): all 193 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 192,
+        "count": 193,
         "bad": []
       }
     },
@@ -7609,8 +8011,8 @@
           "Firewall 3·2",
           "Thermal Shock 2·I",
           "Overcharge 1·I",
-          "Frostbite 1·I",
-          "Insurance 1·I"
+          "Ice Wall 1·I",
+          "Relay Stations 1·I"
         ],
         "crystal": [
           [
@@ -7706,7 +8108,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -7754,16 +8162,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792088072791,
+        "lastSeen": 1792108845860,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "cryoField": 1,
-          "criticalMass": 1
+          "ricochet": 1,
+          "spikes": 1
         },
         "loadout": [
-          "cryoField",
-          "criticalMass"
+          "ricochet",
+          "spikes"
         ],
         "presets": [
           [],
@@ -7776,7 +8184,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16984.926666666637,
+          "realMs": 16918.009999999966,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -7803,7 +8211,8 @@
           "autoPlace": false,
           "editorSeen": false,
           "autoStats": []
-        }
+        },
+        "economy": 2
       }
     },
     {
@@ -7841,7 +8250,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 910,
+        "tick": 911,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -7851,7 +8260,7 @@
         "kills": 7,
         "energy": 17.6458452722063,
         "bits": 7,
-        "coreHp": 100,
+        "coreHp": 110.00000000000001,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -7874,7 +8283,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -7891,14 +8306,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "critSpike": 1
+          "patch": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
         "fusionTiers": {},
         "keys": 0,
@@ -7960,7 +8375,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 65,
         "seed": 4,
         "levels": {
           "damage": 0,
@@ -7980,7 +8395,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -8028,15 +8449,15 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792088103057,
+        "lastSeen": 1792108875559,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "ricochet": 1,
+          "criticalMass": 1,
           "compound": 1
         },
         "loadout": [
-          "ricochet",
+          "criticalMass",
           "compound"
         ],
         "presets": [
@@ -8050,7 +8471,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16967.99999999997,
+          "realMs": 17019.82333333688,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -8077,7 +8498,8 @@
           "autoPlace": false,
           "editorSeen": false,
           "autoStats": []
-        }
+        },
+        "economy": 2
       }
     },
     {
@@ -8115,7 +8537,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 911,
+        "tick": 909,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -8148,7 +8570,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -8165,12 +8593,12 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "arc": 1
+          "critSpike": 1
         },
         "setTiers": {
-          "overload": 0,
+          "overload": 2,
           "cryo": 0,
-          "chain": 2,
+          "chain": 0,
           "mining": 0,
           "firewall": 0
         },
@@ -8219,12 +8647,12 @@
       "ok": true,
       "detail": {
         "cards": {
-          "ricochet": 1,
-          "criticalMass": 1
+          "cryoField": 1,
+          "ricochet": 1
         },
         "loadout": [
-          "ricochet",
-          "criticalMass"
+          "cryoField",
+          "ricochet"
         ]
       }
     },
@@ -8270,12 +8698,12 @@
       "ok": true,
       "detail": {
         "tags": [
-          "chain",
-          "overload"
+          "cryo",
+          "chain"
         ],
         "cards": [
-          "ricochet",
-          "criticalMass"
+          "cryoField",
+          "ricochet"
         ],
         "sets": {
           "overload": 0,
@@ -8296,12 +8724,12 @@
       "ok": true,
       "detail": {
         "cards": {
-          "criticalMass": 1,
-          "spikes": 1
+          "ricochet": 1,
+          "criticalMass": 1
         },
         "loadout": [
-          "criticalMass",
-          "spikes"
+          "ricochet",
+          "criticalMass"
         ]
       }
     },
@@ -8347,12 +8775,12 @@
       "ok": true,
       "detail": {
         "tags": [
-          "overload",
-          "firewall"
+          "chain",
+          "overload"
         ],
         "cards": [
-          "criticalMass",
-          "spikes"
+          "ricochet",
+          "criticalMass"
         ],
         "sets": {
           "overload": 0,
@@ -8390,11 +8818,11 @@
       }
     },
     {
-      "name": "portrait stats panel: all 186 texts ≥ 28 px",
+      "name": "portrait stats panel: all 187 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 186,
+        "count": 187,
         "bad": []
       }
     },
@@ -8410,7 +8838,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15699.783333333316,
+          "realMs": 15701.533333333324,
           "simTicks": 2347,
           "waves": 3,
           "kills": {
@@ -8468,11 +8896,11 @@
       }
     },
     {
-      "name": "landscape stats panel: all 186 texts ≥ 16 px",
+      "name": "landscape stats panel: all 187 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 186,
+        "count": 187,
         "bad": []
       }
     },
@@ -8488,7 +8916,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15733.076666666655,
+          "realMs": 15718.173333333318,
           "simTicks": 2347,
           "waves": 3,
           "kills": {
@@ -8533,19 +8961,19 @@
         "wave": 2,
         "tick": 1132,
         "phase": "wave",
-        "enemies": 199,
-        "visible": 199,
+        "enemies": 200,
+        "visible": 200,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 73,
-        "energy": 176.43151862464188,
-        "bits": 73,
-        "coreHp": 999999966371.6223,
+        "kills": 72,
+        "energy": 173.96213180515758,
+        "bits": 72.02,
+        "coreHp": 999999966358.2462,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 108048381,
+        "seed": 1272587679,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -8564,7 +8992,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",
@@ -8597,7 +9031,7 @@
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00318953831433
+      "detail": 60.00199342170836
     },
     {
       "name": "stress desktop: no console errors",
@@ -8611,21 +9045,21 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1008,
+        "tick": 1132,
         "phase": "wave",
         "enemies": 200,
         "visible": 200,
-        "projectiles": 1,
+        "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 64,
-        "energy": 153.7358166189112,
-        "bits": 64,
-        "coreHp": 999999970378.3562,
+        "kills": 72,
+        "energy": 173.2767449856734,
+        "bits": 72.02,
+        "coreHp": 999999966351.9102,
         "speed": 5,
         "paused": false,
-        "fps": 36,
-        "seed": 1466448722,
+        "fps": 60,
+        "seed": 2003322909,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -8644,7 +9078,13 @@
           "interest": 0,
           "bitsPerKill": 0,
           "bitsPerWave": 0,
-          "freeUpgrade": 0
+          "freeUpgrade": 0,
+          "structHealth": 0,
+          "structRegen": 0,
+          "turretDamage": 0,
+          "turretSpeed": 0,
+          "mineDamage": 0,
+          "stationIncome": 0
         },
         "unlocked": [],
         "tab": "atk",

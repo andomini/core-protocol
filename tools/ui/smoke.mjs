@@ -268,8 +268,16 @@ async function panelFitCheck(h, label, shotName) {
   await h.call('give', 1e9);
   for (const s of ['damage', 'attackSpeed', 'critFactor', 'health', 'regen', 'defense', 'energyBonus', 'energyPerWave', 'bitsPerKill', 'bitsPerWave', 'thorns', 'knockback']) await h.call('buy', s, 'max');
   const bad = [];
-  for (const tab of ['atk', 'def', 'util']) {
-    await h.call('setTab', tab);
+  // BUILD twice: first with every row waiting for its structure ("needs ..."), then with all four firewall fusions linked and big values bought.
+  for (const tab of ['atk', 'def', 'util', 'build', 'build-open']) {
+    if (tab === 'build-open') {
+      await h.p.evaluate(() => {
+        const w = window.__cp.game.scene.getScene('Battle').session.world;
+        for (const k of ['cryo+firewall', 'overload+firewall', 'chain+firewall', 'mining+firewall']) w.fusionTiers[k] = 1;
+      });
+      for (const s of ['structHealth', 'structRegen', 'turretDamage', 'turretSpeed', 'mineDamage', 'stationIncome']) await h.call('buy', s, 'max');
+    }
+    await h.call('setTab', tab === 'build-open' ? 'build' : tab);
     await h.p.waitForTimeout(80);
     const rows = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').upgrades.textBounds());
     const hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;

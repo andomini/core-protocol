@@ -16,7 +16,7 @@ import { settleRun } from '../../meta/runEnd';
 import { buyWorkshop, masteryAt, workshopCost, workshopMax, workshopUnlocked } from '../../meta/workshop';
 import { showToast } from '../../portal/toast';
 import { services } from '../../services';
-import { DEFAULT_DATA, type GameData, STAT_IDS, type StatId, type TabId } from '../../sim/data';
+import { DEFAULT_DATA, type GameData, STAT_IDS, type StatId, TAB_IDS, type TabId } from '../../sim/data';
 import { statValue } from '../../sim/stats';
 import { formatNum, formatStat, type StatFormatKind } from '../../ui/format';
 import { homeGeometry, type HomeGeometry } from '../../ui/home/homeLayout';
@@ -362,7 +362,7 @@ export class HomeScene extends Phaser.Scene {
     const f = this.G.font;
     this.t(c.x, c.y, 'WORKSHOP · permanent starting stats', f, TEXT_DIM);
     this.subTabs(
-      (['atk', 'def', 'util'] as TabId[]).map((id) => ({ id, label: id.toUpperCase(), color: TAB_CSS[id] })),
+      TAB_IDS.map((id) => ({ id, label: id.toUpperCase(), color: TAB_CSS[id] })),
       this.wsTab,
       (id) => {
         this.wsTab = id as TabId;

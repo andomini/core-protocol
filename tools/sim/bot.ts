@@ -2,6 +2,7 @@
 // commands, exactly like the UI, so a bot run is replayable from its log.
 //   none         never buys (baseline)
 //   greedy       buys the cheapest affordable useful upgrade (×1), as a sensible first-time player would
+//                (BUILD rows count once their structure stands: turret/mine as ATK, structure HP/regen as DEF, station income as UTIL)
 //   atk-first    greedy, but ATK prices count 4× cheaper (tools/sim/bot.json)
 //   def-first    the same for DEF
 //   round-robin  cycles through the useful stats in panel order, saving up for the next one
@@ -15,7 +16,13 @@ import { createStream, nextInt } from '../../src/sim/rng';
 
 export type PolicyName = 'none' | 'greedy' | 'atk-first' | 'def-first' | 'round-robin';
 export const POLICIES: PolicyName[] = ['none', 'greedy', 'atk-first', 'def-first', 'round-robin'];
+/** The workshop's "useful" stats (meta tools share it); the BUILD rows are in-run only, and only bought once unlocked. */
 export const USEFUL: readonly StatId[] = STAT_IDS.filter((id) => (botJson.useful as string[]).includes(id));
+/** BUILD stat → the tab whose weight it takes. */
+const BUILD_AS = botJson.build as Partial<Record<StatId, TabId>>;
+const BUILD: readonly StatId[] = STAT_IDS.filter((id) => BUILD_AS[id] !== undefined);
+/** What an in-run bot may buy: the useful stats, then the BUILD rows (isUnlocked leaves them out until the structure stands). */
+export const RUN_STATS: readonly StatId[] = [...USEFUL, ...BUILD];
 
 export interface Bot {
   name: PolicyName;
@@ -34,9 +41,9 @@ function weighted(name: 'greedy' | 'atk-first' | 'def-first'): Bot {
     decide(w, data) {
       let best: StatId | null = null;
       let bestScore = Infinity;
-      for (const id of USEFUL) {
+      for (const id of RUN_STATS) {
         if (!buyable(w, data, id)) continue;
-        const score = quoteFor(w, data, id, 1).cost / weight[data.stats.stats[id].tab];
+        const score = quoteFor(w, data, id, 1).cost / weight[BUILD_AS[id] ?? data.stats.stats[id].tab];
         if (score < bestScore) {
           bestScore = score;
           best = id;
@@ -54,8 +61,8 @@ function roundRobin(): Bot {
   return {
     name: 'round-robin',
     decide(w, data) {
-      for (let tries = 0; tries < USEFUL.length; tries++) {
-        const id = USEFUL[next % USEFUL.length]!;
+      for (let tries = 0; tries < RUN_STATS.length; tries++) {
+        const id = RUN_STATS[next % RUN_STATS.length]!;
         if (!buyable(w, data, id)) {
           next++;
           continue;

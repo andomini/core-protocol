@@ -9,7 +9,7 @@ import perksJson from '../data/perks.json';
 import setsJson from '../data/sets.json';
 import statsJson from '../data/stats.json';
 import structuresJson from '../data/structures.json';
-import { type PerksData, type SetsData, TAGS, type Tag, validatePerks, validateSets } from './perkData';
+import { type PerksData, type SetsData, STRUCTURE_KINDS, type StructureKind, TAGS, type Tag, validatePerks, validateSets } from './perkData';
 import tiersJson from '../data/tiers.json';
 
 export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss';
@@ -69,8 +69,8 @@ export interface CoreDef {
 
 export { STAT_IDS, type StatId } from './statIds';
 import { STAT_IDS, type StatId } from './statIds';
-export type TabId = 'atk' | 'def' | 'util';
-export const TAB_IDS: readonly TabId[] = ['atk', 'def', 'util'];
+export type TabId = 'atk' | 'def' | 'util' | 'build';
+export const TAB_IDS: readonly TabId[] = ['atk', 'def', 'util', 'build'];
 export type StatFormat = 'num' | 'int' | 'pct' | 'mult' | 'perSec' | 'plus';
 const STAT_FORMATS: readonly StatFormat[] = ['num', 'int', 'pct', 'mult', 'perSec', 'plus'];
 
@@ -93,6 +93,8 @@ export interface StatDef {
   format: StatFormat;
   /** Locked until a lab node unlocks it (M4); RunOptions.unlocked overrides. */
   lockedByDefault: boolean;
+  /** BUILD stats: the in-run buy is locked until one of these structures is built (its firewall fusion is at tier I+); the workshop sells it regardless. */
+  needs?: StructureKind[];
 }
 
 export interface EconomyDef {
@@ -331,6 +333,11 @@ function validateStats(s: StatsData): void {
     checkKnee(def.cost, `${at}.cost`);
     check(STAT_FORMATS.includes(def.format), `${at}.format must be one of ${STAT_FORMATS.join('|')}`);
     check(typeof def.lockedByDefault === 'boolean', `${at}.lockedByDefault must be a boolean`);
+    if (def.needs !== undefined) {
+      check(Array.isArray(def.needs) && def.needs.length > 0, `${at}.needs must be a non-empty list of structure kinds`);
+      for (const k of def.needs) check((STRUCTURE_KINDS as readonly string[]).includes(k), `${at}.needs: unknown structure "${k}"`);
+    }
+    check(def.needs !== undefined || def.tab !== 'build', `${at}: a BUILD stat must say which structure it needs`);
   }
   for (const id of POSITIVE_STATS) positive(s.stats[id].base, `stats.${id}.base`);
   positive(s.economy?.interestCap, 'stats.economy.interestCap');

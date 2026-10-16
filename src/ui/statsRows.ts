@@ -92,6 +92,15 @@ export function runTabs(v: RunView): StatTab[] {
       ],
     },
   ];
+  // Firewall structures: shown once any of them did something this run.
+  const structRows: StatRow[] = [
+    ['Wall & station damage taken', n(s.structDamage)],
+    ['Wall segments broken', n(s.wallsBroken)],
+    ['Stations lost', n(s.stationsLost)],
+    ['Bastion volleys', n(s.turretShots)],
+    ['Mines set off', n(s.minesBlown)],
+  ];
+  if (structRows.some((r) => r[1] !== '0')) battle.push({ title: 'STRUCTURES', rows: structRows });
   const tagsOn = TAGS.filter((t) => w.setTiers[t] > 0).map((t) => `${data.sets.tags[t].name} ×${w.setTiers[t]}`);
   const fused = fusionKeys()
     .filter((k) => (s.fusionMax[k] ?? 0) > 0)
@@ -116,6 +125,7 @@ export function runTabs(v: RunView): StatTab[] {
         ['Bits from kills', n(s.bitsFromKills)],
         ['Keys', n(w.keys), '#ffb84d'],
         ['Waves skipped', n(s.waveSkips)],
+        ...(s.stationEnergy > 0 || s.stationBits > 0 ? [['Station Energy', n(s.stationEnergy), '#ffd23f'] as StatRow, ['Station Bits', n(s.stationBits)] as StatRow] : []),
       ],
     },
     {
@@ -146,6 +156,7 @@ export function runTabs(v: RunView): StatTab[] {
         { title: 'ATTACK', rows: coreRows.slice(0, 6) },
         { title: 'DEFENSE', rows: coreRows.slice(6, 12) },
         { title: 'UTILITY', rows: coreRows.slice(12, 18) },
+        { title: 'BUILD', rows: coreRows.slice(18, 24) },
       ],
     },
   ];

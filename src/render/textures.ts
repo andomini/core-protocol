@@ -533,7 +533,57 @@ const GLYPHS: Record<StatId, Glyph> = {
       polyPath(ctx, [[c - 8, c + 3], [c, c - 6], [c + 8, c + 3]], false);
       ctx.moveTo(c, c - 6);
       ctx.lineTo(c, c + 9);
+    }),  // BUILD tab: a wall segment (brick hex), a hex with a healing arrow, a turret (hex + barrel), the same with speed chevrons, a mine (spiked diamond), a station (hex with an orbit ring).
+  structHealth: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      polyPath(ctx, regular(c, c, 16, 6, Math.PI / 6));
+      ctx.moveTo(c - 13, c - 4);
+      ctx.lineTo(c + 13, c - 4);
+      ctx.moveTo(c - 13, c + 5);
+      ctx.lineTo(c + 13, c + 5);
+      ctx.moveTo(c, c - 4);
+      ctx.lineTo(c, c - 14);
+      ctx.moveTo(c - 6, c + 5);
+      ctx.lineTo(c - 6, c + 14);
+    }, 0.2),
+  structRegen: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      polyPath(ctx, regular(c, c, 8, 6, Math.PI / 6));
+      ctx.moveTo(c + 14 * Math.cos(-Math.PI * 0.35), c + 14 * Math.sin(-Math.PI * 0.35));
+      ctx.arc(c, c, 14, -Math.PI * 0.35, Math.PI * 1.35);
+      polyPath(ctx, [[c + 4, c - 18], [c + 10, c - 12], [c + 3, c - 8]], false);
     }),
+  turretDamage: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      polyPath(ctx, regular(c - 3, c + 3, 11, 6, Math.PI / 6));
+      polyPath(ctx, [[c + 2, c - 2], [c + 15, c - 15], [c + 18, c - 12], [c + 5, c + 1]], false);
+      cross(ctx, c - 3, c + 3, 4);
+    }, 0.2),
+  turretSpeed: (ctx, c, col) =>
+    glow(ctx, col, 2.4, () => {
+      polyPath(ctx, regular(c - 8, c + 6, 8, 6, Math.PI / 6));
+      polyPath(ctx, [[c - 1, c - 3], [c + 6, c - 10], [c - 1, c - 17]], false);
+      polyPath(ctx, [[c + 8, c - 3], [c + 15, c - 10], [c + 8, c - 17]], false);
+      ctx.moveTo(c - 2, c + 1);
+      ctx.lineTo(c + 6, c - 7);
+    }),
+  mineDamage: (ctx, c, col) =>
+    glow(ctx, col, 2.2, () => {
+      polyPath(ctx, [[c, c - 11], [c + 11, c], [c, c + 11], [c - 11, c]]);
+      for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]] as const) {
+        ctx.moveTo(c + dx * 13, c + dy * 13);
+        ctx.lineTo(c + dx * 18, c + dy * 18);
+      }
+      cross(ctx, c, c, 3);
+    }, 0.25),
+  stationIncome: (ctx, c, col) => {
+    glow(ctx, col, 2.2, () => {
+      polyPath(ctx, regular(c, c, 10, 6, Math.PI / 6));
+      ctx.moveTo(c + 17, c);
+      ctx.arc(c, c, 17, 0, TAU);
+    }, 0.2);
+    glow(ctx, WHITE, 2, () => polyPath(ctx, bolt(c, 0.45)));
+  },
 };
 
 /** Stat glyphs (`st_<id>`, tinted by tab) and the padlock for locked rows. */

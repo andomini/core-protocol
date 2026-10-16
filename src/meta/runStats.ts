@@ -37,6 +37,14 @@ export interface RunStats {
   waveSkips: number;
   freezes: number;
   bolts: number;
+  /** Firewall structures (spec 2026-10-15): damage the walls and stations took, wall segments and stations destroyed, Bastion volleys, mines set off, what the Relay Stations paid. */
+  structDamage: number;
+  wallsBroken: number;
+  stationsLost: number;
+  turretShots: number;
+  minesBlown: number;
+  stationEnergy: number;
+  stationBits: number;
   /** Highest fusion tier (its link count, sets.fusionTiers) reached this run, by pair key. */
   fusionMax: Record<string, number>;
 }
@@ -72,6 +80,13 @@ export function emptyRunStats(): RunStats {
     waveSkips: 0,
     freezes: 0,
     bolts: 0,
+    structDamage: 0,
+    wallsBroken: 0,
+    stationsLost: 0,
+    turretShots: 0,
+    minesBlown: 0,
+    stationEnergy: 0,
+    stationBits: 0,
     fusionMax: {},
   };
 }
@@ -133,6 +148,23 @@ export function recordEvent(s: RunStats, e: SimEvent): void {
       return;
     case 'lightning':
       s.bolts += 1;
+      return;
+    case 'structHit':
+      s.structDamage += e.damage;
+      return;
+    case 'structDown':
+      if (e.kind === 'wall') s.wallsBroken += 1;
+      else if (e.kind === 'station') s.stationsLost += 1;
+      return;
+    case 'turretShot':
+      s.turretShots += 1;
+      return;
+    case 'mineBlast':
+      s.minesBlown += 1;
+      return;
+    case 'stationPay':
+      s.stationEnergy += e.energy;
+      s.stationBits += e.bits;
       return;
     default:
       return;

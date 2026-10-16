@@ -36,9 +36,9 @@ export const BITS = 0x5cf2ff;
 export const BITS_CSS = '#5cf2ff';
 export const BREAK = 0xffb03b;
 
-/** Upgrade panel tab accents (ATK / DEF / UTIL). */
-export const TAB_COLOR = { atk: 0xff4d7a, def: 0x2bffb0, util: 0xffd23f } as const;
-export const TAB_CSS = { atk: '#ff4d7a', def: '#2bffb0', util: '#ffd23f' } as const;
+/** Upgrade panel tab accents (ATK / DEF / UTIL / BUILD). */
+export const TAB_COLOR = { atk: 0xff4d7a, def: 0x2bffb0, util: 0xffd23f, build: 0xff9a3c } as const;
+export const TAB_CSS = { atk: '#ff4d7a', def: '#2bffb0', util: '#ffd23f', build: '#ff9a3c' } as const;
 export const LOCKED = 0x5a6a95;
 export const LOCKED_CSS = '#5a6a95';
 

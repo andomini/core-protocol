@@ -147,6 +147,8 @@ export type SetTierKey = '2' | '4' | '6';
 /** A fusion's ladder: tier key (a link count from `fusionTiers`) → the effects it adds (tiers add up). */
 export interface FusionDef {
   name: string;
+  /** Phone-row label ("Wall", "Relay") for the BUILD rows' "needs ..." text; defaults to `name`. */
+  short?: string;
   tiers: Record<string, Effect[]>;
 }
 
@@ -356,6 +358,7 @@ export function validateSets(s: SetsData): void {
   for (const key of keys) {
     const f = s.fusions[key];
     check(f !== undefined && typeof f.name === 'string' && f.name.length > 0, `sets.fusions.${key}.name is missing`);
+    check(f!.short === undefined || (typeof f!.short === 'string' && f!.short.length > 0), `sets.fusions.${key}.short must be a non-empty string`);
     check(f!.tiers !== null && typeof f!.tiers === 'object', `sets.fusions.${key}.tiers is missing`);
     for (const t of Object.keys(f!.tiers)) check(s.fusionTiers.includes(Number(t)), `sets.fusions.${key}.tiers.${t} is not a fusion tier`);
     for (const t of s.fusionTiers) {

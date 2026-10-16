@@ -1,4 +1,4 @@
-// Upgrade panel geometry (pure, no Phaser): tabs + buy-amount toggle on top, then 6 stat rows.
+// Upgrade panel geometry (pure, no Phaser): four tabs (ATK / DEF / UTIL / BUILD) + buy-amount toggle on top, then 6 stat rows.
 // Rows are two-line (name + level / value → next) when tall enough, else single-line
 // (name · value → next). The price box sits at the right of every row.
 
@@ -38,6 +38,8 @@ export interface PanelGeo {
 }
 
 export const ROWS = 6;
+/** ATK, DEF, UTIL, BUILD. */
+const TABS = 4;
 
 export function panelLayout(L: Layout): PanelGeo {
   const portrait = L.o === 'portrait';
@@ -52,8 +54,8 @@ export function panelLayout(L: Layout): PanelGeo {
   const headH = portrait ? 58 : 44;
   const amountW = portrait ? 150 : 96;
   const inner = { x: frame.x + pad, y: frame.y + pad, w: frame.w - pad * 2, h: frame.h - pad * 2 };
-  const tabW = (inner.w - amountW - gap * 3) / 3;
-  const tabs: Rect[] = [0, 1, 2].map((i) => ({ x: inner.x + i * (tabW + gap), y: inner.y, w: tabW, h: headH }));
+  const tabW = (inner.w - amountW - gap * TABS) / TABS;
+  const tabs: Rect[] = Array.from({ length: TABS }, (_, i) => ({ x: inner.x + i * (tabW + gap), y: inner.y, w: tabW, h: headH }));
   const amount: Rect = { x: inner.x + inner.w - amountW, y: inner.y, w: amountW, h: headH };
 
   const rowsTop = inner.y + headH + gap * 1.5;

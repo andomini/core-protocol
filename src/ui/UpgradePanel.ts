@@ -1,10 +1,11 @@
-// The in-run upgrade panel (spec §2.3, §4): ATK / DEF / UTIL tabs, a ×1 / ×10 / MAX toggle and six rows
-// `glyph · name · value → next · ⚡price`. Rows you can afford glow; locked rows show a padlock and LAB.
+// The in-run upgrade panel (spec §2.3, §4): ATK / DEF / UTIL / BUILD tabs, a ×1 / ×10 / MAX toggle and six rows
+// `glyph · name · value → next · ⚡price`. Rows you can afford glow; locked rows show a padlock and LAB (BUILD rows:
+// "needs Ice Wall" until that structure is built).
 // Hold a row to keep buying. Purchases go to the sim as commands (via the host); feedback (row pulse,
 // a rising "+N" tick) comes from the sim's `buy` events, so what you see is what the sim accepted.
 
 import Phaser from 'phaser';
-import { type BuyCount, type Command, isUnlocked, quoteFor } from '../sim/commands';
+import { type BuyCount, buildNeedText, type Command, isUnlocked, quoteFor } from '../sim/commands';
 import { type GameData, type StatId, TAB_IDS, type TabId } from '../sim/data';
 import type { SimEvent } from '../sim/events';
 import type { World } from '../sim/state';
@@ -294,6 +295,7 @@ export class UpgradePanel {
       if (id === null) continue;
       const def = this.data.stats.stats[id];
       const locked = !isUnlocked(w, this.data, id);
+      const need = locked ? buildNeedText(w, this.data, id) : null;
       const q = quoteFor(w, this.data, id, this.amount);
       const maxed = q.levels === 0;
       const affordable = !locked && !w.dead && q.affordable;
@@ -310,11 +312,12 @@ export class UpgradePanel {
         row.key = key;
         row.bg.setTexture(affordable ? `up_row_${def.tab}` : 'up_row_off');
         row.priceBg.setTexture(affordable ? 'up_price_on' : 'up_price_off');
-        row.glyph.setTexture(locked ? 'ic_lock' : `st_${id}`).setAlpha(locked ? 0.8 : affordable || maxed ? 1 : 0.6);
+        // A BUILD row waiting for its structure keeps its own glyph (dimmed): the padlock would hide which upgrade it is.
+        row.glyph.setTexture(locked && need === null ? 'ic_lock' : `st_${id}`).setAlpha(locked ? (need === null ? 0.8 : 0.4) : affordable || maxed ? 1 : 0.6);
         row.name.setColor(locked ? LOCKED_CSS : TEXT);
         row.priceIcon.setVisible(!locked && !maxed).setAlpha(affordable ? 1 : 0.45);
         const cx = this.priceCenter(row);
-        if (locked) row.price.setText('LAB').setColor(LOCKED_CSS).setX(cx);
+        if (locked) row.price.setText(need !== null ? 'LOCKED' : 'LAB').setColor(LOCKED_CSS).setX(cx);
         else if (maxed) row.price.setText('MAX').setColor(TEXT_DIM).setX(cx);
         else if (this.autoMode) {
           row.priceIcon.setVisible(false);
@@ -331,7 +334,9 @@ export class UpgradePanel {
       const vkey = `${key}|${cur}`;
       if (vkey !== row.valueKey) {
         row.valueKey = vkey;
-        const shown = formatStat(def.format, cur);
+        // The name stays on every row; a locked BUILD row's value slot says which fusion opens it.
+        // Phone rows are too narrow for "needs Wall/Relay" beside the name: they show the bare names, the LOCKED box says the rest.
+        const shown = need === null ? formatStat(def.format, cur) : this.g.twoLine ? need : need.replace(/^needs /, '');
         if (locked || maxed) row.value.setText(shown).setColor(locked ? LOCKED_CSS : '#9fe9ff');
         else row.value.setText(`${shown} › ${formatStat(def.format, this.valueWith(w, id, q.levels))}`).setColor('#9fe9ff');
       }

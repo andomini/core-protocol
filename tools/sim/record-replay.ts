@@ -2,7 +2,7 @@
 // Overwrites tests/replays/golden-01.json only with --update. Any change to src/data or sim rules is
 // expected to change the hashes: regenerate deliberately and record a ruling in the milestone notes.
 import { existsSync, writeFileSync } from 'node:fs';
-import { type BuyCount, type Command, type LoggedCommand, quoteFor } from '../../src/sim/commands';
+import { type BuyCount, type Command, isUnlocked, type LoggedCommand, quoteFor } from '../../src/sim/commands';
 import { DEFAULT_DATA, STAT_IDS } from '../../src/sim/data';
 import type { SimEvent } from '../../src/sim/events';
 import { hashWorld as hashOf } from '../../src/sim/hash';
@@ -12,13 +12,14 @@ import { step } from '../../src/sim/step';
 
 const PATH = 'tests/replays/golden-01.json';
 const data = DEFAULT_DATA;
-// Workshop levels exercise that input too (M4 fills them for real): 15 % Free Upgrade, +200 % Energy per kill, +30 Energy per wave.
+// Workshop levels exercise that input too (M4 fills them for real): 15 % Free Upgrade, +200 % Energy per kill, +30 Energy per wave,
+// and three BUILD stats (always sold in the workshop; they only matter once a firewall structure stands).
 // M3: protocol picks are on, with both lab flags (4 cards, a free reroll) and a chain card tag.
 const opts: RunOptions = {
   seed: 20261005,
   tier: 1,
   unlocked: [...STAT_IDS],
-  workshop: { freeUpgrade: 15, energyBonus: 40, energyPerWave: 15, health: 5 },
+  workshop: { freeUpgrade: 15, energyBonus: 40, energyPerWave: 15, health: 5, structHealth: 4, turretDamage: 3, stationIncome: 2 },
   extraPerkChoice: true,
   freeReroll: true,
   cardTags: ['chain'],
@@ -27,8 +28,9 @@ const TICKS = 3 * 60 * data.config.tickHz;
 const HASH_EVERY = 100;
 const COUNTS: BuyCount[] = [1, 1, 10, 1, 'max'];
 
-// A scripted player: cycles through all 18 stats with ×1/×10/MAX and buys whenever affordable,
-// plus a few invalid commands (locked-free here, so: unaffordable and malformed) that must be no-ops.
+// A scripted player: cycles through the stats that are open to buy (all 24 minus the BUILD rows whose structure is
+// not built) with ×1/×10/MAX and buys whenever affordable, plus a few invalid commands (unaffordable, malformed, a
+// BUILD row without its structure) that must be no-ops.
 const w = createWorld(data, opts);
 const log: LoggedCommand[] = [];
 const events: SimEvent[] = [];
@@ -53,7 +55,11 @@ while (w.tick < TICKS) {
       const b = w.crystal[1]!;
       cmds.push({ type: 'moveModule', from: [a.q, a.r], to: [b.q, b.r] }, { type: 'moveModule', from: [9, 9], to: [0, 2] });
     }
-    cmds.push({ type: 'pickPerk', index: picks++ % w.offer.length });
+    // The player builds toward Ice Wall (cryo + firewall modules side by side): a firewall card if offered, else cryo, so the BUILD paths run.
+    const tagIndex = (tag: string) => w.offer.findIndex((id) => data.perks.perks[id]!.tag === tag);
+    const want = tagIndex('firewall') >= 0 ? tagIndex('firewall') : tagIndex('cryo');
+    cmds.push({ type: 'pickPerk', index: want >= 0 ? want : picks % w.offer.length });
+    picks++;
   }
   // Every 30 s, save up (≤ 30 s) for the next starred stat (they cost more), or for a ×10 batch.
   if (w.tick % 900 === 300) {
@@ -69,7 +75,7 @@ while (w.tick < TICKS) {
     // Otherwise buy the next affordable stat in panel order, as ×10/MAX when that is affordable too.
     for (let k = 0; k < STAT_IDS.length; k++) {
       const stat = STAT_IDS[(next + k) % STAT_IDS.length]!;
-      if (!quoteFor(w, data, stat, 1).affordable) continue;
+      if (!isUnlocked(w, data, stat) || !quoteFor(w, data, stat, 1).affordable) continue;
       const want = COUNTS[kind++ % COUNTS.length]!;
       const count = quoteFor(w, data, stat, want).affordable ? want : 1;
       cmds.push({ type: 'buy', stat, count });
@@ -78,6 +84,7 @@ while (w.tick < TICKS) {
     }
   }
   if (w.tick === 1000) cmds.push({ type: 'buy', stat: 'damage', count: 1000 }); // unaffordable
+  if (w.tick === 5) cmds.push({ type: 'buy', stat: 'turretSpeed', count: 1 }); // BUILD row before any fusion: locked
   if (w.tick === 2000) cmds.push({ type: 'buy', stat: 'nope', count: 1 } as unknown as Command); // unknown stat
   for (const cmd of cmds) log.push({ tick: w.tick, cmd });
   step(w, data, cmds, events);

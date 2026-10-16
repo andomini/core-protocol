@@ -23,6 +23,14 @@
       "bitsPerKill",
       "bitsPerWave",
       "freeUpgrade"
+    ],
+    "build": [
+      "structHealth",
+      "structRegen",
+      "turretDamage",
+      "turretSpeed",
+      "mineDamage",
+      "stationIncome"
     ]
   },
   "stats": {
@@ -308,6 +316,118 @@
       },
       "format": "pct",
       "lockedByDefault": true
+    },
+    "structHealth": {
+      "tab": "build",
+      "name": "Structure HP",
+      "base": 1,
+      "per": 0.1,
+      "mode": "add",
+      "needs": [
+        "wall",
+        "station"
+      ],
+      "cost": {
+        "base": 8,
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
+      },
+      "format": "mult",
+      "lockedByDefault": false
+    },
+    "structRegen": {
+      "tab": "build",
+      "name": "Structure Regen",
+      "base": 0,
+      "per": 0.005,
+      "mode": "add",
+      "maxLevel": 30,
+      "needs": [
+        "wall",
+        "station"
+      ],
+      "cost": {
+        "base": 10,
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
+      },
+      "format": "pct",
+      "lockedByDefault": false
+    },
+    "turretDamage": {
+      "tab": "build",
+      "name": "Turret Damage",
+      "base": 1,
+      "per": 0.1,
+      "mode": "add",
+      "needs": [
+        "turret"
+      ],
+      "cost": {
+        "base": 10,
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
+      },
+      "format": "mult",
+      "lockedByDefault": false
+    },
+    "turretSpeed": {
+      "tab": "build",
+      "name": "Turret Speed",
+      "base": 1,
+      "per": 0.05,
+      "mode": "add",
+      "maxLevel": 40,
+      "needs": [
+        "turret"
+      ],
+      "cost": {
+        "base": 12,
+        "growth": 1.1,
+        "knee": 50,
+        "growthAfter": 1.04
+      },
+      "format": "mult",
+      "lockedByDefault": false
+    },
+    "mineDamage": {
+      "tab": "build",
+      "name": "Mine Damage",
+      "base": 1,
+      "per": 0.1,
+      "mode": "add",
+      "needs": [
+        "mine"
+      ],
+      "cost": {
+        "base": 10,
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
+      },
+      "format": "mult",
+      "lockedByDefault": false
+    },
+    "stationIncome": {
+      "tab": "build",
+      "name": "Station Income",
+      "base": 1,
+      "per": 0.1,
+      "mode": "add",
+      "needs": [
+        "station"
+      ],
+      "cost": {
+        "base": 12,
+        "growth": 1.12,
+        "knee": 50,
+        "growthAfter": 1.04
+      },
+      "format": "mult",
+      "lockedByDefault": false
     }
   },
   "economy": {

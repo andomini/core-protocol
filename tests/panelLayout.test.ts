@@ -17,7 +17,7 @@ describe('upgrade panel layout', () => {
     it(`${name}: tabs, toggle and ${ROWS} rows sit inside the panel without overlapping`, () => {
       const g = panelLayout(L);
       const boxes = [...g.tabs, g.amount, ...g.rows.map((r) => r.rect)];
-      expect(g.tabs).toHaveLength(3);
+      expect(g.tabs).toHaveLength(4);
       expect(g.rows).toHaveLength(ROWS);
       for (const b of boxes) expect(within(b, L.panel), JSON.stringify(b)).toBe(true);
       for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) expect(overlaps(boxes[i]!, boxes[j]!)).toBe(false);

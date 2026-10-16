@@ -483,6 +483,35 @@ export function fusionStructure(w: World, data: GameData, kind: StructureKind): 
   return into[kind];
 }
 
+/** Per structure kind: the fusions that build it, each with the link tier where the kind first appears. Built once per GameData (the data is immutable). */
+const BUILDERS = new WeakMap<GameData, Partial<Record<StructureKind, { key: string; tier: number }[]>>>();
+
+function structureBuilders(data: GameData, kind: StructureKind): readonly { key: string; tier: number }[] {
+  let all = BUILDERS.get(data);
+  if (all === undefined) BUILDERS.set(data, (all = {}));
+  let list = all[kind];
+  if (list === undefined) {
+    list = [];
+    for (const key of fusionKeys()) {
+      const tier = data.sets.fusionTiers.find((t) => data.sets.fusions[key]!.tiers[String(t)]!.some((e) => e.type === 'structure' && e.kind === kind));
+      if (tier !== undefined) list.push({ key, tier });
+    }
+    all[kind] = list;
+  }
+  return list;
+}
+
+/** Whether a fusion link tier high enough to build `kind` is reached. Same answer as `fusionStructure(...) !== undefined`, without folding or allocating. */
+export function structureBuilt(w: World, data: GameData, kind: StructureKind): boolean {
+  for (const b of structureBuilders(data, kind)) if ((w.fusionTiers[b.key] ?? 0) >= b.tier) return true;
+  return false;
+}
+
+/** Short names of the firewall fusions that build `kind` ("Wall" for the Ice Wall), empty when none does. */
+export function structureFusionNames(data: GameData, kind: StructureKind): string[] {
+  return structureBuilders(data, kind).map((b) => data.sets.fusions[b.key]!.short ?? data.sets.fusions[b.key]!.name);
+}
+
 /** Folds every held perk (× stacks), every reached set and fusion tier and the cards into one profile. Pure; O(perks + sets). */
 export function perkProfile(w: World, data: GameData): PerkProfile {
   const p = blankProfile(data);

@@ -12,9 +12,9 @@ const none = () => ({ workshop: zeroLevels(), run: zeroLevels(), mods: [] as Mod
 const def = (patch: Partial<StatDef>): StatDef => ({ ...S.damage, ...patch });
 
 describe('stat data', () => {
-  it('has 18 stats in 3 tabs of 6, every cost growth inside the spec range', () => {
-    expect(STAT_IDS).toHaveLength(18);
-    for (const tab of ['atk', 'def', 'util'] as const) expect(data.stats.tabs[tab]).toHaveLength(6);
+  it('has 24 stats in 4 tabs of 6, every cost growth inside the spec range', () => {
+    expect(STAT_IDS).toHaveLength(24);
+    for (const tab of ['atk', 'def', 'util', 'build'] as const) expect(data.stats.tabs[tab]).toHaveLength(6);
     for (const id of STAT_IDS) {
       expect(S[id].cost.growth).toBeGreaterThanOrEqual(COST_GROWTH_MIN);
       expect(S[id].cost.growth).toBeLessThanOrEqual(COST_GROWTH_MAX);

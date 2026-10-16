@@ -85,9 +85,9 @@ export function wallRadius(data: GameData, st: CoreStats, wave: number): number 
   return clampValue(Math.max(data.core.radius + 1, Math.min(st.range - c.rangeMargin, grown)));
 }
 
-/** Max HP of a wall segment or station: a share of the core's Health, so every Health purchase upgrades it. */
+/** Max HP of a wall segment or station: a share of the core's Health (every Health purchase upgrades it), times the BUILD tab's Structure HP. */
 export function structMaxHp(st: CoreStats, v: StructureValues): number {
-  return clampValue(st.health * (v.hpFrac ?? 0));
+  return clampValue(st.health * (v.hpFrac ?? 0) * st.structHealth);
 }
 
 export const wallMaxHp = structMaxHp;
@@ -304,8 +304,8 @@ export function payStations(w: World, data: GameData, st: CoreStats, prof: PerkP
     if (standing) {
       const powered = Math.min(1, s.powered / ticks);
       const streak = station.streakStep !== undefined ? Math.min(station.streakMax ?? 1, 1 + station.streakStep * s.streak) : 1;
-      const energy = clampValue((station.energy ?? 0) * powInt(data.config.energyGrowth, w.wave) * (1 + st.energyBonus) * boost * prof.geneEnergy * streak * powered);
-      const bits = clampValue(scaleForWave(station.bits ?? 0, data.tiers[w.tier - 1]!.bitsMul, data.config.bitsGrowth, w.wave) * powered);
+      const energy = clampValue((station.energy ?? 0) * powInt(data.config.energyGrowth, w.wave) * (1 + st.energyBonus) * boost * prof.geneEnergy * streak * powered * st.stationIncome);
+      const bits = clampValue(scaleForWave(station.bits ?? 0, data.tiers[w.tier - 1]!.bitsMul, data.config.bitsGrowth, w.wave) * powered * st.stationIncome);
       w.energy = clampValue(w.energy + energy);
       w.bits = clampValue(w.bits + bits);
       s.streak += 1;
@@ -336,9 +336,9 @@ function maxEnemyRadius(data: GameData): number {
 function fireTurrets(w: World, data: GameData, st: CoreStats, prof: PerkProfile, turret: StructureValues, kills0: number, events: SimEvent[]): void {
   const count = turret.count ?? 0;
   const frenzy = turret.frenzyBelow !== undefined && (w.core.hp < st.health * turret.frenzyBelow || wallBroken(w, prof));
-  const rate = (turret.rateMul ?? 1) * (frenzy ? turret.frenzyMul ?? 1 : 1);
+  const rate = clampValue((turret.rateMul ?? 1) * (frenzy ? turret.frenzyMul ?? 1 : 1) * st.turretSpeed);
   const period = data.config.tickHz * data.structures.turret.shotSec;
-  const damage = clampValue(st.damage * (turret.dmgFrac ?? 0));
+  const damage = clampValue(st.damage * (turret.dmgFrac ?? 0) * st.turretDamage);
   const targets = turret.targets ?? 1;
   for (const s of w.structs) {
     if (s.kind !== 'turret' || s.slot >= count) continue;
@@ -372,7 +372,7 @@ function detonateMines(w: World, data: GameData, st: CoreStats, prof: PerkProfil
   const blast = mine.blast ?? 0;
   const targets = mine.targets ?? 1;
   const arcs = mine.arcs ?? 0;
-  const damage = clampValue(st.damage * (mine.dmgMul ?? 0));
+  const damage = clampValue(st.damage * (mine.dmgMul ?? 0) * st.mineDamage);
   const grid = gridFor(data);
   for (let i = 0; i < w.structs.length; ) {
     const s = w.structs[i]!;
@@ -413,7 +413,23 @@ function detonateMines(w: World, data: GameData, st: CoreStats, prof: PerkProfil
 }
 
 /**
- * After the spatial hash is built: segments regrow, the Shatters queued by this tick's breaks freeze their
+ * BUILD tab, Structure Regen: every standing wall segment and station that is hurt heals a share of its max HP per
+ * second (a broken one waits for its regrow timer or rubble time, a dormant one is inert).
+ */
+function regenStructures(w: World, data: GameData, st: CoreStats, prof: PerkProfile): void {
+  if (st.structRegen <= 0 || w.wallR <= 0) return;
+  const step = st.structRegen / data.config.tickHz;
+  const walls = prof.structures.wall !== undefined;
+  const stations = prof.structures.station?.count ?? 0;
+  for (const s of w.structs) {
+    if (s.share <= 0 || s.share >= 1 || w.tick < s.downUntilTick) continue;
+    if (s.kind === 'wall' ? !walls : s.kind !== 'station' || s.slot >= stations) continue;
+    s.share = Math.min(1, clampValue(s.share + step));
+  }
+}
+
+/**
+ * After the spatial hash is built: segments regrow and heal, the Shatters queued by this tick's breaks freeze their
  * neighbours, then the Bastion fires and the Minefield goes off.
  */
 export function updateStructures(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
@@ -441,6 +457,7 @@ export function updateStructures(w: World, data: GameData, st: CoreStats, prof: 
     }
   }
   clearShatter();
+  regenStructures(w, data, st, prof);
   const kills0 = w.kills;
   const turret = prof.structures.turret;
   if (turret !== undefined && w.wallR > 0) fireTurrets(w, data, st, prof, turret, kills0, events);

@@ -219,7 +219,7 @@ const md = [
   '|---|---|---|---|---|---|---|---|---|---|---|',
   ...rows,
   '',
-  `Bot "useful" stats (tools/sim/bot.json): ${botJson.useful.join(', ')}. Tab weights: ${JSON.stringify(botJson.tabWeight)}.`,
+  `Bot "useful" stats (tools/sim/bot.json): ${botJson.useful.join(', ')}. Tab weights: ${JSON.stringify(botJson.tabWeight)}. BUILD rows (bought once their structure stands, taking the weight of the tab they map to): ${JSON.stringify(botJson.build)}.`,
   'Pick policies: `greedy-pick` = highest rarity, then a held tag; `random-pick` = uniform; `first` = the first card; `tag:<t>` = the best card of tag t when offered, else greedy-pick.',
   '',
   '## Perks held at death (share of runs)',
