@@ -42,7 +42,7 @@ tools/covers/videos.sh          # → publish/out/poki-animated-thumbnail-1080x1
 
 ## Що лишається на твоє рішення (ризики)
 
-1. **Ексклюзивність Poki.** Гра зараз публічно доступна на GitHub Pages (noindex). Poki зазвичай хоче веб-ексклюзив; перед подачею варто вимкнути сторінку (гілка `gh-pages`).
+1. **Ексклюзивність Poki.** Гра зараз публічно доступна на Cloudflare workers.dev (noindex, `tools/deploy-pages.sh`). Poki зазвичай хоче веб-ексклюзив; перед подачею варто вимкнути сторінку (`cd server && npx wrangler delete --name core-protocol`).
 2. **Справжній SDK не перевірявся.** Усі перевірки — на фейковому SDK. Inspector — перша справжня перевірка.
 3. **Кнопки rewarded на екрані смерті** (REVIVE ▶AD, ×2 BITS ▶AD) стоять над HOME/RETRY і такого ж розміру. Poki радить, щоб звичайна дія була не менш помітною; якщо Inspector/рев'ю зауважить, поміняти ряди місцями — дрібна правка в `src/ui/DeathOverlay.ts`.
 4. **Темп прогресії** налаштований на ~80 год до T6 (`reports/progression.md`); casual-гравці застрягають на T4. Для Player Fit Test важливіші перші 3–10 хвилин: перший ран помирає на хвилях 4–6, далі воркшоп.

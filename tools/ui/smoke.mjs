@@ -303,7 +303,7 @@ async function panelFitCheck(h, label, shotName) {
  * uploads fail at the network level (the offline queue keeps them).
  */
 function lbMock() {
-  const m = { runs: [], boards: [], players: 0, renames: [], friends: [], offline: false, auth: [] };
+  const m = { runs: [], boards: [], players: 0, renames: [], friends: [], offline: false, auth: [], starts: [] };
   const cors = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'authorization, content-type', 'access-control-allow-methods': 'GET, POST, PATCH, DELETE, OPTIONS' };
   const json = (route, status, body) => route.fulfill({ status, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const me = { id: 'p_smoke', secret: 'sekret', name: 'NeonVirus-4821', friendCode: 'K7M2QX', portal: 'local', linked: false, badges: 0 };
@@ -318,6 +318,17 @@ function lbMock() {
       if (req.method() === 'POST' && path === '/players') {
         m.players += 1;
         return json(route, 201, { ...me, secret: me.secret });
+      }
+      if (req.method() === 'POST' && path === '/runs/start') {
+        // Server-issued start: the daily one carries the day's (secret) seed. The token's payload names the
+        // player (the client checks that); its MAC is fake — this mock checks neither MAC nor elapsed time.
+        const kind = JSON.parse(req.postData() ?? '{}').kind;
+        m.starts.push(kind);
+        const day = kind === 'daily' ? new Date().toISOString().slice(0, 10) : null;
+        const seed = kind === 'daily' ? 424242 : 777;
+        const startedAt = Date.now();
+        const payload = Buffer.from(JSON.stringify({ v: 1, p: me.id, k: kind, d: day, s: seed, a: startedAt })).toString('base64url');
+        return json(route, 200, { kind, day, seed, startedAt, token: `${payload}.mock-tok` });
       }
       if (req.method() === 'POST' && path === '/runs') {
         if (m.offline) return route.abort('internetdisconnected');
@@ -1134,8 +1145,9 @@ const scenarios = {
       const q = '?home=1&weak=1&lb=http://lb.test&lbforce=1';
       const h = await open(browser, srv.base, device, q, { routes: m.routes });
       await h.p.waitForTimeout(500);
-      // Lazy: nothing registers until the player uses a leaderboard feature (or has a run to upload).
-      check(results, `${label}: no registration on load`, m.players === 0, { players: m.players });
+      // Home prefetches a server-issued tier start (ranked runs need one): that registers the player once.
+      await h.p.waitForFunction(() => window.__cp.lb().identity !== null, null, { timeout: 5000 }).catch(() => {});
+      check(results, `${label}: Home registers once and prefetches a tier start`, m.players === 1 && m.starts.join() === 'tier', { players: m.players, starts: m.starts });
       // Home: RANKS opens the panel with the tier board.
       const ranks = await homeBtn(h, 'RANKS');
       const daily = await homeBtn(h, 'DAILY');
@@ -1217,7 +1229,7 @@ const scenarios = {
       check(
         results,
         `${label}: the daily run is submitted with seed, claim, full log, wave, ticks, hash, commit`,
-        sub && sub.kind === 'daily' && sub.day === board.day && st.seed === 424242 && sub.wave === st.wave && sub.ticks === st.tick && /^[0-9a-f]{8}$/.test(sub.hash) && typeof sub.commit === 'string' && rp.v === 1 && rp.seed === st.seed && rp.claim && Array.isArray(rp.log) && rp.log.length === st.commands,
+        sub && sub.kind === 'daily' && sub.day === board.day && typeof sub.token === 'string' && sub.token.endsWith('.mock-tok') && st.seed === 424242 && sub.wave === st.wave && sub.ticks === st.tick && /^[0-9a-f]{8}$/.test(sub.hash) && typeof sub.commit === 'string' && rp.v === 1 && rp.seed === st.seed && rp.claim && Array.isArray(rp.log) && rp.log.length === st.commands,
         { sub: sub && { ...sub, replay: sub.replay.slice(0, 20) }, rp: rp && { ...rp, log: rp.log.length }, st: { wave: st.wave, tick: st.tick, seed: st.seed, commands: st.commands } },
       );
       await minTextCheck(h, `${label} death + rank`);
@@ -1234,7 +1246,11 @@ const scenarios = {
       m.offline = false;
       await h.p.evaluate(() => window.__cp.lb().flush());
       const after = await h.p.evaluate(() => window.__cp.lb().queued.length);
-      check(results, `${label}: the queue uploads when back online`, after === 0 && m.runs.length === 2, { after, runs: m.runs.length });
+      check(results, `${label}: the queue uploads when back online, with its start token`, after === 0 && m.runs.length === 2 && typeof m.runs[1]?.token === 'string' && m.runs[1].token.endsWith('.mock-tok') && m.runs[1].token !== m.runs[0].token, {
+        after,
+        runs: m.runs.length,
+        token: m.runs[1]?.token,
+      });
       // The browser logs the aborted (offline) upload itself; anything else is a game error.
       const errs = h.errors.filter((e) => !/ERR_INTERNET_DISCONNECTED/.test(e));
       check(results, `${label}: no console errors`, errs.length === 0, errs);

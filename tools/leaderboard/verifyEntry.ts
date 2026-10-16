@@ -49,7 +49,10 @@ export interface VerifyInput {
   replay: string;
   /** Bits credited to the player from earlier verified runs (tier-board allowance). */
   verifiedBits: number;
-  /** Daily: the day's seed as issued by the server (may be secret); absent = the public dailySeed(day). */
+  /**
+   * The seed the server issued with the run's start token. Daily: the day's seed (may be secret; absent = the
+   * public dailySeed(day)). Tier: the random seed of POST /v1/runs/start (absent = not checked).
+   */
   seed?: number;
 }
 
@@ -131,6 +134,8 @@ function check(input: VerifyInput, data: GameData, md: MetaData): VerifyOutput {
     claim = dailyClaim(input.day);
     if (!sameClaim(p.claim, claim)) return out('rejected', 'daily: loadout is not the day’s');
   } else {
+    // Tier: the seed the server issued with the run's start token (absent = a run from before server starts).
+    if (input.seed !== undefined && p.seed !== input.seed) return out('rejected', 'seed: not the issued one');
     const err = claimError(p.claim, data, md);
     if (err) return out('rejected', err);
     claim = p.claim;

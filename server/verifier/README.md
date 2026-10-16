@@ -22,7 +22,10 @@ How it works: `verify.ts` → `GET /v1/admin/pending` → `GET /v1/admin/replay/
 
 All commands are run from the repo root unless a step says otherwise.
 
-1. Worker and database:
+1. Worker and database: run `scripts/lb-deploy.sh` after `cd server && npx wrangler login`. It is idempotent
+   (creates the D1 database, applies migrations, generates `ADMIN_TOKEN`, `DAILY_SECRET` and `RUN_SECRET` only when
+   absent, adds the preview site's origin to `CORS_ORIGINS`, deploys, checks `/v1/health`, writes `verifier.env`);
+   `scripts/lb-deploy.sh status` is read-only. Still to do by hand: `CG_GAME_ID` in `wrangler.toml`. Manual fallback:
    ```sh
    cd server
    npm install
@@ -32,6 +35,7 @@ All commands are run from the repo root unless a step says otherwise.
    openssl rand -base64 32                      # → the admin token; keep it
    npx wrangler secret put ADMIN_TOKEN          # paste the token
    openssl rand -base64 32 | npx wrangler secret put DAILY_SECRET   # optional: unpredictable daily seeds
+   openssl rand -base64 32 | npx wrangler secret put RUN_SECRET     # new secret of the Worker; set once
    # CG_GAME_ID in wrangler.toml [vars] (CrazyGames game id): REQUIRED for CrazyGames account linking;
    # without it the Worker answers 503 cg-disabled and the game registers anonymous players instead.
    npx wrangler deploy                          # prints https://core-protocol-lb.<sub>.workers.dev
@@ -82,3 +86,16 @@ Changing the secret changes the seeds of days not yet verified: set it once, bef
 
 `cd server && npm test && npx wrangler deploy`. To add a migration, create `migrations/000N_*.sql`, then run
 `npm run db:migrate:local` (for testing) and `npm run db:migrate:remote`.
+
+**Server-issued run starts (migration 0003, `RUN_SECRET`).** Ranked runs start from `POST /v1/runs/start`
+(a server seed + a signed start time); submissions carry that token.
+
+- Apply `0003_run_starts.sql` with `npm run db:migrate:remote` **before** `npx wrangler deploy`: the new Worker
+  writes `runs.seed` / `runs.started_at`, and inserts fail on the old schema.
+- `RUN_SECRET` must be set (`openssl rand -base64 32 | npx wrangler secret put RUN_SECRET`); without it
+  `/runs/start` and `POST /runs` answer `503 ranked-disabled`.
+- Builds from before server starts send no token (`400 no-token`, dropped by the client): retire them with
+  `npx tsx server/verifier/builds.ts retire <sha>` once the new build is live. Their rows still pending in the
+  database are rejected by the verifier (`no server start`).
+- Rotating `RUN_SECRET` voids every start token issued so far: runs in progress (and queued offline) get
+  `bad-token`. Rotate only when it leaked.

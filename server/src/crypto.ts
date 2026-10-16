@@ -43,3 +43,17 @@ export async function safeEqual(a: string, b: string): Promise<boolean> {
 export function newSecret(): string {
   return b64url(crypto.getRandomValues(new Uint8Array(32)));
 }
+
+/** An HMAC-SHA256 key for `sign` and `verify`. */
+export function hmacKey(secret: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+}
+
+export async function hmacSign(key: CryptoKey, msg: string): Promise<Uint8Array<ArrayBuffer>> {
+  return new Uint8Array(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg)));
+}
+
+/** Constant-time MAC check (WebCrypto compares, not a JS loop). */
+export function hmacVerify(key: CryptoKey, msg: string, mac: Uint8Array<ArrayBuffer>): Promise<boolean> {
+  return crypto.subtle.verify('HMAC', key, mac, new TextEncoder().encode(msg));
+}

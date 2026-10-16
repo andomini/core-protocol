@@ -23,6 +23,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
+import { minElapsedMs } from '../src/runs';
 
 export interface PendingRun {
   id: number;
@@ -37,8 +39,10 @@ export interface PendingRun {
   commit: string;
   createdAt: number;
   verifiedBits: number;
-  /** Daily runs: the day's seed (the server's, which may be secret). */
+  /** The seed issued with the run's start token (daily: the day's seed, which may be secret). Absent on legacy rows. */
   seed?: number;
+  /** When the server issued the run's start token (ms). Absent on legacy rows. */
+  startedAt?: number | null;
 }
 
 /** What the commit's `tools/leaderboard/verifyEntry.ts` prints (entry contract v1). */
@@ -102,6 +106,33 @@ export function finishedWeeks(now: number, n: number): string[] {
   return out;
 }
 
+/** Largest decompressed replay read here (same cap as the entry's MAX_REPLAY_TEXT). */
+const MAX_REPLAY_TEXT = 16_000_000;
+
+/** The `seed` field of a stored replay (JSON, or "gz:" + base64(gzip(JSON))); null when it cannot be read. */
+export function replaySeed(s: string): number | null {
+  try {
+    const text = s.startsWith('gz:') ? gunzipSync(Buffer.from(s.slice(3), 'base64'), { maxOutputLength: MAX_REPLAY_TEXT }).toString('utf8') : s;
+    if (text.length > MAX_REPLAY_TEXT) return null;
+    const p = JSON.parse(text) as { seed?: unknown };
+    return typeof p === 'object' && p !== null && typeof p.seed === 'number' ? p.seed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Checks that need only the server's start record, made here rather than in the build's entry so they also
+ * hold for builds whose entry predates them: the replay must use the issued seed, and the run must have
+ * taken at least the real time its ticks need at the fastest game speed.
+ */
+export function startError(run: PendingRun, replay: string): string | null {
+  if (run.seed === undefined || run.startedAt === undefined || run.startedAt === null) return 'no server start';
+  if (replaySeed(replay) !== run.seed) return 'seed: not the issued one';
+  if (run.createdAt - run.startedAt < minElapsedMs(run.ticks)) return 'too fast';
+  return null;
+}
+
 /** One verifier pass. Returns counts per outcome. */
 export async function verifyPending(deps: Deps, opt: Options): Promise<Record<string, number>> {
   const counts: Record<string, number> = { verified: 0, rejected: 0, flagged: 0, skipped: 0, errors: 0 };
@@ -120,7 +151,8 @@ export async function verifyPending(deps: Deps, opt: Options): Promise<Record<st
       try {
         const replay = await deps.replay(run.id);
         const verifiedBits = run.verifiedBits + (credited.get(run.playerId) ?? 0);
-        const out = await deps.check(run.commit, {
+        const bad = startError(run, replay);
+        const out = bad !== null ? { entry: 1, status: 'rejected' as const, reason: bad, earnedBits: 0, loadoutBits: 0 } : await deps.check(run.commit, {
           kind: run.kind,
           tier: run.tier,
           day: run.day,

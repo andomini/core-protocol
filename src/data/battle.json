@@ -1,4 +1,5 @@
 {
   "speeds": [1, 2],
-  "maxSpeed": 5
+  "maxSpeed": 5,
+  "fastBootSpeed": 4
 }

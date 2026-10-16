@@ -57,9 +57,18 @@ async function start(): Promise<void> {
     kv: services.storage,
     portal: portal.name,
     portalUser: portal.user ? () => portal.user!() : undefined,
+    // MetaStore is made by BootScene: before that the saved run is unknown (throws → the pre-link identity is kept).
+    savedStartToken: () => {
+      if (!services.meta) throw new Error('not booted');
+      return services.meta.savedStartToken();
+    },
   });
   // Identity and the offline queue may live in the portal's data module: load after its init.
-  void services.portalInit.then(() => services.leaderboard.start());
+  // A tier start is fetched right away: a first session goes from Boot straight into a run (no Home prefetch).
+  void services.portalInit.then(() => {
+    services.leaderboard.start();
+    void services.leaderboard.prefetchStart('tier');
+  });
   services.ads = new Ads({
     guard,
     policy: new MidgamePolicy(rules, () => performance.now()),

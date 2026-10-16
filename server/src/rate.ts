@@ -22,6 +22,18 @@ export const LIMITS = {
   /** Replay bytes per IP and day. */
   submitBytesIp: { n: 100_000_000, sec: 86400 },
   friends: { n: 60, sec: 3600 },
+  /**
+   * Server-issued run starts per player: honest play takes ~1 per run (minutes to hours each), plus the pool
+   * refill. Seeds cannot be stockpiled (only the newest START_KEEP per kind stay valid), so shopping is
+   * sequential: at most best-of-20 per account and hour, each pick still waiting out the pace check.
+   */
+  start: { n: 20, sec: 3600 },
+  /**
+   * Run starts per IP. Each accepted start writes ~10 D1 rows (two rate upserts, the run_starts row with its
+   * indexes and sequence, sometimes a voided start): 100/h × 24 h ≈ 24k rows a day per address, a quarter of the
+   * free plan's 100k rows-written budget, so one address cannot stop writes for every player.
+   */
+  startIp: { n: 100, sec: 3600 },
 } as const satisfies Record<string, Rule>;
 
 const window = (rule: Rule, now: number): number => Math.floor(now / 1000 / rule.sec);

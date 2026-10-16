@@ -5,7 +5,7 @@ import { MetaStore, RUN_KEY } from '../src/meta/MetaStore';
 import { DEFAULT_META_DATA as MD } from '../src/meta/metaData';
 import { settleDaily } from '../src/meta/runEnd';
 import { defaultMeta } from '../src/meta/state';
-import { LB_KEY, LB_MAX_AGE_MS, LB_MAX_TRIES, LB_QUEUE_MAX, LB_ROTATE_AFTER, Leaderboard, nameError, normalizeFriendCode, rankedBuild, type RunSubmission } from '../src/portal/leaderboard';
+import { LB_KEY, LB_MAX_AGE_MS, LB_QUEUED_START_CAP, LB_START_MAX_AGE_MS, LB_TOKEN_MAX_AGE_MS, startExpired, startTokenPlayer, LB_MAX_TRIES, LB_QUEUE_MAX, LB_ROTATE_AFTER, Leaderboard, nameError, normalizeFriendCode, rankedBuild, type RunSubmission } from '../src/portal/leaderboard';
 import { memoryKV } from '../src/portal/storage';
 import { RunSession } from '../src/render/RunSession';
 import { DEFAULT_DATA, type GameData, STAT_IDS } from '../src/sim/data';
@@ -37,6 +37,34 @@ function api(handler: (c: Call, n: number) => { status: number; body?: unknown }
 
 const PLAYER = { id: 'p_1', secret: 's1', name: 'NeonVirus-1', friendCode: 'K7M2QX', portal: 'local', linked: false, badges: 0 };
 const SUB: RunSubmission = { kind: 'tier', tier: 1, day: null, wave: 12, ticks: 3456, hash: 'deadbeef', commit: 'a'.repeat(40), replay: JSON.stringify({ v: 1, seed: 1, tier: 1, claim: {}, log: [] }) };
+
+/** A start token as the server shapes it: b64url(JSON payload) + '.' + a 43-character MAC. */
+function startToken(p: string, s: number): string {
+  return `${Buffer.from(JSON.stringify({ v: 1, p, k: 'tier', d: null, s, a: 1 })).toString('base64url')}.${'M'.repeat(43)}`;
+}
+
+/** An API that registers PLAYER (id per `ids`) and issues starts with increasing seeds; `starts` lists the kinds asked for. */
+function startApi(opts: { ids?: () => string; down?: () => 'offline' | number | null; day?: string } = {}) {
+  let seed = 100;
+  const starts: string[] = [];
+  const a = api((c) => {
+    const d = opts.down?.() ?? null;
+    if (d === 'offline') return 'offline';
+    if (c.path === '/players') return { status: 201, body: { ...PLAYER, id: opts.ids?.() ?? PLAYER.id } };
+    if (c.path === '/runs/start') {
+      if (typeof d === 'number') return { status: d, body: { error: 'ranked-disabled' } };
+      const kind = String(c.body?.kind);
+      starts.push(kind);
+      const pid = String(c.auth).slice(7).split('.')[0]!;
+      seed += 1;
+      return { status: 200, body: { kind, day: kind === 'daily' ? (opts.day ?? '1970-01-01') : null, seed, startedAt: 5000, token: startToken(pid, seed) } };
+    }
+    if (c.path === '/runs') return { status: 202, body: { id: 9, status: 'pending' } };
+    if (c.path === '/players/me' && c.method === 'DELETE') return { status: 200, body: { deleted: true } };
+    return { status: 404, body: { error: 'nope' } };
+  });
+  return { ...a, starts };
+}
 
 function lbWith(kv: ReturnType<typeof memoryKV>, fetchFn: typeof fetch, extra: Partial<ConstructorParameters<typeof Leaderboard>[0]> = {}) {
   return new Leaderboard({ base: 'https://lb.test/', kv, portal: 'local', fetch: fetchFn, now: () => 1000, timeoutMs: 50, ...extra });
@@ -242,6 +270,204 @@ describe('Leaderboard service', () => {
 
 // ---------------------------------------------------------------------------------------- daily + resume
 
+describe('server-issued run starts (client pool)', () => {
+  it('prefetch stores one start per kind (single flight) and it survives a reload', async () => {
+    const kv = memoryKV();
+    const { calls, fetchFn, starts } = startApi();
+    const lb = lbWith(kv, fetchFn);
+    await Promise.all([lb.prefetchStart('tier'), lb.prefetchStart('tier')]);
+    await lb.prefetchStart('tier');
+    expect(starts).toEqual(['tier']);
+    expect(calls.find((c) => c.path === '/runs/start')).toMatchObject({ method: 'POST', auth: 'Bearer p_1.s1', body: { kind: 'tier' } });
+    const lb2 = lbWith(kv, fetchFn);
+    const st = lb2.takeStart('tier', null);
+    expect(st).toMatchObject({ kind: 'tier', day: null, seed: 101, startedAt: 5000, gotAt: 1000 });
+    expect(startTokenPlayer(st!.token)).toBe('p_1');
+    expect(startTokenPlayer('garbage')).toBeNull();
+  });
+
+  it('takeStart consumes a start once and refills the pool in the background', async () => {
+    const { fetchFn, starts } = startApi();
+    const lb = lbWith(memoryKV(), fetchFn);
+    await lb.prefetchStart('tier');
+    const a = lb.takeStart('tier', null);
+    expect(a?.seed).toBe(101);
+    // Nothing pooled until the refill lands: the next run would be unranked, never blocked.
+    expect(lb.takeStart('daily', '1970-01-01')).toBeNull();
+    await lb.prefetchStart('tier');
+    await lb.prefetchStart('daily');
+    expect(starts).toEqual(['tier', 'tier', 'daily']);
+    const b = lb.takeStart('tier', null);
+    expect(b?.seed).toBe(102);
+    expect(b?.token).not.toBe(a?.token);
+  });
+
+  it('stale starts are discarded; a daily of another day is not taken but stays pooled for its own day', async () => {
+    let t = 1000;
+    const { fetchFn } = startApi({ day: '1970-01-01' });
+    const lb = lbWith(memoryKV(), fetchFn, { now: () => t });
+    await lb.prefetchStart('tier');
+    await lb.prefetchStart('daily');
+    // A RETRY of yesterday's challenge must not throw today's start away.
+    expect(lb.takeStart('daily', '1969-12-31')).toBeNull();
+    expect(lb.takeStart('daily', '1970-01-01')?.day).toBe('1970-01-01');
+    t += LB_START_MAX_AGE_MS;
+    expect(lb.takeStart('tier', null)).toBeNull();
+  });
+
+  it('a pooled start is used for days (Home left open), well inside the token age', async () => {
+    let t = 1000;
+    const { fetchFn } = startApi();
+    const lb = lbWith(memoryKV(), fetchFn, { now: () => t });
+    await lb.prefetchStart('tier');
+    t += 3 * 86_400_000;
+    expect(lb.takeStart('tier', null)?.seed).toBe(101);
+    expect(LB_START_MAX_AGE_MS).toBeGreaterThanOrEqual(7 * 86_400_000);
+    expect(LB_START_MAX_AGE_MS * 2).toBeLessThanOrEqual(LB_TOKEN_MAX_AGE_MS);
+  });
+
+  it('a run is unranked once its start is a day short of the token age', () => {
+    expect(startExpired(0, LB_TOKEN_MAX_AGE_MS - 86_400_001)).toBe(false);
+    expect(startExpired(0, LB_TOKEN_MAX_AGE_MS - 86_400_000)).toBe(true);
+  });
+
+  it('after a CrazyGames link changes the id, queued runs upload with the old credential; a refused one is dropped clearly', async () => {
+    const kv = memoryKV();
+    let online = false;
+    let refuseOld = false;
+    const { calls, fetchFn } = api((c) => {
+      if (!online) return 'offline';
+      if (c.path === '/players') return { status: 201, body: c.body?.cgToken ? { ...PLAYER, id: 'p_cg', secret: 'scg', linked: true } : PLAYER };
+      if (c.path === '/runs') return refuseOld && c.auth === 'Bearer p_1.s1' ? { status: 401, body: { error: 'auth' } } : { status: 202, body: { id: 9, status: 'pending' } };
+      return { status: 404, body: { error: 'nope' } };
+    });
+    // An anonymous player (no portal account yet) queues a run on its own start while offline.
+    online = true;
+    const anon = lbWith(kv, fetchFn);
+    await anon.ensurePlayer();
+    online = false;
+    expect((await anon.submit({ ...SUB, token: startToken('p_1', 7) })).state).toBe('queued');
+    expect((await anon.submit({ ...SUB, hash: 'cafef00d', token: startToken('p_1', 8) })).state).toBe('queued');
+    // Next session: signed in to CrazyGames → linked as a new player; the queue still goes up as p_1.
+    online = true;
+    const lb = lbWith(kv, fetchFn, { portal: 'crazygames', portalUser: async () => ({ username: 'CgUser', token: 'jwt' }) });
+    lb.load();
+    const before = calls.length;
+    await lb.flush();
+    expect(lb.identity?.id).toBe('p_cg');
+    expect(calls.slice(before).filter((c) => c.path === '/runs').map((c) => c.auth)).toEqual(['Bearer p_1.s1', 'Bearer p_1.s1']);
+    expect(lb.outcome('deadbeef:3456')?.state).toBe('pending');
+    // The old credential refused (or a token of a third player): dropped as 'identity-changed', not 'bad-token'.
+    refuseOld = true;
+    expect(await lb.submit({ ...SUB, hash: '0badf00d', token: startToken('p_1', 9) })).toMatchObject({ state: 'dropped', error: 'identity-changed' });
+    expect(await lb.submit({ ...SUB, hash: '0badf00e', token: startToken('p_zz', 9) })).toMatchObject({ state: 'dropped', error: 'identity-changed' });
+    expect(calls.filter((c) => c.path === '/runs' && c.auth === 'Bearer p_cg.scg')).toHaveLength(0);
+  });
+
+  it('the pre-link identity is kept while a saved run holds its start, then forgotten; delete removes it server-side too', async () => {
+    const kv = memoryKV();
+    const { calls, fetchFn } = api((c) => {
+      if (c.path === '/players') return { status: 201, body: c.body?.cgToken ? { ...PLAYER, id: 'p_cg', secret: 'scg', linked: true } : PLAYER };
+      if (c.path === '/runs') return { status: 202, body: { id: 9, status: 'pending' } };
+      if (c.path === '/players/me' && c.method === 'DELETE') return { status: 200, body: { deleted: true } };
+      return { status: 404, body: { error: 'nope' } };
+    });
+    await lbWith(kv, fetchFn).ensurePlayer();
+    let saved: string | null = startToken('p_1', 3);
+    const lb = lbWith(kv, fetchFn, { portal: 'crazygames', portalUser: async () => ({ username: 'CgUser', token: 'jwt' }), savedStartToken: () => saved });
+    await lb.submit({ ...SUB, token: startToken('p_1', 7) });
+    expect(lb.identity?.id).toBe('p_cg');
+    // The resumed run still needs the old credential.
+    expect(JSON.parse(kv.getItem(LB_KEY)!).data.prev?.id).toBe('p_1');
+    // Delete my data: both players go, the old one with its own credential.
+    expect((await lb.deleteMe()).ok).toBe(true);
+    expect(calls.filter((c) => c.method === 'DELETE').map((c) => c.auth)).toEqual(['Bearer p_1.s1', 'Bearer p_cg.scg']);
+    // Nothing left to upload as the old player: it is forgotten after the next flush.
+    const kv2 = memoryKV();
+    await lbWith(kv2, fetchFn).ensurePlayer();
+    const lb2 = lbWith(kv2, fetchFn, { portal: 'crazygames', portalUser: async () => ({ username: 'CgUser', token: 'jwt' }), savedStartToken: () => saved });
+    await lb2.submit({ ...SUB, token: startToken('p_1', 7) });
+    expect(JSON.parse(kv2.getItem(LB_KEY)!).data.prev?.id).toBe('p_1');
+    saved = null;
+    await lb2.flush();
+    expect(JSON.parse(kv2.getItem(LB_KEY)!).data.prev).toBeNull();
+  });
+
+  it('no start is fetched for a kind while its queued runs could lose theirs to newer starts', async () => {
+    let online = false;
+    const { fetchFn, starts } = startApi({ down: () => (online ? null : 'offline') });
+    const lb = lbWith(memoryKV(), fetchFn);
+    for (let i = 0; i < LB_QUEUED_START_CAP; i++) await lb.submit({ ...SUB, hash: `0000000${i}`, token: startToken('p_1', i) });
+    online = true;
+    // Uploads still failing (a 429 too-many-pending), starts still issued: none is taken for this kind.
+    await lb.prefetchStart('tier');
+    expect(starts).toEqual([]);
+    await lb.prefetchStart('daily');
+    expect(starts).toEqual(['daily']);
+    expect(LB_QUEUED_START_CAP).toBe(3);
+  });
+
+  it('disabled, offline or ranked-disabled (503) gives no start, silently', async () => {
+    const none = new Leaderboard({ base: '', kv: memoryKV(), portal: 'local', fetch: startApi().fetchFn });
+    await none.prefetchStart('tier');
+    expect(none.takeStart('tier', null)).toBeNull();
+    const off = lbWith(memoryKV(), startApi({ down: () => 'offline' }).fetchFn);
+    await off.prefetchStart('tier');
+    expect(off.takeStart('tier', null)).toBeNull();
+    const down = lbWith(memoryKV(), startApi({ down: () => 503 }).fetchFn);
+    await down.prefetchStart('daily');
+    expect(down.takeStart('daily', null)).toBeNull();
+  });
+
+  it('a queued run keeps its token across a reload', async () => {
+    const kv = memoryKV();
+    let online = false;
+    const { calls, fetchFn } = startApi({ down: () => (online ? null : 'offline') });
+    const lb = lbWith(kv, fetchFn);
+    expect((await lb.submit({ ...SUB, token: 'tok.en' })).state).toBe('queued');
+    online = true;
+    const lb2 = lbWith(kv, fetchFn);
+    lb2.load();
+    expect(lb2.queued[0]?.token).toBe('tok.en');
+    await lb2.flush();
+    expect(calls.find((c) => c.path === '/runs')?.body).toMatchObject({ token: 'tok.en' });
+  });
+
+  it('a new identity (re-register after a 401) clears the pool', async () => {
+    let n = 0;
+    let refuse = false;
+    const kv = memoryKV();
+    const a = startApi({ ids: () => `p_${++n}` });
+    const fetchFn = (async (url: string, init?: RequestInit) => {
+      if (refuse && String(url).endsWith('/friends')) {
+        refuse = false;
+        return new Response(JSON.stringify({ error: 'auth' }), { status: 401 });
+      }
+      return a.fetchFn(url, init);
+    }) as unknown as typeof fetch;
+    const lb = lbWith(kv, fetchFn);
+    await lb.prefetchStart('tier');
+    expect(JSON.parse(kv.getItem(LB_KEY)!).data.starts).toHaveLength(1);
+    refuse = true;
+    await lb.friends();
+    expect(lb.identity?.id).toBe('p_2');
+    expect(JSON.parse(kv.getItem(LB_KEY)!).data.starts).toEqual([]);
+    // A start fetched for someone else than the current player is not pooled.
+    const b = lbWith(memoryKV(), api((c) => (c.path === '/players' ? { status: 201, body: PLAYER } : { status: 200, body: { kind: 'tier', day: null, seed: 5, startedAt: 1, token: startToken('p_x', 5) } })).fetchFn);
+    await b.prefetchStart('tier');
+    expect(b.takeStart('tier', null)).toBeNull();
+  });
+
+  it('delete forgets pooled starts', async () => {
+    const kv = memoryKV();
+    const { fetchFn } = startApi();
+    const lb = lbWith(kv, fetchFn);
+    await lb.prefetchStart('tier');
+    await lb.deleteMe();
+    expect(JSON.parse(kv.getItem(LB_KEY)!).data.starts).toEqual([]);
+  });
+});
+
 const hard = (): GameData =>
   testData({ enemies: { basic: { damage: 240 }, fast: { damage: 160 }, tank: { damage: 640 }, ranged: { damage: 320 }, boss: { damage: 800 } } }, { health: 2000 });
 
@@ -314,8 +540,10 @@ describe('resumed runs keep a complete replay', () => {
     const s = new RunSession(data, opts);
     drive(s, 600);
     expect(s.world.dead).toBe(false);
-    store.saveRun(s.world, s.opts, undefined, { log: s.log, claim: dailyClaim(day), board: { kind: 'daily', day }, commit: 'abc1234' });
+    const start = { token: 'tok.en', seed: opts.seed, startedAt: 1234 };
+    store.saveRun(s.world, s.opts, undefined, { log: s.log, claim: dailyClaim(day), board: { kind: 'daily', day }, commit: 'abc1234', start });
     const saved = new MetaStore(kv, data, MD, () => 0).loadRun()!;
+    expect(saved.start).toEqual(start);
     expect(saved.board).toEqual({ kind: 'daily', day });
     expect(saved.claim).toEqual(dailyClaim(day));
     expect(saved.commit).toBe('abc1234');
@@ -346,6 +574,25 @@ describe('resumed runs keep a complete replay', () => {
     expect(run!.log).toBeNull();
     expect(run!.claim).toBeNull();
     expect(run!.board).toBeNull();
+    expect(run!.start).toBeNull();
     expect(run!.world.tick).toBe(s.world.tick);
+  });
+});
+
+describe('run saves and server starts', () => {
+  it('a v2 run save without a start (before server starts) loads with start null; a bad one is dropped', () => {
+    const kv = memoryKV();
+    const store = new MetaStore(kv, DEFAULT_DATA, MD, () => 0);
+    const s = new RunSession(DEFAULT_DATA, { seed: 3, tier: 1 });
+    s.advance(30, () => {});
+    store.saveRun(s.world, s.opts, undefined, { log: s.log, claim: null, board: { kind: 'tier', day: null }, commit: 'abc', start: { token: 't.k', seed: 3, startedAt: 9 } });
+    const env = JSON.parse(kv.getItem(RUN_KEY)!) as { v: number; data: Record<string, unknown> };
+    expect(env.v).toBe(2);
+    expect(new MetaStore(kv, DEFAULT_DATA, MD, () => 0).loadRun()!.start).toEqual({ token: 't.k', seed: 3, startedAt: 9 });
+    delete env.data.start;
+    kv.setItem(RUN_KEY, JSON.stringify(env));
+    expect(new MetaStore(kv, DEFAULT_DATA, MD, () => 0).loadRun()!.start).toBeNull();
+    kv.setItem(RUN_KEY, JSON.stringify({ ...env, data: { ...env.data, start: { token: 5, seed: 'x' } } }));
+    expect(new MetaStore(kv, DEFAULT_DATA, MD, () => 0).loadRun()!.start).toBeNull();
   });
 });

@@ -1,5 +1,9 @@
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import battleJson from '../src/data/battle.json';
+import configJson from '../src/data/config.json';
+import devJson from '../src/data/dev.json';
+import labsJson from '../src/data/labs.json';
 import { RunSession } from '../src/render/RunSession';
 import {
   allowanceBits,
@@ -137,6 +141,12 @@ describe('verifySubmission (tools/leaderboard/verifyEntry.ts)', () => {
     expect(verifySubmission({ ...s2, verifiedBits: 1e6 }, data, MD).status).toBe('verified');
   });
 
+  it('tier: only the server-issued seed verifies; a legacy input without one is unchanged', () => {
+    expect(verifySubmission({ ...sub, seed: 4243 }, data, MD)).toMatchObject({ status: 'rejected', reason: 'seed: not the issued one' });
+    expect(verifySubmission({ ...sub, seed: 4242 }, data, MD).status).toBe('verified');
+    expect(verifySubmission(sub, data, MD).status).toBe('verified');
+  });
+
   it('daily: only the day’s seed, tier and fixed loadout verify', () => {
     const day = '2026-10-16';
     const data = hard(20);
@@ -163,5 +173,17 @@ describe('verifySubmission (tools/leaderboard/verifyEntry.ts)', () => {
       expect(r.status).toBe('rejected');
       expect(r.reason).toBeTruthy();
     }
+  });
+});
+
+describe('pace bound (server-issued starts, spec §3.2)', () => {
+  it('no speed source exceeds battle.maxSpeed, and tickHz × maxSpeed fits the server pace', () => {
+    const labSpeeds = labsJson.nodes.filter((n) => n.effect.type === 'speed').map((n) => Number(n.effect.value));
+    expect(labSpeeds.length).toBeGreaterThan(0);
+    const all = [...battleJson.speeds, ...labSpeeds, battleJson.fastBootSpeed, devJson.stress.speed];
+    for (const v of all) expect(v).toBeLessThanOrEqual(battleJson.maxSpeed);
+    expect(configJson.tickHz * battleJson.maxSpeed).toBeLessThanOrEqual(LEADERBOARD.pace.maxTicksPerSec);
+    expect(LEADERBOARD.pace.slack).toBeGreaterThan(0);
+    expect(LEADERBOARD.pace.slack).toBeLessThanOrEqual(1);
   });
 });

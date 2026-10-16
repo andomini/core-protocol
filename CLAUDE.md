@@ -14,6 +14,8 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 - `npm run ui` — Playwright UI smoke, both orientations + portal checks (starts its own Vite server on `UI_PORT`, default 5180; `-- --only portal`)
 - `npm run build:all`, `npm run package` → `dist/core-protocol-<portal>.zip`; every build runs `tools/postbuild.mjs` (size ≤ 1 MB transfer, one SDK, no dev hooks, relative paths)
 - `npm run ui:portal-build` — production CrazyGames/Poki builds with a stubbed and a blocked SDK (build first)
+- `tools/deploy-pages.sh` — npm test, local-portal build (noindex, robots Disallow), deploy as static Cloudflare Worker `core-protocol` (`tools/site.wrangler.toml`); bakes in `VITE_LEADERBOARD_URL` from env / `.env.production.local`
+- `scripts/lb-deploy.sh [status]` — idempotent leaderboard Worker deploy after `cd server && npx wrangler login`: D1, migrations, secrets (never overwrites), CORS origin of the site, health check; writes `server/verifier/verifier.env`
 - `npm run telemetry:report -- <export.json>…` → `reports/telemetry-<date>.md`
 
 ## Запуск локально

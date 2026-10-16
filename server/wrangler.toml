@@ -25,3 +25,5 @@ crons = ["17 3 * * *"]
 # Secrets (never in this file):
 #   npx wrangler secret put ADMIN_TOKEN    the verifier's bearer token
 #   npx wrangler secret put DAILY_SECRET   optional: unpredictable daily seeds (HMAC of the day)
+#   npx wrangler secret put RUN_SECRET     REQUIRED: signs run-start tokens (POST /v1/runs/start); while unset,
+#                                          ranked play is off (503 ranked-disabled). Rotating it voids runs in progress.

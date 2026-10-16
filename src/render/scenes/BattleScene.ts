@@ -25,8 +25,8 @@ import { sectorOf } from '../../sim/hex';
 import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleDaily, settleRun } from '../../meta/runEnd';
 import { claimFromMeta, dailyClaim, dailyRunOptions, dailySeed, dayIndex, dayKey, LEADERBOARD, type LoadoutClaim } from '../../meta/leaderboardRules';
-import type { RunBoard } from '../../meta/MetaStore';
-import { type DailyChallenge, rankedBuild, type RunOutcome } from '../../portal/leaderboard';
+import type { RunBoard, RunStartInfo } from '../../meta/MetaStore';
+import { type DailyChallenge, rankedBuild, type RunOutcome, startExpired } from '../../portal/leaderboard';
 import { hashWorld } from '../../sim/hash';
 import { Button } from '../../ui/kit';
 import { PickOverlay } from '../../ui/PickOverlay';
@@ -148,6 +148,8 @@ export class BattleScene extends Phaser.Scene {
   /** Leaderboard: where this run goes, the loadout it claims, and whether its log is complete and clean. */
   board: RunBoard = { kind: 'tier', day: null };
   private claim: LoadoutClaim | null = null;
+  /** The server-issued start this run was played from (seed + signed start time); null → unranked. */
+  private start: RunStartInfo | null = null;
   /** The daily challenge being played (Home fetched it from the server). */
   private daily: DailyChallenge | null = null;
   private ranked = false;
@@ -236,18 +238,30 @@ export class BattleScene extends Phaser.Scene {
       // The replay needs every command since tick 0: a save without its log resumes unranked.
       this.board = saved.board ?? { kind: 'tier', day: null };
       this.claim = saved.claim;
+      this.start = saved.start;
       const complete = saved.log !== null && saved.claim !== null;
       if (complete) this.session.log = saved.log!;
-      // The server takes a daily run for today or yesterday only (its clock).
-      const today = dayIndex(dayKey(services.leaderboard?.serverNow() ?? Date.now()));
+      // The server takes a daily run for today or yesterday only (its clock), and a start token for a limited time.
+      const serverNow = services.leaderboard?.serverNow() ?? Date.now();
+      const today = dayIndex(dayKey(serverNow));
       const expired = this.board.kind === 'daily' && !(dayIndex(this.board.day ?? '') >= today - 1);
       this.setRanked(
-        !complete ? 'resumed from an older save' : saved.commit !== __COMMIT__ ? 'resumed on a different build' : expired ? 'daily challenge is over' : '',
+        !complete
+          ? 'resumed from an older save'
+          : saved.commit !== __COMMIT__
+            ? 'resumed on a different build'
+            : expired
+              ? 'daily challenge is over'
+              : !saved.start
+                ? 'resumed without a server start'
+                : startExpired(saved.start.startedAt, serverNow)
+                  ? 'start expired'
+                  : '',
       );
     } else if (this.mode === 'daily') {
       this.session = new RunSession(this.gd, this.dailyOptions());
     } else {
-      this.session = new RunSession(this.gd, this.runOptions(this.flags.seed ?? newSeed()));
+      this.session = new RunSession(this.gd, this.runOptions(this.flags.seed));
     }
     this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.loop = new FixedLoop(this.gd.config.tickHz, MAX_TICKS_PER_FRAME);
@@ -402,8 +416,15 @@ export class BattleScene extends Phaser.Scene {
 
   private readonly onHidden = (): void => this.loop.reset();
 
-  /** Options for a new run from the meta save (workshop, labs) on this scene's tier; dev flags on top. */
-  private runOptions(seed: number): RunOptions {
+  /**
+   * Options for a new run from the meta save (workshop, labs) on this scene's tier; dev flags on top. The seed
+   * comes from a pooled server start (ranked); without one (offline, dev) a local one, unranked. `seedFlag` (?seed=)
+   * is for the scene's first run only: RESTART/RETRY get a new seed.
+   */
+  private runOptions(seedFlag: number | null = null): RunOptions {
+    const st = seedFlag === null && this.rankable() ? services.leaderboard!.takeStart('tier', null) : null;
+    const seed = seedFlag ?? st?.seed ?? newSeed();
+    this.start = st ? { token: st.token, seed: st.seed, startedAt: st.startedAt } : null;
     const o = buildRunOptions(services.meta.meta, this.gd, DEFAULT_META_DATA, this.tier, seed);
     if (this.flags.unlockAll) o.unlocked = [...STAT_IDS];
     o.protocols = !this.flags.stress;
@@ -422,28 +443,48 @@ export class BattleScene extends Phaser.Scene {
     const local = dayKey(now);
     const ch = this.daily ?? { day: local, seed: dailySeed(local), endsAt: (dayIndex(local) + 1) * 86_400_000, online: false };
     const o = dailyRunOptions(ch.day, this.gd, DEFAULT_META_DATA, LEADERBOARD, ch.seed);
+    // A RETRY after the day ended is practice only: the server issues starts for today's challenge alone (it
+    // takes yesterday's runs only when they began before midnight). Today's pooled start is left for today.
+    const over = ch.online && now >= ch.endsAt;
+    // The server's start for this day; one whose seed is not the challenge's (a stale cache) is not used.
+    const st = ch.online && !over && this.rankable() ? services.leaderboard!.takeStart('daily', ch.day) : null;
+    this.start = st && st.seed === ch.seed ? { token: st.token, seed: st.seed, startedAt: st.startedAt } : null;
     this.tier = o.tier;
     this.board = { kind: 'daily', day: ch.day };
     this.claim = dailyClaim(ch.day);
-    // A RETRY long after the day ended (the server takes yesterday's runs, not older) is practice only.
-    this.setRanked(!ch.online ? 'daily offline' : now >= ch.endsAt + 86_400_000 ? 'daily challenge is over' : '');
+    this.setRanked(!ch.online ? 'daily offline' : over ? 'daily challenge is over' : '');
     return o;
   }
 
-  /** Ranked = complete log + a clean build + no dev flags (dev ?lbforce=1 skips the last two for the UI smoke). */
+  /**
+   * Ranked = complete log + a server-issued start + a clean build + no dev flags (dev ?lbforce=1 skips the
+   * last two for the UI smoke; the start is required even then — the smoke mocks POST /runs/start).
+   */
   private setRanked(why: string): void {
-    const force = leaderboardForce(location.search);
-    const f = this.flags;
-    if (!why && !force && (f.stress || f.weak || f.seed !== null || f.unlockAll)) why = 'dev flags';
-    if (!why && !force && !rankedBuild(__COMMIT__)) why = 'dev build';
+    if (!why && !leaderboardForce(location.search)) why = this.devUnranked();
+    if (!why && !this.start) why = 'no server start';
     this.ranked = why === '';
     this.unrankedWhy = why;
+  }
+
+  /** Why no run of this session can be ranked (dev flags, dev build, the widget's auto-play), or ''. */
+  private devUnranked(): string {
+    const f = this.flags;
+    if (f.stress || f.weak || f.seed !== null || f.unlockAll) return 'dev flags';
+    if (!rankedBuild(__COMMIT__)) return 'dev build';
+    if (WIDGET) return 'widget auto-play';
+    return '';
+  }
+
+  /** A new run here could be ranked: only then is a pooled start used up (and the pool refilled from the server). */
+  private rankable(): boolean {
+    return !!services.leaderboard?.enabled && (leaderboardForce(location.search) || this.devUnranked() === '');
   }
 
   /** The command log a save carries (null = unranked, or too long to keep — the run then resumes unranked). */
   private replayInfo() {
     const log = this.ranked && this.session.log.length <= LEADERBOARD.maxLogEntries ? this.session.log : null;
-    return { log, claim: this.claim, board: this.board, commit: __COMMIT__ };
+    return { log, claim: this.claim, board: this.board, commit: __COMMIT__, start: this.start };
   }
 
   /** Death: upload the run (queued offline) and put its rank on the death screen. */
@@ -451,13 +492,15 @@ export class BattleScene extends Phaser.Scene {
     const lb = services.leaderboard;
     if (!lb?.enabled || this.flags.stress) return;
     const w = this.session.world;
-    if (!this.ranked || !this.claim || this.session.log.length > LEADERBOARD.maxLogEntries || w.wave < LEADERBOARD.minWave) {
+    // A run kept going (saves, resumes) until its start token is about to expire is no longer accepted.
+    if (this.ranked && this.start && startExpired(this.start.startedAt, lb.serverNow())) this.setRanked('start expired');
+    if (!this.ranked || !this.claim || !this.start || this.session.log.length > LEADERBOARD.maxLogEntries || w.wave < LEADERBOARD.minWave) {
       this.death.setRankLine(`not ranked · ${this.unrankedWhy || 'incomplete replay'}`);
       return;
     }
     const opts = this.session.opts;
     const replay = JSON.stringify({ v: 1, seed: opts.seed, tier: opts.tier, claim: this.claim, log: this.session.log });
-    const sub = { kind: this.board.kind, tier: w.tier, day: this.board.day, wave: w.wave, ticks: w.tick, hash: hashWorld(w), commit: __COMMIT__, replay };
+    const sub = { kind: this.board.kind, tier: w.tier, day: this.board.day, wave: w.wave, ticks: w.tick, hash: hashWorld(w), commit: __COMMIT__, replay, token: this.start.token };
     const gen = this.runGen;
     this.death.setRankLine('submitting…');
     void lb.submit(sub).then(async (o) => {
@@ -1041,7 +1084,7 @@ export class BattleScene extends Phaser.Scene {
     this.runGen += 1;
     this.lbOutcome = null;
     // RETRY on a daily run is another attempt at today's challenge.
-    this.session.restart(this.board.kind === 'daily' ? this.dailyOptions() : this.runOptions(newSeed()));
+    this.session.restart(this.board.kind === 'daily' ? this.dailyOptions() : this.runOptions());
     this.fastBoot = this.session.opts.metaBonus?.fastBootWaves ?? 0;
     this.view.reset();
     this.structures.reset();
@@ -1299,7 +1342,7 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'waveStart':
         this.saveRun();
-        if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? 4 : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
+        if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? battleJson.fastBootSpeed : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
         sfx.play(e.boss ? 'boss' : 'wave');
         if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now);
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);

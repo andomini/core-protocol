@@ -33,6 +33,21 @@ export interface RunReplayInfo {
   board: RunBoard | null;
   /** Build commit the run was started on: a run resumed on another build is unranked (its replay would mix sims). */
   commit: string | null;
+  /** The server-issued start (POST /v1/runs/start) the run was played from; null → started offline, unranked. */
+  start: RunStartInfo | null;
+}
+
+/** A ranked run's start: the signed token, the seed it carries and when the server issued it. */
+export interface RunStartInfo {
+  token: string;
+  seed: number;
+  startedAt: number;
+}
+
+function validStart(x: unknown): RunStartInfo | null {
+  const s = x as Partial<RunStartInfo> | null;
+  if (!s || typeof s !== 'object' || typeof s.token !== 'string' || !Number.isInteger(s.seed) || typeof s.startedAt !== 'number') return null;
+  return { token: s.token, seed: s.seed as number, startedAt: s.startedAt };
 }
 
 interface RunSave extends RunReplayInfo {
@@ -104,6 +119,8 @@ export class MetaStore {
           claim: o.claim && typeof o.claim === 'object' ? (o.claim as LoadoutClaim) : null,
           board: validBoard(o.board),
           commit: typeof o.commit === 'string' ? o.commit : null,
+          // Absent in saves from before server-issued starts: such a run resumes unranked (no version bump).
+          start: validStart(o.start),
         };
       },
     });
@@ -123,16 +140,21 @@ export class MetaStore {
   }
 
   /** Saves the run in progress (never a dead one). Failures are silent: a lost snapshot only costs a Continue. */
-  saveRun(w: World, opts: RunOptions, stats?: RunStats, replay: RunReplayInfo = { log: null, claim: null, board: null, commit: null }): void {
+  saveRun(w: World, opts: RunOptions, stats?: RunStats, replay: RunReplayInfo = { log: null, claim: null, board: null, commit: null, start: null }): void {
     if (w.dead) return;
     try {
       // A log too big for the store would make every later save fail (stale Continue): drop it (→ unranked).
       const log = replay.log && JSON.stringify(replay.log).length <= MAX_SAVED_LOG_CHARS ? replay.log : null;
-      const save: RunSave = { snapshot: snapshot(w), opts, savedAt: this.now(), stats, log, claim: replay.claim, board: replay.board, commit: replay.commit };
+      const save: RunSave = { snapshot: snapshot(w), opts, savedAt: this.now(), stats, log, claim: replay.claim, board: replay.board, commit: replay.commit, start: replay.start };
       this.write<RunSave | null>(this.runSlot, save);
     } catch {
       /* a non-finite value: keep the previous snapshot */
     }
+  }
+
+  /** The server start token of the saved run (without restoring its world), or null. */
+  savedStartToken(): string | null {
+    return this.runSlot.load().data?.start?.token ?? null;
   }
 
   hasRun(): boolean {
@@ -148,7 +170,7 @@ export class MetaStore {
     }
     try {
       const d = r.data;
-      return { world: restore(d.snapshot, this.data), opts: d.opts, savedAt: d.savedAt, stats: validateRunStats(d.stats), log: d.log, claim: d.claim, board: d.board, commit: d.commit };
+      return { world: restore(d.snapshot, this.data), opts: d.opts, savedAt: d.savedAt, stats: validateRunStats(d.stats), log: d.log, claim: d.claim, board: d.board, commit: d.commit, start: d.start };
     } catch {
       this.clearRun();
       return null;

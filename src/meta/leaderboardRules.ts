@@ -27,6 +27,21 @@ export interface LeaderboardData {
   daily: { tier: number; paidAttemptsPerDay: number; loadouts: DailyLoadout[] };
   /** Tier boards: a loadout may cost up to freeBits + earnedMul × Bits earned in the player's verified runs. */
   allowance: { freeBits: number; earnedMul: number };
+  /**
+   * Ranked runs must take real time (server-issued start → submit, checked by the Worker and the verifier):
+   * at least floor(ticks × 1000 / maxTicksPerSec × slack) − graceMs ms. maxTicksPerSec = tickHz × the highest
+   * honest speed (tests/leaderboard.test.ts keeps every speed source under it). server/src/runs.ts mirrors it.
+   */
+  pace: { maxTicksPerSec: number; slack: number; graceMs: number };
+  /** The server accepts a start token this long (server/src/runs.ts TOKEN_MAX_AGE_MS mirrors it). */
+  startTokenMaxAgeDays: number;
+  /** The client uses a pooled start this long after fetching it (≤ half the token's age: the run keeps the rest). */
+  startPoolMaxAgeDays: number;
+  /**
+   * The server keeps only this many unused starts per player and kind (server/src/runs.ts START_KEEP mirrors it):
+   * the client fetches no start while startKeep − 2 runs of that kind wait in its queue, so they keep theirs.
+   */
+  startKeep: number;
 }
 
 export const LEADERBOARD: LeaderboardData = lbJson as unknown as LeaderboardData;

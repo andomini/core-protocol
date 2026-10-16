@@ -3,10 +3,11 @@
 // verifier (server/verifier/verify.ts) replays them with the build's own sim, then posts a verdict here.
 import type { D1PreparedStatement, Env } from './db';
 import { verifyCgToken } from './crazygames';
-import { CODE_ALPHABET, newSecret, randomInt, randomString, safeEqual, sha256Hex } from './crypto';
+import { CODE_ALPHABET, hmacKey, hmacSign, newSecret, randomInt, randomString, safeEqual, sha256Hex } from './crypto';
 import { corsHeaders, errorResponse, HttpError, json, MAX_REPLAY, MAX_RUN_BODY, readJson } from './http';
 import { autoName, checkName, nameFromPortal } from './names';
 import { limit, LIMITS, peek, purgeRate } from './rate';
+import { minElapsedMs, readRunToken, RUNS_PER_TOKEN, signRunToken, START_KEEP, TOKEN_MAX_AGE_MS } from './runs';
 import { DAY_MS, dailySeed, dayIndex, dayKey, isMonday, weekKey } from './time';
 
 export type { Env } from './db';
@@ -26,9 +27,7 @@ const MAX_SECRETS = 5;
  */
 export async function daySeed(env: Env, day: string): Promise<number> {
   if (!env.DAILY_SECRET) return dailySeed(day);
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey('raw', enc.encode(env.DAILY_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(`core-protocol:daily:${day}`)));
+  const mac = await hmacSign(await hmacKey(env.DAILY_SECRET), `core-protocol:daily:${day}`);
   return ((mac[0]! << 24) | (mac[1]! << 16) | (mac[2]! << 8) | mac[3]!) >>> 0 || 1;
 }
 
@@ -203,6 +202,7 @@ async function deleteMe(c: Ctx): Promise<Response> {
     DB.prepare('DELETE FROM bests WHERE player_id = ?1').bind(p.id),
     DB.prepare('DELETE FROM follows WHERE player_id = ?1 OR friend_id = ?1').bind(p.id),
     DB.prepare('DELETE FROM badges WHERE player_id = ?1').bind(p.id),
+    DB.prepare('DELETE FROM run_starts WHERE player_id = ?1').bind(p.id),
     DB.prepare('DELETE FROM runs WHERE player_id = ?1').bind(p.id),
     DB.prepare('DELETE FROM players WHERE id = ?1').bind(p.id),
   ]);
@@ -210,6 +210,43 @@ async function deleteMe(c: Ctx): Promise<Response> {
 }
 
 // ---------------------------------------------------------------- runs
+
+/**
+ * POST /v1/runs/start {kind}: the seed of a ranked run and a signed token with the server's start time (spec §3.2).
+ * Tier: a fresh random seed. Daily: the day's seed; the token is still needed for the time check. The start is a
+ * `run_starts` row, and only the player's newest START_KEEP of this kind stay valid: seeds cannot be stockpiled.
+ * The tier is bound at the first submission, not here (the client pools a start before the player picks a tier,
+ * so PLAY never waits): one seed goes to one board, so choosing the board per seed is still a best-of-START_KEEP.
+ */
+async function startRun(c: Ctx): Promise<Response> {
+  const p = await auth(c, true);
+  const b = await readJson(c.req);
+  const kind = b.kind;
+  if (kind !== 'tier' && kind !== 'daily') throw new HttpError(400, 'bad-kind');
+  const secret = c.env.RUN_SECRET;
+  if (!secret) throw new HttpError(503, 'ranked-disabled');
+  const DB = c.env.DB;
+  // While the pending cap holds this player's uploads back, no new start: the client's queued runs keep their
+  // starts (a new one could void them) and the next run is played unranked. A read only, before any write.
+  const pending = await DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE player_id = ?1 AND status = 'pending'").bind(p.id).first<{ n: number }>();
+  if ((pending?.n ?? 0) >= MAX_PENDING) throw new HttpError(429, 'too-many-pending');
+  await limit(c.env, `start:${p.id}`, LIMITS.start, c.now);
+  await limit(c.env, `start:${await ipKey(c)}`, LIMITS.startIp, c.now);
+  const day = kind === 'daily' ? dayKey(c.now) : null;
+  // Tier seeds span the client's newSeed() range, never 0.
+  const seed = day !== null ? await daySeed(c.env, day) : 1 + randomInt(0x7ffffffe);
+  const row = await DB.prepare('INSERT INTO run_starts (player_id, kind, seed, started_at) VALUES (?1, ?2, ?3, ?4) RETURNING id').bind(p.id, kind, seed, c.now).first<{ id: number }>();
+  if (!row) throw new HttpError(500, 'start-failed');
+  // Only unused starts count against START_KEEP: one a run was already submitted on (its seed is spent; a revive's
+  // resubmit may follow) stays valid, whichever device of a shared CrazyGames account starts the next runs.
+  await DB.prepare(
+    'DELETE FROM run_starts WHERE player_id = ?1 AND kind = ?2 AND uses = 0 AND id NOT IN (SELECT id FROM run_starts WHERE player_id = ?1 AND kind = ?2 AND uses = 0 ORDER BY id DESC LIMIT ?3)',
+  )
+    .bind(p.id, kind, START_KEEP)
+    .run();
+  const token = await signRunToken(secret, { v: 1, p: p.id, k: kind, d: day, s: seed, a: c.now, i: row.id });
+  return json({ kind, day, seed, startedAt: c.now, token });
+}
 
 async function submitRun(c: Ctx): Promise<Response> {
   const p = await auth(c, true);
@@ -235,12 +272,31 @@ async function submitRun(c: Ctx): Promise<Response> {
     if (b.day !== today && b.day !== yesterday) throw new HttpError(400, 'bad-day');
     day = b.day;
   }
+  // The server-issued start (§3.2). Missing → an old build or a legacy queued run: refused for good (400).
+  const secret = c.env.RUN_SECRET;
+  if (!secret) throw new HttpError(503, 'ranked-disabled');
+  if (typeof b.token !== 'string') throw new HttpError(400, 'no-token');
+  const tok = await readRunToken(secret, b.token);
+  if (!tok || tok.p !== p.id) throw new HttpError(400, 'bad-token');
+  if (tok.k !== kind || (kind === 'daily' && tok.d !== day)) throw new HttpError(400, 'token-mismatch');
+  if (c.now - tok.a > TOKEN_MAX_AGE_MS) throw new HttpError(400, 'token-expired');
+  // Server clocks only: network, the offline queue, pauses, ads and a closed tab only add to the measured time.
+  // Under-claimed ticks cannot help: the replay would not reach the submitted hash.
+  if (c.now - tok.a < minElapsedMs(b.ticks)) throw new HttpError(400, 'too-fast');
   const ip = await ipKey(c);
+  const DB = c.env.DB;
   await limit(c.env, `submit:${p.id}`, LIMITS.submit, c.now);
   await limit(c.env, `submit:${ip}`, LIMITS.submitIp, c.now);
-  const DB = c.env.DB;
   const dup = await DB.prepare('SELECT id, status FROM runs WHERE player_id = ?1 AND hash = ?2 AND ticks = ?3').bind(p.id, b.hash, b.ticks).first<{ id: number; status: string }>();
   if (dup) return json({ id: dup.id, status: dup.status });
+  // A start voided by START_KEEP newer ones (or purged after TOKEN_MAX_AGE_MS) is refused for good.
+  const st = await DB.prepare('SELECT kind, seed, started_at AS a, uses, tier, max_ticks AS mx FROM run_starts WHERE id = ?1 AND player_id = ?2')
+    .bind(tok.i, p.id)
+    .first<{ kind: string; seed: number; a: number; uses: number; tier: number | null; mx: number | null }>();
+  if (!st || st.kind !== tok.k || st.seed !== tok.s || st.a !== tok.a) throw new HttpError(400, 'token-revoked');
+  // One start, at most RUNS_PER_TOKEN rows: the second must be the longer, same-tier run after a revive. Checked
+  // here for a clear early answer; enforced atomically by the claim in the insert batch below.
+  if (st.uses >= RUNS_PER_TOKEN || (st.uses > 0 && (b.ticks <= (st.mx ?? 0) || b.tier !== st.tier))) throw new HttpError(409, 'token-used');
   const pending = await DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE player_id = ?1 AND status = 'pending'").bind(p.id).first<{ n: number }>();
   if ((pending?.n ?? 0) >= MAX_PENDING) throw new HttpError(429, 'too-many-pending');
   // Stored bytes per player and per address and day: free accounts cannot fill the 500 MB database.
@@ -248,25 +304,29 @@ async function submitRun(c: Ctx): Promise<Response> {
   await limit(c.env, `bytes:${ip}`, LIMITS.submitBytesIp, c.now, b.replay.length);
   try {
     await DB.batch([
-      DB.prepare('INSERT INTO runs (player_id, kind, tier, day, week, wave, ticks, hash, commit_sha, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)').bind(
-        p.id,
-        kind,
-        b.tier,
-        day,
-        weekKey(c.now),
-        b.wave,
-        b.ticks,
-        b.hash,
-        b.commit,
-        c.now,
-      ),
-      DB.prepare('INSERT INTO replays (run_id, body) VALUES ((SELECT id FROM runs WHERE player_id = ?1 AND hash = ?2 AND ticks = ?3), ?4)').bind(p.id, b.hash, b.ticks, b.replay),
+      // The claim: run_starts.ok's CHECK fails (and the whole batch rolls back) unless this use is allowed.
+      DB.prepare(
+        `UPDATE run_starts SET ok = CASE WHEN uses = 0 THEN 1 WHEN uses < ?5 AND tier = ?3 AND max_ticks < ?4 THEN 1 ELSE 0 END,
+           uses = uses + 1, tier = ?3, max_ticks = MAX(COALESCE(max_ticks, 0), ?4) WHERE id = ?1 AND player_id = ?2`,
+      ).bind(tok.i, p.id, b.tier, b.ticks, RUNS_PER_TOKEN),
+      // Only on a start that still exists: a claim on a row voided since the check above updates nothing.
+      DB.prepare(
+        `INSERT INTO runs (player_id, kind, tier, day, week, wave, ticks, hash, commit_sha, created_at, seed, started_at)
+         SELECT ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12 WHERE EXISTS (SELECT 1 FROM run_starts WHERE id = ?13 AND player_id = ?1)`,
+      ).bind(p.id, kind, b.tier, day, weekKey(c.now), b.wave, b.ticks, b.hash, b.commit, c.now, tok.s, tok.a, tok.i),
+      DB.prepare('INSERT INTO replays (run_id, body) SELECT id, ?4 FROM runs WHERE player_id = ?1 AND hash = ?2 AND ticks = ?3').bind(p.id, b.hash, b.ticks, b.replay),
     ]);
   } catch (e) {
-    if (!/UNIQUE/i.test(String(e))) throw e;
+    if (!/CHECK|UNIQUE/i.test(String(e))) throw e;
+    // A concurrent resend of this same run committed first (its claim then fails the CHECK): the stored run.
+    const same = await DB.prepare('SELECT id, status FROM runs WHERE player_id = ?1 AND hash = ?2 AND ticks = ?3').bind(p.id, b.hash, b.ticks).first<{ id: number; status: string }>();
+    if (same) return json({ id: same.id, status: same.status });
+    throw new HttpError(409, 'token-used');
   }
   const row = await DB.prepare('SELECT id, status FROM runs WHERE player_id = ?1 AND hash = ?2 AND ticks = ?3').bind(p.id, b.hash, b.ticks).first<{ id: number; status: string }>();
-  return json({ id: row?.id ?? 0, status: row?.status ?? 'pending' }, 202);
+  // The start was voided (a newer start, the purge, a delete) between the check above and the batch.
+  if (!row) throw new HttpError(400, 'token-revoked');
+  return json({ id: row.id, status: row.status }, 202);
 }
 
 async function myRuns(c: Ctx): Promise<Response> {
@@ -437,13 +497,17 @@ async function adminPending(c: Ctx): Promise<Response> {
   const after = Math.max(0, Math.floor(Number(c.url.searchParams.get('after') ?? '0')) || 0);
   const r = await c.env.DB.prepare(
     `SELECT r.id, r.player_id AS playerId, r.kind, r.tier, r.day, r.week, r.wave, r.ticks, r.hash, r.commit_sha AS "commit", r.created_at AS createdAt,
-            p.verified_bits AS verifiedBits
+            r.seed, r.started_at AS startedAt, p.verified_bits AS verifiedBits
      FROM runs r JOIN players p ON p.id = r.player_id WHERE r.status = 'pending' AND r.id > ?2 ORDER BY r.id LIMIT ?1`,
   )
     .bind(lim, after)
-    .all<{ kind: string; day: string | null }>();
+    .all<{ kind: string; day: string | null; seed: number | null; startedAt: number | null }>();
   const runs = [];
-  for (const run of r.results) runs.push(run.kind === 'daily' && run.day ? { ...run, seed: await daySeed(c.env, run.day) } : run);
+  // The issued seed (tier and daily); legacy rows without one: the day's seed for daily, none for tier.
+  for (const { seed, ...run } of r.results) {
+    const s = seed ?? (run.kind === 'daily' && run.day ? await daySeed(c.env, run.day) : null);
+    runs.push(s === null ? run : { ...run, seed: s });
+  }
   return json({ runs });
 }
 
@@ -610,6 +674,7 @@ async function route(c: Ctx): Promise<Response> {
     if (m === 'DELETE') return deleteMe(c);
   }
   if (path === 'runs' && m === 'POST') return submitRun(c);
+  if (path === 'runs/start' && m === 'POST') return startRun(c);
   if (path === 'runs/mine' && m === 'GET') return myRuns(c);
   if (a === 'boards' && m === 'GET' && b2 && parts.length <= 4) return board(c, b2, c3);
   if (a === 'friends') {
@@ -642,9 +707,10 @@ export async function handle(req: Request, env: Env, now: number = Date.now()): 
   return res;
 }
 
-/** Daily cron (wrangler.toml [triggers]): drops expired rate-limit rows. */
+/** Daily cron (wrangler.toml [triggers]): drops expired rate-limit rows and run starts. */
 export async function runCron(env: Env, now: number = Date.now()): Promise<void> {
   await purgeRate(env, now);
+  await env.DB.prepare('DELETE FROM run_starts WHERE started_at < ?1').bind(now - TOKEN_MAX_AGE_MS).run();
 }
 
 export default {

@@ -44,6 +44,9 @@ export interface HomeInit {
   tab?: HomeTab;
 }
 
+/** DAILY waits at most this long (after the challenge itself) for the run's server start. */
+const DAILY_START_WAIT_MS = 1500;
+
 export class HomeScene extends Phaser.Scene {
   L!: Layout;
   G!: HomeGeometry;
@@ -105,6 +108,9 @@ export class HomeScene extends Phaser.Scene {
     this.codexPanel = new CodexPanel(this, this.L, this.gd, () => this.codexPanel.hide());
     const lb = services.leaderboard;
     this.lbPanel = lb?.enabled ? new LeaderboardPanel(this, this.L, lb, { maxTier: Math.max(1, services.meta.meta.tierUnlocked), close: () => this.lbPanel?.hide() }) : null;
+    // A server-issued start ready for the next tier run (ranked runs need one; PLAY never waits for it). After
+    // the portal init: the identity may live in the CrazyGames data module.
+    if (lb?.enabled) void services.portalInit.then(() => lb.prefetchStart('tier'));
     this.refresh();
     services.guard.gameplayStop?.();
     const starter = this.registry.get('starterReveal') as PackCard[] | undefined;
@@ -349,10 +355,17 @@ export class HomeScene extends Phaser.Scene {
     const lb = services.leaderboard;
     if (!lb || this.dailyStarting) return;
     this.dailyStarting = true;
-    void lb.dailyChallenge().then((daily) => {
-      this.dailyStarting = false;
-      if (this.scene.isActive()) this.scene.start('Battle', { mode: 'daily', daily });
-    });
+    // The daily run's server start is fetched alongside the challenge, but waited for only briefly
+    // (DAILY_START_WAIT_MS past the challenge): a slow or hanging server never holds the run back, it is then
+    // played unranked. A cached challenge with a pooled start begins at once.
+    const start = lb.prefetchStart('daily');
+    void lb
+      .dailyChallenge()
+      .then((daily) => Promise.race([start, new Promise((r) => setTimeout(r, DAILY_START_WAIT_MS))]).then(() => daily))
+      .then((daily) => {
+        this.dailyStarting = false;
+        if (this.scene.isActive()) this.scene.start('Battle', { mode: 'daily', daily });
+      });
   }
 
   startRun(tier: number): void {

@@ -52,6 +52,7 @@ A run is ranked only if:
 - the build has a clean commit (`__COMMIT__` is a 40-hex sha; dev and dirty builds report `<sha>-dirty` or `unknown`, and the server answers `400 build-not-ranked`), and the owner registered that commit as ranked (`builds` table, `server/verifier/builds.ts add`; unknown or retired commits get the same 400);
 - no dev or debug flags were set (BattleScene uses `battleData(DEFAULT_DATA, flags)`, and any flag changes the data);
 - the full command log from tick 0 is available (see §3.1);
+- the run was started from a server-issued start (seed + signed start time, §3.2); a run started offline is practice;
 - `wave >= leaderboard.json minWave`.
 
 After death the client posts **POST /v1/runs**:
@@ -65,7 +66,8 @@ After death the client posts **POST /v1/runs**:
   "ticks": 182340,
   "hash": "9f03a1c2",
   "commit": "d52589b…40 hex",
-  "replay": "gz:H4sIAAAA…"
+  "replay": "gz:H4sIAAAA…",
+  "token": "eyJ2IjoxLCJwIjoi….Xq3…43 b64url"
 }
 ```
 
@@ -83,6 +85,7 @@ After death the client posts **POST /v1/runs**:
   - The verifier rebuilds RunOptions from the claim, so `runOptionsFromClaim(claim, data, md, tier, seed)` must equal the options the run used. A test covers this for `buildRunOptions`.
   - Daily runs send `dailyClaim(day)`.
 - `log` = `RunSession.log`, the `{tick, cmd}` pairs in the order they were applied.
+- `token` = the start token the run was played from (§3.2). The replay's `seed` must be the token's seed.
 
 Responses:
 
@@ -92,6 +95,7 @@ Responses:
   - `413 too-large`
   - `429 too-many-pending` (more than 20 pending) or `429 rate-limited`
   - `401 auth`, `403 banned`
+  - start tokens (§3.2): `400 no-token`, `400 bad-token` (malformed, forged MAC, unknown version or another player's), `400 token-mismatch` (kind or day differs from the run's), `400 token-expired` (older than 28 days), `400 token-revoked` (its `run_starts` row was evicted or purged), `400 too-fast` (less real time than the ticks need), `409 token-used`, `503 ranked-disabled` (`RUN_SECRET` unset)
 
 The client shows its own pending run as "verifying" (the boards include it, see §4). It should keep the submission and retry on a network failure, because the call is idempotent.
 
@@ -103,6 +107,49 @@ The client shows its own pending run as "verifying" (the boards include it, see 
   - restore `session.log` on resume;
   - submit the full log from tick 0. The replay is always from the start, never from a snapshot.
 - If the persisted log is missing, or longer than `maxLogEntries` (200,000), the run is shown as unranked.
+
+### 3.2 Server-issued starts
+
+Two holes this closes: **seed shopping** (restarting until a client-picked seed gives an easy map) and **runs
+faster than real time** (a modified client simulating hours of play in seconds).
+
+- **Flow.** `POST /v1/runs/start {kind}` (player auth) returns `{kind, day, seed, startedAt, token}`. Tier: a fresh
+  random seed (`1 + randomInt(0x7ffffffe)`), `day` null. Daily: today's day (server clock) and its seed (`daySeed`).
+  The token is `b64url(JSON{v:1, p:playerId, k:kind, d:day, s:seed, a:startedAt, i:startId}) . b64url(HMAC-SHA256(RUN_SECRET,
+  "core-protocol:run:" + payload))`, checked in constant time (`crypto.subtle.verify`). Each start is a `run_starts` row (`i` = its id);
+  only the newest `START_KEEP` (5) unused ones per player and kind stay valid (a start a run was submitted on no longer
+  counts), older ones answer `400 token-revoked`, so seeds
+  cannot be stockpiled and seed shopping is at most best-of-5 at a time (and the start rate limit). The tier is not in
+  the token (the start is pooled before the tier is picked); it is bound to the row by the first submission. The cron
+  purges rows older than the token age. The run plays that seed and sends the token with `POST /runs`. A player at the
+  pending cap gets `429 too-many-pending` from `/runs/start` too, and the client fetches no start for a kind while
+  `startKeep − 2` of its runs wait in the offline queue: queued runs never lose their starts to newer ones.
+- **Pace.** At submit, `now − startedAt ≥ minElapsedMs(ticks) = max(0, floor(ticks × 1000 / maxTicksPerSec × slack) −
+  graceMs)` (`leaderboard.json pace`: 150 ticks/s = 30 Hz × ×5 max speed, slack 0.9, grace 1 s; mirrored as
+  `PACE` in `server/src/runs.ts`, a test keeps them equal). A test also keeps every speed source (battle speeds,
+  labs, fast boot, stress) ≤ `battle.maxSpeed` and `tickHz × maxSpeed ≤ maxTicksPerSec`.
+- **One start, at most two rows** (`RUNS_PER_TOKEN`): the death before a revive and the longer run after it. A
+  second row must have more ticks and the same tier; a resend of the same `hash:ticks` is the usual idempotent
+  duplicate. Anything else is `409 token-used`. The claim is atomic: one `UPDATE run_starts` in the insert batch
+  counts the use, binds the tier and max ticks, and a `CHECK (ok = 1)` aborts the batch when it is not allowed, so
+  concurrent submits of one token cannot exceed the cap.
+- **Pool and prefetch (client).** `Leaderboard.prefetchStart(kind)` keeps at most one start per kind in the LB save
+  (`starts`), single flight, every failure silent. The game prefetches a tier start right after the portal init
+  (and Boot waits ≤ 2 s for it before a new player's first run); DAILY fetches the daily start in parallel with the
+  challenge and waits for it ≤ 1.5 s after the challenge arrives. `takeStart(kind, day)` is synchronous:
+  it drops starts older than `LB_START_MAX_AGE_MS` (`leaderboard.json startPoolMaxAgeDays`, 14 days, device clock;
+  at most half the token age `startTokenMaxAgeDays`, 28, so a long run still submits), keeps a daily of another day
+  for its own day (a RETRY of yesterday's challenge after midnight is unranked, "daily challenge is over", without
+  using today's start), takes the match and refills in the background, so RETRY and the widget's auto-restart find one. Starting a run never
+  waits on the network: **no pooled start = the run is played unranked** ("not ranked · no server start"); so is a run (resumed or not)
+  whose start is within a day of the token age ("start expired"). A start
+  whose token names another player (the identity changed meanwhile) is not pooled; a new identity or a profile
+  delete clears the pool. When a CrazyGames link changes the id, the old identity is kept (`prev`) so queued runs on
+  its starts still upload with its credential; after a replace (or if the old credential is refused) they are dropped
+  as `identity-changed`.
+- **Saves and queue.** The start rides the run save (`RunSave.start {token, seed, startedAt}`, run slot stays v2;
+  an older save resumes unranked, "resumed without a server start") and the offline queue (`sub.token`). A revive
+  keeps the same start.
 
 ## 4. API (Worker, `/v1`)
 
@@ -116,6 +163,7 @@ All JSON. Bodies are at most 4 KB, except `POST /v1/runs`, which allows the repl
 | GET `/players/me` | player | | `{id, name, friendCode, portal, linked, badges, verifiedBits, canRename, badgeHistory: [{week, tier, rank, wave}]}` |
 | PATCH `/players/me` | player (10/day) | `{name}` | `{name}`, or `400 name-length\|name-charset\|name-profane`, or `403 portal-name` |
 | DELETE `/players/me` | player | | `{deleted: true}`; runs, replays, bests, follows and badges are removed (cascade) |
+| POST `/runs/start` | player (20/h per player, 100/h per IP) | `{kind: "tier"\|"daily"}` | `{kind, day, seed, startedAt, token}` (§3.2); `400 bad-kind`, `429 too-many-pending`, `503 ranked-disabled` |
 | POST `/runs` | player (60/h) | §3 | `202 {id, status}` |
 | GET `/runs/mine` | player | | `{runs: [{id, kind, tier, day, week, wave, status, reason, createdAt, verifiedAt}]}` (last 20) |
 | GET `/boards/tier/:tier` | optional | `?scope=global\|friends&limit≤100` | board (below) + `{tier}` |
@@ -142,7 +190,7 @@ Admin (verifier and owner; `Authorization: Bearer <ADMIN_TOKEN>`, a Worker secre
 
 | Method & path | Request | Response |
 |---|---|---|
-| GET `/admin/pending?limit≤50` | | `{runs: [{id, playerId, kind, tier, day, week, wave, ticks, hash, commit, createdAt, verifiedBits}]}`, oldest first, without replay bodies |
+| GET `/admin/pending?limit≤50` | | `{runs: [{id, playerId, kind, tier, day, week, wave, ticks, hash, commit, createdAt, verifiedBits, seed, startedAt}]}`, oldest first, without replay bodies. `seed` = the issued seed (a legacy daily row falls back to the day's seed); `startedAt` null on rows from before 0003 |
 | GET `/admin/replay/:id` | | the replay string as `text/plain` (the Worker never parses it) |
 | POST `/admin/verdict` | `{id, status: verified\|rejected\|flagged, reason?, earnedBits?, loadoutBits?}` | `{id, status, boards}`; `409 already-decided` (a flagged run may be overturned) |
 | POST `/admin/close-week` | `{week}` | `{week, closed, awarded, already?}`; `409 week-not-over\|week-pending` |
@@ -152,7 +200,7 @@ Admin (verifier and owner; `Authorization: Bearer <ADMIN_TOKEN>`, a Worker secre
 ## 5. Storage (D1, `server/migrations/0001_init.sql`)
 
 - `players`(id, secret_hash, name, friend_code unique, portal, cg_user_id unique, verified_bits, badges, banned, created_at, renamed_at)
-- `runs`(id, player_id, kind, tier, day, week, wave, ticks, hash, commit_sha, status, reason, earned_bits, loadout_bits, created_at, verified_at). Duplicate key: unique (player_id, hash, ticks).
+- `runs`(id, player_id, kind, tier, day, week, wave, ticks, hash, commit_sha, status, reason, earned_bits, loadout_bits, created_at, verified_at, seed, started_at). Duplicate key: unique (player_id, hash, ticks). `seed` and `started_at` (migration `0003_run_starts.sql`, nullable for older rows) are the start token's; `run_starts`(id, player_id, kind, seed, started_at, uses, tier, max_ticks, ok) holds the issued starts (newest 5 per player and kind) and the per-token claim (§3.2).
 - `replays`(run_id, body). The replay is kept while the run is pending, flagged or rejected (for review), or while it holds a board place (for audit). A verified run that beats nothing has its replay deleted.
 - `bests`(board, player_id, wave, run_id, at). Upserted on a `verified` verdict when the wave is higher.
 - `follows`, `badges`(player_id, week, tier, rank, wave), `closed_weeks`, `rate`(key, win, n). The rate table is a fixed-window counter keyed by player id or by a truncated salted SHA-256 of the IP.
@@ -161,12 +209,16 @@ Admin (verifier and owner; `Authorization: Bearer <ADMIN_TOKEN>`, a Worker secre
 
 The free-plan Worker has 10 ms of CPU per request, so it never replays runs. The owner's PC runs `server/verifier/verify.ts` every 5 min (a systemd user timer; see `server/verifier/README.md`).
 
-1. Pull the pending runs.
+1. Pull the pending runs. Before the entry runs, `verify.ts` itself rejects (so the rule holds for every build's entry):
+   - `no server start`: the row has no `seed` / `startedAt` (submitted before 0003);
+   - `seed: not the issued one`: the replay's `seed` (gunzip capped at 16 MB, JSON) differs from the row's;
+   - `too fast`: `createdAt − startedAt < minElapsedMs(ticks)`, defence in depth behind the Worker's check (Worker bugs, rows made before a rule change). The ticks are the ones the entry then confirms (`world.tick`).
 2. For each run, check out the run's `commit` in a git worktree (`.verifier-cache/<sha>`, node_modules symlinked) and run **that commit's** `tools/leaderboard/verifyEntry.ts`. This way the sim, the data and the rules match the build the player ran. A commit without the entry is rejected. Unknown commits, crashes and timeouts stay pending and are rejected after 48 h.
 3. `verifySubmission` rejects a run when:
    - the payload is malformed or the log has more than `maxLogEntries` entries;
    - the payload tier differs from the submission tier;
-   - for daily runs, the seed, tier or claim is not the day's;
+   - for daily runs, the seed, tier or claim is not the day's (the seed passed in is the issued one);
+   - for tier runs, the payload seed differs from the issued `seed` passed in (`seed: not the issued one`; absent = not checked, entry contract stays v1);
    - for tier runs, `claimError` fails: unknown or duplicate labs, a missing prerequisite, workshop levels that are non-integer, above `workshopMax` or locked, unknown cards, or more cards than `cardSlots`;
    - a revive carries an `hp` share without Second Wind, or with a value other than Second Wind's;
    - `replayToEnd` (in `src/sim/replay.ts`) throws (out-of-order log, a command the sim refuses, or the world never dies or gets stuck);
@@ -181,6 +233,7 @@ The free-plan Worker has 10 ms of CPU per request, so it never replays runs. The
    - Players who levelled up before leaderboards existed have no verified history. They get flagged until their verified earnings catch up, or until the owner approves them.
    - Known gaps: cards are not costed, since they come from Keys and ads. A cheater can still hide a fast-forwarded save behind small honest runs, but needs 2× as many real, replay-verified Bits.
 5. Daily runs credit no Bits to the allowance.
+6. **Which layer checks what (server starts, §3.2).** The Worker checks the token (MAC, player, kind/day, age), the pace and the per-token row count at submit; `verify.ts` checks that the row has a start, that the replay used its seed, and the pace again; the entry checks the seed against the replay it actually simulates. Known gaps: a player can still pick the best of N seeds among the 5 live starts and within the start limit (20/h) by abandoning bad maps; a bot can pipeline many waits in parallel (the start limit caps its throughput, each run still takes its real time); a tampered browser playing in real time at ×5 is not stopped (only replay + loadout checks apply).
 
 Statuses: `pending → verified | rejected | flagged`; `flagged → verified | rejected` (owner only).
 
@@ -213,6 +266,8 @@ Statuses: `pending → verified | rejected | flagged`; `flagged → verified | r
 |---|---|
 | Register | 30 successful/h per IP; CG re-link 20/h per account (≤ 5 extra device secrets kept) |
 | Rename | 10/day |
+| Run starts | 20/h per player, 100/h per IP (~10 D1 rows written per start); only the newest 5 unused per player and kind are valid (`START_KEEP`); a token is valid 28 days (`TOKEN_MAX_AGE_MS`), at most 2 rows per token (`RUNS_PER_TOKEN`); the client uses a pooled start within 14 days |
+| Pace | ≥ ticks / 150 per s × 0.9 − 1 s of real time between start and submit (`leaderboard.json pace`) |
 | Submit | 60/h per player, 200/h per IP; replay bytes 20 MB/day per player, 100 MB/day per IP |
 | Rerolls per pick | 5 (perks.json `offer.maxRerolls`, enforced in the sim) |
 | Paid daily attempts | 1/day (leaderboard.json `daily.paidAttemptsPerDay`; later attempts are practice) |

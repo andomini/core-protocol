@@ -1,0 +1,10 @@
+# Static-assets-only Worker for the dev preview site (tools/deploy-pages.sh). No code, no bindings.
+# Paths are relative to this file. Run from server/ (that is where wrangler is installed):
+#   cd server && npx wrangler deploy --config ../tools/site.wrangler.toml
+name = "core-protocol"
+compatibility_date = "2026-09-01"
+
+[assets]
+directory = "../dist/local"
+# Single entry page with relative asset paths: unknown URLs are real 404s.
+not_found_handling = "none"

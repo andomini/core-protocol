@@ -28,6 +28,11 @@ export interface Env {
   CG_GAME_ID?: string;
   /** Secret behind the daily seeds (`wrangler secret put DAILY_SECRET`); unset = the public FNV seed. */
   DAILY_SECRET?: string;
+  /**
+   * HMAC key of the run-start tokens (`wrangler secret put RUN_SECRET`). REQUIRED for ranked play: unset, POST
+   * /v1/runs/start and POST /v1/runs answer 503 ranked-disabled. Rotating it voids in-progress ranked runs.
+   */
+  RUN_SECRET?: string;
   /** Tests only: the CrazyGames public key (PEM) instead of fetching https://sdk.crazygames.com/publicKey.json. */
   CG_PUBLIC_KEY_PEM?: string;
 }

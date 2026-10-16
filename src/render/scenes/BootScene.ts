@@ -10,6 +10,8 @@ import { DEFAULT_DATA } from '../../sim/data';
 import { generateTextures } from '../textures';
 
 const FONT_TIMEOUT_MS = 2500;
+/** A first session drops straight into a run: it waits this long more for a server start (main.ts prefetches it). */
+const FIRST_RUN_START_WAIT_MS = 2000;
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -36,8 +38,13 @@ export class BootScene extends Phaser.Scene {
       const forceHome = import.meta.env.DEV && new URLSearchParams(location.search).get('home') === '1';
       // The desktop widget picks its run straight back up (after a reload into a new build, a restart).
       if (WIDGET && services.meta.hasRun()) this.scene.start('Battle', { mode: 'continue' });
-      else if (!forceHome && !m.firstRunDone && !services.meta.hasRun()) this.scene.start('Battle', { mode: 'new', tier: 1 });
-      else this.scene.start('Home');
+      else if (!forceHome && !m.firstRunDone && !services.meta.hasRun()) {
+        // Home never opens before this run, so it would start without a pooled start (unranked): wait for the
+        // prefetch, bounded so a slow server never delays the first run by more than the cap.
+        const lb = services.leaderboard;
+        const ready = lb?.enabled ? lb.prefetchStart('tier') : Promise.resolve();
+        void Promise.race([ready, new Promise((r) => setTimeout(r, FIRST_RUN_START_WAIT_MS))]).then(() => this.scene.start('Battle', { mode: 'new', tier: 1 }));
+      } else this.scene.start('Home');
     });
   }
 }

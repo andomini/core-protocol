@@ -14,5 +14,9 @@
   "allowance": {
     "freeBits": 250000,
     "earnedMul": 2
-  }
+  },
+  "pace": { "maxTicksPerSec": 150, "slack": 0.9, "graceMs": 1000 },
+  "startTokenMaxAgeDays": 28,
+  "startPoolMaxAgeDays": 14,
+  "startKeep": 5
 }

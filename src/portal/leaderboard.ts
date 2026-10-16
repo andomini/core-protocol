@@ -2,9 +2,11 @@
 // Fail-soft by design: every call resolves (never throws) to {ok} or {ok:false, status, error}, each request
 // is capped by a timeout, and finished runs go through an offline queue persisted in a SaveSlot, retried on
 // an interval, on the browser's `online` event and at the next start. The game never waits on the network.
-// Registration is lazy (first RANKS open or first queued run), so players who never touch leaderboards cost
-// the server nothing.
-import { dailySeed, dayIndex, dayKey } from '../meta/leaderboardRules';
+// Registration is lazy (first RANKS open, first queued run, or the first ranked-start prefetch on Home).
+// Ranked runs start from a server-issued seed + signed start time (POST /v1/runs/start, spec §3.2): a small
+// pool of those is fetched ahead (prefetchStart) so starting a run never waits on the network; a run started
+// without one (offline) is played unranked.
+import { dailySeed, dayIndex, dayKey, LEADERBOARD } from '../meta/leaderboardRules';
 import type { PortalName, PortalUser } from './Portal';
 import { type KeyValue, SaveSlot } from './storage';
 
@@ -23,6 +25,23 @@ export const LB_QUEUE_CHARS = 1_500_000;
 export const uploadTimeoutMs = (base: number, chars: number): number => base + 1000 * Math.ceil(chars / 50_000);
 /** The server's replay cap (characters of the JSON or `gz:` string). */
 export const LB_MAX_REPLAY = 1_000_000;
+/** A pooled run start is used within this long of fetching it (leaderboard.json startPoolMaxAgeDays). */
+export const LB_START_MAX_AGE_MS = LEADERBOARD.startPoolMaxAgeDays * 86_400_000;
+/** The server refuses a start token older than this (leaderboard.json startTokenMaxAgeDays). */
+export const LB_TOKEN_MAX_AGE_MS = LEADERBOARD.startTokenMaxAgeDays * 86_400_000;
+/**
+ * No start is fetched for a kind while this many of its runs wait in the queue: the server keeps only the newest
+ * `startKeep` unused starts (leaderboard.json), and the run in progress plus the pooled one need two of them.
+ */
+export const LB_QUEUED_START_CAP = LEADERBOARD.startKeep - 2;
+
+/**
+ * A run on this start can no longer be ranked: its token is (nearly) past the server's age limit, with a day left
+ * for the upload. `now` is the server-corrected clock.
+ */
+export function startExpired(startedAt: number, now: number): boolean {
+  return now - startedAt >= LB_TOKEN_MAX_AGE_MS - 86_400_000;
+}
 const RECENT_MAX = 30;
 const FRIEND_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -51,6 +70,21 @@ export interface RunSubmission {
   commit: string;
   /** JSON `{v:1, seed, tier, claim, log}`, or `gz:`+base64 of it. */
   replay: string;
+  /** The signed start token of POST /v1/runs/start the run was played from (required by the server). */
+  token?: string;
+}
+
+/** A server-issued run start (POST /v1/runs/start), pooled until a run takes it. */
+export interface RunStart {
+  kind: RunKind;
+  /** Daily: the challenge day the seed belongs to; tier: null. */
+  day: string | null;
+  seed: number;
+  token: string;
+  /** Server time the token was issued (ms). */
+  startedAt: number;
+  /** Device time it was fetched (ms): the pool's age check. */
+  gotAt: number;
 }
 
 export interface BoardEntry {
@@ -115,8 +149,15 @@ interface QueuedRun {
 
 interface LbSave {
   identity: LbIdentity | null;
+  /**
+   * The identity before the last CrazyGames link changed the player id: its credential still works, and queued
+   * runs (and a resumed run) carry start tokens signed for it, so they are uploaded as that player.
+   */
+  prev: LbIdentity | null;
   queue: QueuedRun[];
   recent: RunOutcome[];
+  /** Unused run starts of `identity` (cleared whenever the identity changes). */
+  starts: RunStart[];
 }
 
 export type LbHealth = 'unknown' | 'ok' | 'offline' | 'unavailable';
@@ -131,6 +172,8 @@ export interface LeaderboardOptions {
   fetch?: typeof fetch;
   now?: () => number;
   timeoutMs?: number;
+  /** The start token of the saved run in progress (a resumed run uploads as the player it was started by). */
+  savedStartToken?: () => string | null;
 }
 
 const runKey = (s: { hash: string; ticks: number }) => `${s.hash}:${s.ticks}`;
@@ -171,16 +214,60 @@ export async function compressReplay(text: string): Promise<string> {
   }
 }
 
+function validIdentity(x: unknown): LbIdentity | null {
+  const id = x as Partial<LbIdentity> | null | undefined;
+  return id && typeof id.id === 'string' && typeof id.secret === 'string'
+    ? { id: id.id, secret: id.secret, name: String(id.name ?? ''), friendCode: String(id.friendCode ?? ''), portal: String(id.portal ?? 'local'), linked: !!id.linked }
+    : null;
+}
+
+const emptySave = (): LbSave => ({ identity: null, prev: null, queue: [], recent: [], starts: [] });
+
 function validateSave(x: unknown): LbSave {
   const o = (x ?? {}) as Partial<LbSave>;
-  const id = o.identity as Partial<LbIdentity> | null | undefined;
-  const identity =
-    id && typeof id.id === 'string' && typeof id.secret === 'string'
-      ? { id: id.id, secret: id.secret, name: String(id.name ?? ''), friendCode: String(id.friendCode ?? ''), portal: String(id.portal ?? 'local'), linked: !!id.linked }
-      : null;
+  const identity = validIdentity(o.identity);
+  const prev = validIdentity(o.prev);
   const queue = Array.isArray(o.queue) ? o.queue.filter((q): q is QueuedRun => !!q && typeof q === 'object' && !!(q as QueuedRun).sub && typeof (q as QueuedRun).sub.replay === 'string') : [];
   const recent = Array.isArray(o.recent) ? o.recent.filter((r): r is RunOutcome => !!r && typeof (r as RunOutcome).key === 'string') : [];
-  return { identity, queue: queue.slice(-LB_QUEUE_MAX), recent: recent.slice(-RECENT_MAX) };
+  const starts = Array.isArray(o.starts) ? oneStartPerKind(o.starts.filter(isRunStart)) : [];
+  return { identity, prev: prev && prev.id !== identity?.id ? prev : null, queue: queue.slice(-LB_QUEUE_MAX), recent: recent.slice(-RECENT_MAX), starts };
+}
+
+/** The last start of each kind (the pool holds at most one per kind). */
+function oneStartPerKind(starts: RunStart[]): RunStart[] {
+  const out: RunStart[] = [];
+  for (const s of starts) {
+    const i = out.findIndex((o) => o.kind === s.kind);
+    if (i >= 0) out[i] = s;
+    else out.push(s);
+  }
+  return out;
+}
+
+/** The player id inside a start token's payload (`b64url(JSON).mac`), or null when it is unreadable. */
+export function startTokenPlayer(token: string): string | null {
+  try {
+    const b64 = token.split('.')[0]!.replace(/-/g, '+').replace(/_/g, '/');
+    const p = JSON.parse(atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4))) as { p?: unknown };
+    return typeof p.p === 'string' ? p.p : null;
+  } catch {
+    return null;
+  }
+}
+
+function isRunStart(x: unknown): x is RunStart {
+  const s = x as Partial<RunStart> | null;
+  return (
+    !!s &&
+    typeof s === 'object' &&
+    (s.kind === 'tier' || s.kind === 'daily') &&
+    (s.kind === 'daily' ? typeof s.day === 'string' : s.day === null) &&
+    Number.isInteger(s.seed) &&
+    typeof s.token === 'string' &&
+    s.token.length > 0 &&
+    typeof s.startedAt === 'number' &&
+    typeof s.gotAt === 'number'
+  );
 }
 
 export class Leaderboard {
@@ -188,7 +275,7 @@ export class Leaderboard {
   health: LbHealth = 'unknown';
   private readonly base: string;
   private readonly slot: SaveSlot<LbSave>;
-  private state: LbSave = { identity: null, queue: [], recent: [] };
+  private state: LbSave = emptySave();
   private readonly fetchFn: typeof fetch;
   private readonly now: () => number;
   private readonly timeoutMs: number;
@@ -200,6 +287,8 @@ export class Leaderboard {
   private clockOffset = 0;
   private dailyCache: DailyChallenge | null = null;
   private flushing: Promise<void> | null = null;
+  /** In-flight POST /runs/start per kind (single flight). */
+  private startFetch = new Map<RunKind, Promise<void>>();
   private portalChecked = false;
   /** Set by deleteMe: no portal (re-)linking for the rest of the session. */
   private portalOff = false;
@@ -212,7 +301,7 @@ export class Leaderboard {
     this.fetchFn = opts.fetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
     this.now = opts.now ?? (() => Date.now());
     this.timeoutMs = opts.timeoutMs ?? LB_TIMEOUT_MS;
-    this.slot = new SaveSlot<LbSave>(opts.kv, { key: LB_KEY, version: 1, defaults: () => ({ identity: null, queue: [], recent: [] }), validate: validateSave });
+    this.slot = new SaveSlot<LbSave>(opts.kv, { key: LB_KEY, version: 1, defaults: emptySave, validate: validateSave });
   }
 
   /** Loads the saved identity + queue (after portal init: the CrazyGames data module may hold them). */
@@ -261,12 +350,13 @@ export class Leaderboard {
 
   // ------------------------------------------------------------------ transport
 
-  private async request<T>(method: string, path: string, body?: unknown, auth = false, timeoutMs = this.timeoutMs): Promise<LbResult<T>> {
+  /** `auth`: sign as the current identity (true) or as the given one. */
+  private async request<T>(method: string, path: string, body?: unknown, auth: boolean | LbIdentity = false, timeoutMs = this.timeoutMs): Promise<LbResult<T>> {
     if (!this.enabled) return { ok: false, status: 0, error: 'disabled' };
     const headers: Record<string, string> = {};
     if (body !== undefined) headers['content-type'] = 'application/json';
     if (auth) {
-      const id = this.state.identity;
+      const id = auth === true ? this.state.identity : auth;
       if (!id) return { ok: false, status: 401, error: 'auth' };
       headers.authorization = `Bearer ${id.id}.${id.secret}`;
     }
@@ -411,6 +501,12 @@ export class Leaderboard {
       this.regFails = 0;
       this.regRetryAt = 0;
       const d = r.data;
+      // Starts are signed for one player: a new identity cannot use the old one's. A link keeps the old
+      // credential (still valid) for the runs already played on its starts; a refused one is useless.
+      if (this.state.identity?.id !== d.id) {
+        this.state.starts = [];
+        this.state.prev = mode === 'link' && cur ? cur : null;
+      }
       this.state.identity = { id: d.id, secret: d.secret, name: d.name, friendCode: d.friendCode, portal: d.portal, linked: !!d.linked };
       this.persist();
       return this.state.identity;
@@ -437,9 +533,18 @@ export class Leaderboard {
 
   /** Deletes the online profile and every run (server side), then forgets the local identity and queue. */
   async deleteMe(): Promise<LbResult<{ deleted: boolean }>> {
+    // The player a CrazyGames link replaced first: its runs are on the boards too, and only its credential (about
+    // to be forgotten) can delete them.
+    const prev = this.state.prev;
+    if (prev) {
+      const d = await this.request<{ deleted: boolean }>('DELETE', '/players/me', undefined, prev);
+      if (!d.ok && d.status !== 401) return d;
+      this.state.prev = null;
+      this.persist();
+    }
     const r = this.state.identity ? await this.request<{ deleted: boolean }>('DELETE', '/players/me', undefined, true) : ({ ok: true, data: { deleted: true } } as const);
     if (r.ok || r.status === 401) {
-      this.state = { identity: null, queue: [], recent: [] };
+      this.state = emptySave();
       this.portalChecked = true; // no silent re-link in this session
       this.portalOff = true;
       this.persist();
@@ -503,6 +608,76 @@ export class Leaderboard {
 
   // ------------------------------------------------------------------ runs
 
+  /** Today's challenge day as far as this client knows (the server's, once GET /daily answered). */
+  private todayKey(): string {
+    const c = this.dailyCache;
+    return c && this.serverNow() < c.endsAt ? c.day : dayKey(this.serverNow());
+  }
+
+  /** A pooled start still fresh enough to begin a run with. */
+  private fresh(s: RunStart): boolean {
+    const age = this.now() - s.gotAt;
+    return age >= 0 && age < LB_START_MAX_AGE_MS;
+  }
+
+  /** A fresh pooled start for `kind` (a daily one: for `day`). */
+  private fits(s: RunStart, kind: RunKind, day: string): boolean {
+    return s.kind === kind && this.fresh(s) && (kind === 'tier' || s.day === day);
+  }
+
+  /**
+   * Fetches a run start for `kind` into the pool (one entry per kind) unless a usable one is already there;
+   * single flight per kind. Registers the player if needed. Every failure (offline, 429, 503 ranked-disabled)
+   * is silent: a run started without a pooled start is played unranked.
+   */
+  prefetchStart(kind: RunKind): Promise<void> {
+    this.load();
+    if (!this.enabled) return Promise.resolve();
+    const today = this.todayKey();
+    if (this.state.starts.some((s) => this.fits(s, kind, today))) return Promise.resolve();
+    // Queued runs keep their starts: a new one could push theirs out of the server's newest START_KEEP.
+    if (this.state.queue.filter((q) => q.sub.kind === kind && !!q.sub.token).length >= LB_QUEUED_START_CAP) return Promise.resolve();
+    const cur = this.startFetch.get(kind);
+    if (cur) return cur;
+    const p = (async (): Promise<void> => {
+      try {
+        if (!(await this.ensurePlayer())) return;
+        const r = await this.authed<{ kind: string; day: string | null; seed: number; startedAt: number; token: string }>('POST', '/runs/start', { kind });
+        if (!r.ok) return;
+        const d = r.data;
+        // Signed for whoever is the player now (a 401 may have re-registered; deleteMe may have run meanwhile).
+        if (typeof d.token !== 'string' || startTokenPlayer(d.token) !== this.state.identity?.id) return;
+        const st: RunStart = { kind, day: kind === 'daily' ? d.day : null, seed: d.seed, token: d.token, startedAt: d.startedAt, gotAt: this.now() };
+        if (d.kind !== kind || !isRunStart(st)) return;
+        this.state.starts = [...this.state.starts.filter((x) => x.kind !== kind), st];
+        this.persist();
+      } catch {
+        // silent: the next run is unranked
+      }
+    })().finally(() => this.startFetch.delete(kind));
+    this.startFetch.set(kind, p);
+    return p;
+  }
+
+  /**
+   * Takes a pooled start for a run about to begin (synchronous: the game never waits). `day` is the daily
+   * challenge's day (null = today). Drops stale entries (by age only: a pooled daily of another day stays for
+   * its own day, prefetchStart replaces it), and always refills the pool in the background. Null = none here:
+   * the run is played unranked.
+   */
+  takeStart(kind: RunKind, day: string | null): RunStart | null {
+    this.load();
+    if (!this.enabled) return null;
+    const want = day ?? this.todayKey();
+    const before = this.state.starts.length;
+    this.state.starts = this.state.starts.filter((s) => this.fresh(s));
+    const i = this.state.starts.findIndex((s) => this.fits(s, kind, want));
+    const st = i >= 0 ? this.state.starts.splice(i, 1)[0]! : null;
+    if (st || this.state.starts.length !== before) this.persist();
+    void this.prefetchStart(kind);
+    return st;
+  }
+
   /**
    * Queues a finished run and tries to upload it now. Resolves with its outcome (queued while offline);
    * the queue survives reloads, so an offline run is submitted later.
@@ -541,7 +716,7 @@ export class Leaderboard {
           this.persist();
           continue;
         }
-        const r = await this.authed<{ id: number; status: string }>('POST', '/runs', q.sub, uploadTimeoutMs(this.timeoutMs, q.sub.replay.length));
+        const r = await this.upload(q.sub);
         if (r.ok) {
           this.state.queue.shift();
           const st = r.data.status === 'verified' || r.data.status === 'rejected' || r.data.status === 'flagged' ? r.data.status : 'pending';
@@ -568,10 +743,48 @@ export class Leaderboard {
         this.record({ ...base, state: 'dropped', error: r.error });
         this.persist();
       }
+      this.releasePrev();
     })().finally(() => {
       this.flushing = null;
     });
     return this.flushing;
+  }
+
+  /**
+   * POST /runs as the player its start token was signed for: the current identity, or the one a CrazyGames link
+   * replaced (its credential still works). A token of any other player cannot be accepted any more: a clear
+   * permanent refusal ('identity-changed') instead of the server's 'bad-token'.
+   */
+  private async upload(sub: RunSubmission): Promise<LbResult<{ id: number; status: string }>> {
+    const timeout = uploadTimeoutMs(this.timeoutMs, sub.replay.length);
+    const owner = sub.token ? startTokenPlayer(sub.token) : null;
+    // ensurePlayer first: it may link the portal account (a new id) before the owner is compared.
+    if (owner && (await this.ensurePlayer()) && owner !== this.state.identity?.id) {
+      const prev = this.state.prev;
+      const changed = { ok: false, status: 400, error: 'identity-changed' } as const;
+      if (!prev || prev.id !== owner) return changed;
+      const r = await this.request<{ id: number; status: string }>('POST', '/runs', sub, prev, timeout);
+      return !r.ok && r.status === 401 ? changed : r;
+    }
+    return this.authed<{ id: number; status: string }>('POST', '/runs', sub, timeout);
+  }
+
+  /**
+   * Forgets the identity a CrazyGames link replaced once nothing is left to upload as it: no queued run and no
+   * saved run carries a start token of that player.
+   */
+  private releasePrev(): void {
+    const prev = this.state.prev;
+    if (!prev) return;
+    const owned = (t: string | null | undefined): boolean => !!t && startTokenPlayer(t) === prev.id;
+    if (this.state.queue.some((q) => owned(q.sub.token))) return;
+    try {
+      if (owned(this.opts.savedStartToken?.())) return;
+    } catch {
+      return;
+    }
+    this.state.prev = null;
+    this.persist();
   }
 
   /** My rank on the board a run went to (tier board, or the day's board), or null. */
