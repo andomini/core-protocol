@@ -10,7 +10,8 @@ import Phaser from 'phaser';
 import type { GameData } from '../sim/data';
 import { SECTOR_DIRS } from '../sim/hex';
 import { fusionStructure } from '../sim/perks';
-import type { World } from '../sim/state';
+import { pauseTicks, waveTicks } from '../sim/economy';
+import type { Struct, World } from '../sim/state';
 import { CRIMSON, TAG_COLOR, WHITE } from './palette';
 import { ImagePool } from './pools';
 import { ps } from './resolution';
@@ -143,7 +144,18 @@ export class StructureView {
           else img.setTint(TAG_COLOR.mining);
           if (s.share < 1) this.stationBar(sx, sy, scale, s.share);
         } else {
+          // Rebuilding: the station fades back in over its rubble time, with a ring that fills one segment per wave.
+          const rb = stationRebuild(w, this.data, s);
+          const frac = rb?.frac ?? 0;
           this.rubble(sx, sy, scale);
+          let img = this.stationLive.get(s.id);
+          if (img === undefined) {
+            img = this.stationPool.get();
+            this.stationLive.set(s.id, img);
+          }
+          this.stamp.set(s.id, this.frame);
+          img.setPosition(sx, sy).setScale(k * (0.55 + 0.45 * frac)).setAlpha(0.1 + 0.4 * frac).setRotation(s.id).setTint(TAG_COLOR.mining);
+          this.rebuildRing(sx, sy, scale, frac, rb?.waves ?? 1);
         }
       } else if (s.kind === 'turret' && s.slot < this.turretCount) {
         let img = this.turretLive.get(s.id);
@@ -200,6 +212,21 @@ export class StructureView {
     this.marksShown = true;
     this.marks.fillStyle(0x000000, 0.5).fillRect(x - w / 2 - 1, top - 1, w + 2, 5);
     this.marks.fillStyle(mixColor(CRIMSON, TAG_COLOR.mining, share), 0.95).fillRect(x - w / 2, top, w * share, 3);
+  }
+
+  /** A ring around a rebuilding station: dim track, the part rebuilt so far, and a notch between waves. */
+  private rebuildRing(x: number, y: number, scale: number, frac: number, waves: number): void {
+    const r = Math.max(9, 22 * scale);
+    const top = -Math.PI / 2;
+    this.marksShown = true;
+    this.marks.lineStyle(2, TAG_COLOR.mining, 0.18).beginPath().arc(x, y, r, 0, Math.PI * 2, false).strokePath();
+    if (frac > 0) this.marks.lineStyle(2.5, TAG_COLOR.mining, 0.75).beginPath().arc(x, y, r, top, top + frac * Math.PI * 2, false).strokePath();
+    this.marks.lineStyle(2, 0x000000, 0.9);
+    for (let i = 0; i < waves; i++) {
+      const a = top + (i / waves) * Math.PI * 2;
+      const [c, sn] = [Math.cos(a), Math.sin(a)];
+      this.marks.beginPath().moveTo(x + c * (r - 3), y + sn * (r - 3)).lineTo(x + c * (r + 3), y + sn * (r + 3)).strokePath();
+    }
   }
 
   /** What is left of a destroyed station: a few dim broken strokes where it stood. */
@@ -288,4 +315,19 @@ export class StructureView {
         .strokePath();
     }
   }
+}
+
+/**
+ * A destroyed station's rebuild, for display: `frac` of its rubble time gone by, the ladder's `waves`, and `left`, the
+ * wave starts until it stands again (it is repaired at a wave start once the rubble time is over). Null if it stands.
+ */
+export function stationRebuild(w: World, data: GameData, s: Struct): { frac: number; waves: number; left: number } | null {
+  if (s.kind !== 'station' || s.share > 0) return null;
+  const waves = fusionStructure(w, data, 'station')?.rebuildWaves ?? 1;
+  const cycle = waveTicks(data) + pauseTicks(data);
+  const remaining = Math.max(0, s.downUntilTick - w.tick);
+  const frac = Math.min(1, Math.max(0, 1 - remaining / (waves * cycle)));
+  const next = w.phase === 'wave' ? w.tick + Math.max(0, waveTicks(data) - w.phaseTick) + pauseTicks(data) : w.tick + Math.max(0, pauseTicks(data) - w.phaseTick);
+  const left = next >= s.downUntilTick ? 1 : 1 + Math.ceil((s.downUntilTick - next) / cycle);
+  return { frac, waves, left };
 }

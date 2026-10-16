@@ -19,7 +19,7 @@ import { formatNum, formatPrice } from '../../ui/format';
 import { CrystalEditor, diffLines, moveTargets } from '../../ui/CrystalEditor';
 import { GenomeStrip } from '../../ui/GenomeStrip';
 import { CrystalView } from '../CrystalView';
-import { StructureView } from '../StructureView';
+import { StructureView, stationRebuild } from '../StructureView';
 import { worldStats } from '../../sim/state';
 import { sectorOf } from '../../sim/hex';
 import { grantStarter, type PackCard } from '../../meta/cards';
@@ -265,7 +265,7 @@ export class BattleScene extends Phaser.Scene {
     // Mouse hover (or a tap on touch) over a crystal module: what it does and whether its cluster counts.
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       this.fieldMove(p.worldX, p.worldY);
-      this.hoverModule(p.worldX, p.worldY, false);
+      this.hoverModule(p.worldX, p.worldY, false, !p.wasTouch);
     });
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       this.fieldDown(p.worldX, p.worldY);
@@ -643,7 +643,8 @@ export class BattleScene extends Phaser.Scene {
     let best: Struct | null = null;
     let bestD = Infinity;
     for (const s of w.structs) {
-      if (s.share <= 0 || s.kind === 'mine') continue;
+      // Rubble is pickable only for stations (they rebuild in place); a broken wall segment is just a gap.
+      if (s.kind === 'mine' || (s.share <= 0 && s.kind !== 'station')) continue;
       const v = fusionStructure(w, this.gd, s.kind);
       if (v === undefined || s.slot >= (s.kind === 'wall' ? sd.wall.segments : v.count ?? 0)) continue;
       // A wall segment is the ring band of its sector; turrets and stations are discs.
@@ -674,7 +675,11 @@ export class BattleScene extends Phaser.Scene {
     else {
       const v = fusionStructure(w, this.gd, 'station');
       const mul = v?.streakStep !== undefined ? Math.min(v.streakMax ?? 1, 1 + v.streakStep * s.streak) : 1;
-      live = `Station ${s.slot + 1}: streak ×${(Math.round(mul * 100) / 100).toString()}${s.share < 1 ? `, HP ${pct} %` : ''}`;
+      const rb = stationRebuild(w, this.gd, s);
+      if (rb !== null) {
+        const step = Math.min(rb.waves, Math.floor(rb.frac * rb.waves));
+        live = `Station ${s.slot + 1}: rebuilding ${step}/${rb.waves} · back ${rb.left === 1 ? 'next wave' : `in ${rb.left} waves`}`;
+      } else live = `Station ${s.slot + 1}: streak ×${(Math.round(mul * 100) / 100).toString()}${s.share < 1 ? `, HP ${pct} %` : ''}`;
     }
     const L = this.L;
     const [sx, sy] = [L.cx + s.x * L.scale, L.cy + s.y * L.scale];
@@ -690,13 +695,13 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  private hoverModule(x: number, y: number, tap = false): void {
+  private hoverModule(x: number, y: number, tap = false, mouse = false): void {
     const w = this.session.world;
     const blocked = w.dead || w.phase === 'pick' || this.editor.visible || this.protocols.visible || this.statsPanel.visible || this.fieldDrag?.moved === true;
     const mod = blocked ? -1 : this.crystal.moduleAt(w, x, y);
-    // A structure is only opened by a tap and stays up until the next tap elsewhere (or a module hover).
-    const struct = mod < 0 && tap && !blocked ? this.structureAt(w, x, y) : null;
-    if (mod < 0 && !tap && !blocked && this.modTipAt >= STRUCT_TIP) return;
+    // A structure opens on mouse hover, or on a tap on touch, where it stays up until the next tap elsewhere (or a module hover).
+    const struct = mod < 0 && (tap || mouse) && !blocked ? this.structureAt(w, x, y) : null;
+    if (mod < 0 && !tap && !mouse && !blocked && this.modTipAt >= STRUCT_TIP) return;
     const i = struct !== null ? STRUCT_TIP + struct.id : mod;
     if (i === this.modTipAt) return;
     this.modTipAt = i;

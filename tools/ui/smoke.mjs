@@ -371,6 +371,46 @@ const lbPanel = (h) =>
   });
 
 const scenarios = {
+  async stations() {
+    // A destroyed Relay Station: a ghost that grows back over its rubble time, and a mouse hover shows the rebuild.
+    const h = await open(browser, srv.base, 'desktop', '?seed=3');
+    await firstInput(h);
+    await h.p.evaluate(() => {
+      const w = window.__cp.game.scene.getScene('Battle').session.world;
+      w.fusionTiers['mining+firewall'] = 1;
+    });
+    await h.p.waitForTimeout(300);
+    const st = await h.p.evaluate(() => {
+      const sc = window.__cp.game.scene.getScene('Battle');
+      const w = sc.session.world;
+      const s = w.structs.find((x) => x.kind === 'station' && x.slot === 0);
+      if (!s) return null;
+      const cycle = (sc.gd.config.waveSeconds + sc.gd.config.pauseSeconds) * sc.gd.config.tickHz;
+      s.share = 0;
+      s.streak = 0;
+      s.downUntilTick = w.tick + Math.round(1.4 * cycle);
+      sc.paused = true;
+      return { x: sc.L.cx + s.x * sc.L.scale, y: sc.L.cy + s.y * sc.L.scale };
+    });
+    check(results, 'stations: a Relay Station is built', st !== null, st);
+    if (st === null) return h.close();
+    await h.mouseLogical('move', st.x + 60, st.y + 60);
+    await h.mouseLogical('move', st.x, st.y);
+    await h.p.waitForTimeout(150);
+    const tip = await h.p.evaluate(() => {
+      const sc = window.__cp.game.scene.getScene('Battle');
+      const t = sc.modTip.modLines;
+      return { visible: t.visible, text: t.text, at: sc.modTipAt };
+    });
+    check(results, 'stations: hovering a rebuilding station shows its progress', tip.visible && /rebuilding 1\/3 · back in 2 waves/.test(tip.text), tip);
+    await h.shot('station-rebuild');
+    await h.mouseLogical('move', st.x + 120, st.y + 120);
+    await h.p.waitForTimeout(100);
+    const gone = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').modTip.modLines.visible);
+    check(results, 'stations: moving the mouse away hides it', !gone, gone);
+    check(results, 'stations: no console errors', h.errors.length === 0, h.errors);
+    await h.close();
+  },
   async portal() {
     // 1. Local portal, no flags: lifecycle, telemetry, and no midgame at the first death.
     const h = await open(browser, srv.base, 'phone', '?weak=1&seed=3');
