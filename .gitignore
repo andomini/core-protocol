@@ -5,3 +5,8 @@ dist/
 publish/out/raw/
 .dev/
 .claude/worktrees/
+.wrangler/
+.dev.vars
+.verifier-cache/
+server/verifier/verifier.env
+.env*.local

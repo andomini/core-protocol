@@ -1,0 +1,19 @@
+# Core Protocol leaderboards: Cloudflare Worker + D1 (free plan). Deploy steps: verifier/README.md.
+name = "core-protocol-lb"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "core-protocol-lb"
+# Placeholder: replace with the id printed by `npx wrangler d1 create core-protocol-lb`.
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[vars]
+# Origins allowed by CORS (comma list; "*." = any subdomain, ":*" = any port).
+CORS_ORIGINS = "https://*.crazygames.com,https://crazygames.com,https://*.poki-gdn.com,https://*.poki.com,https://*.trycloudflare.com,http://localhost:*,http://127.0.0.1:*"
+# CrazyGames game id; when set, a user token for another game is refused (empty = any).
+CG_GAME_ID = ""
+
+# Secret (never in this file): `npx wrangler secret put ADMIN_TOKEN` (the verifier's bearer token).

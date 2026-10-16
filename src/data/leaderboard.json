@@ -1,0 +1,17 @@
+{
+  "note": "Online leaderboards (docs/superpowers/specs/2026-10-16-leaderboards-design.md). Read by the client and by the replay verifier at the build's commit.",
+  "minWave": 1,
+  "maxLogEntries": 200000,
+  "daily": {
+    "tier": 1,
+    "loadouts": [
+      { "id": "balanced", "workshop": { "damage": 12, "attackSpeed": 8, "health": 12, "regen": 8, "defense": 4 }, "labs": ["freeReroll", "perkChoice"], "cards": {} },
+      { "id": "glass", "workshop": { "damage": 20, "attackSpeed": 12, "critChance": 8, "critFactor": 6, "health": 4 }, "labs": ["multishot", "freeReroll"], "cards": {} },
+      { "id": "bunker", "workshop": { "health": 20, "regen": 14, "defense": 10, "thorns": 6, "damage": 6 }, "labs": ["lifesteal", "perkChoice"], "cards": {} }
+    ]
+  },
+  "allowance": {
+    "freeBits": 250000,
+    "earnedMul": 2
+  }
+}
