@@ -386,6 +386,84 @@ const lbPanel = (h) =>
   });
 
 const scenarios = {
+  async zoom() {
+    const battle = (h, fn, arg) => h.p.evaluate(([f, a]) => new Function('sc', 'a', f)(window.__cp.game.scene.getScene('Battle'), a), [fn, arg]);
+    const toPage = async (h, x, y) => {
+      const b = await h.p.evaluate(() => {
+        const r = document.querySelector('canvas').getBoundingClientRect();
+        return { x: r.x, y: r.y, s: r.width / window.__cp.game.registry.get('layout').w };
+      });
+      return [b.x + x * b.s, b.y + y * b.s];
+    };
+    // Desktop: wheel zoom about the cursor, drag-pan, hover still finds modules, RESET ZOOM.
+    {
+      const h = await open(browser, srv.base, 'desktop', '?seed=3');
+      await firstInput(h);
+      const z0 = await battle(h, 'return sc.zoomState()');
+      const a = await battle(h, 'return sc.L.arena');
+      const [px, py] = [z0.cx + 90, z0.cy + 40];
+      // World point under the cursor before the zoom.
+      const before = [(px - z0.cx) / z0.scale, (py - z0.cy) / z0.scale];
+      await h.p.mouse.move(...(await toPage(h, px, py)));
+      for (let i = 0; i < 4; i++) await h.p.mouse.wheel(0, -200);
+      await h.p.waitForTimeout(200);
+      const z1 = await battle(h, 'return sc.zoomState()');
+      const after = [(px - z1.cx) / z1.scale, (py - z1.cy) / z1.scale];
+      check(results, 'zoom desktop: the wheel zooms in', z1.z > 1.5 && z1.scale > z0.scale * 1.5, { z0, z1 });
+      check(results, 'zoom desktop: the point under the cursor stays put', Math.hypot(after[0] - before[0], after[1] - before[1]) < 1, { before, after });
+      const btn = await battle(h, 'return { v: sc.zoomBtn.bg.visible, r: sc.zoomBtn.r }');
+      check(results, 'zoom desktop: RESET ZOOM shows while zoomed', btn.v, btn);
+      // Drag on empty field (a corner of the arena, away from the crystal) pans.
+      const [ex, ey] = [a.x + a.w * 0.15, a.y + a.h * 0.2];
+      await h.p.mouse.move(...(await toPage(h, ex, ey)));
+      await h.p.mouse.down();
+      await h.p.mouse.move(...(await toPage(h, ex + 80, ey + 50)), { steps: 8 });
+      await h.p.mouse.up();
+      const z2 = await battle(h, 'return sc.zoomState()');
+      check(results, 'zoom desktop: dragging the empty field pans', Math.hypot(z2.panX - z1.panX, z2.panY - z1.panY) > 40, { z1, z2 });
+      await h.shot('zoom-desktop');
+      // Hover a module at its zoomed screen position: its tooltip opens.
+      const m = await battle(h, 'const w = sc.session.world; const m = w.crystal[0]; return m ? sc.crystal.hexScreen(m.q, m.r) : null');
+      if (m) {
+        await h.p.mouse.move(...(await toPage(h, m[0], m[1])), { steps: 4 });
+        await h.p.waitForTimeout(100);
+        const at = await battle(h, 'return sc.modTipAt');
+        check(results, 'zoom desktop: hovering a zoomed module opens its tooltip', at === 0, at);
+      }
+      await h.tapLogical(btn.r.x + btn.r.w / 2, btn.r.y + btn.r.h / 2);
+      await h.p.waitForTimeout(100);
+      const z3 = await battle(h, 'return sc.zoomState()');
+      check(results, 'zoom desktop: RESET ZOOM goes back to the full view', z3.z === 1 && z3.panX === 0 && z3.panY === 0 && Math.abs(z3.cx - z0.cx) < 1e-6, z3);
+      check(results, 'zoom desktop: no console errors', h.errors.length === 0, h.errors);
+      await h.close();
+    }
+    // Phone: a two-finger pinch zooms in, and pinching back out restores the full view.
+    {
+      const h = await open(browser, srv.base, 'phone', '?seed=3');
+      await firstInput(h);
+      const z0 = await battle(h, 'return sc.zoomState()');
+      const cdp = await h.ctx.newCDPSession(h.p);
+      const pinch = async (from, to) => {
+        const pts = async (d) => [await toPage(h, z0.cx - d, z0.cy + 160), await toPage(h, z0.cx + d, z0.cy + 160)];
+        const ev = async (type, d) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : (await pts(d)).map(([x, y], id) => ({ x, y, id })) });
+        await ev('touchStart', from);
+        for (let i = 1; i <= 8; i++) await ev('touchMove', from + ((to - from) * i) / 8);
+        await ev('touchEnd', to);
+        await h.p.waitForTimeout(150);
+      };
+      await pinch(60, 150);
+      const z1 = await battle(h, 'return sc.zoomState()');
+      check(results, 'zoom phone: a pinch zooms in', z1.z > 1.8, z1);
+      const drag = await battle(h, 'return sc.fieldDragState()');
+      check(results, 'zoom phone: a pinch never starts a module drag', drag === null, drag);
+      await h.shot('zoom-phone');
+      await pinch(200, 40);
+      const z2 = await battle(h, 'return sc.zoomState()');
+      check(results, 'zoom phone: pinching out goes back to 1×', z2.z === 1, z2);
+      check(results, 'zoom phone: no console errors', h.errors.length === 0, h.errors);
+      await h.close();
+    }
+  },
   async stations() {
     // A destroyed Relay Station: a ghost that grows back over its rubble time, and a mouse hover shows the rebuild.
     const h = await open(browser, srv.base, 'desktop', '?seed=3');

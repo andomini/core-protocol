@@ -1,16 +1,170 @@
 {
-  "date": "2026-10-16T08:13:14.245Z",
+  "date": "2026-10-16T09:10:10.166Z",
   "metrics": {
-    "portrait.firstPickMs": 3,
-    "portrait.firstVisibleSimS": 0.03,
-    "landscape 1280×720.firstPickMs": 1,
+    "portrait.firstPickMs": 1,
+    "portrait.firstVisibleSimS": 0,
+    "landscape 1280×720.firstPickMs": 8,
     "landscape 1280×720.firstVisibleSimS": 0,
-    "landscape 907×510.firstPickMs": 1,
-    "landscape 907×510.firstVisibleSimS": 0,
+    "landscape 907×510.firstPickMs": 2,
+    "landscape 907×510.firstVisibleSimS": 0.03,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 59.6
   },
   "results": [
+    {
+      "name": "zoom desktop: the wheel zooms in",
+      "ok": true,
+      "detail": {
+        "z0": {
+          "z": 1,
+          "panX": 0,
+          "panY": 0,
+          "scale": 1.0736842105263158,
+          "cx": 384,
+          "cy": 360
+        },
+        "z1": {
+          "z": 3,
+          "panX": -180.00000000000006,
+          "panY": -80.00000000000011,
+          "scale": 3.2210526315789476,
+          "cx": 203.99999999999994,
+          "cy": 279.9999999999999
+        }
+      }
+    },
+    {
+      "name": "zoom desktop: the point under the cursor stays put",
+      "ok": true,
+      "detail": {
+        "before": [
+          83.82352941176471,
+          37.254901960784316
+        ],
+        "after": [
+          83.82352941176472,
+          37.254901960784345
+        ]
+      }
+    },
+    {
+      "name": "zoom desktop: RESET ZOOM shows while zoomed",
+      "ok": true,
+      "detail": {
+        "v": true,
+        "r": {
+          "x": 24,
+          "y": 660,
+          "w": 124,
+          "h": 40
+        }
+      }
+    },
+    {
+      "name": "zoom desktop: dragging the empty field pans",
+      "ok": true,
+      "detail": {
+        "z1": {
+          "z": 3,
+          "panX": -180.00000000000006,
+          "panY": -80.00000000000011,
+          "scale": 3.2210526315789476,
+          "cx": 203.99999999999994,
+          "cy": 279.9999999999999
+        },
+        "z2": {
+          "z": 3,
+          "panX": -100.00000000000006,
+          "panY": -30.000000000000114,
+          "scale": 3.2210526315789476,
+          "cx": 283.99999999999994,
+          "cy": 329.9999999999999
+        }
+      }
+    },
+    {
+      "name": "zoom desktop: hovering a zoomed module opens its tooltip",
+      "ok": true,
+      "detail": 0
+    },
+    {
+      "name": "zoom desktop: RESET ZOOM goes back to the full view",
+      "ok": true,
+      "detail": {
+        "z": 1,
+        "panX": 0,
+        "panY": 0,
+        "scale": 1.0736842105263158,
+        "cx": 384,
+        "cy": 360
+      }
+    },
+    {
+      "name": "zoom desktop: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "zoom phone: a pinch zooms in",
+      "ok": true,
+      "detail": {
+        "z": 2.499999999999999,
+        "panX": 0.55112567699598,
+        "panY": -240.1388591676802,
+        "scale": 2.710526315789473,
+        "cx": 360.551125676996,
+        "cy": 283.8611408323198
+      }
+    },
+    {
+      "name": "zoom phone: a pinch never starts a module drag",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "zoom phone: pinching out goes back to 1×",
+      "ok": true,
+      "detail": {
+        "z": 1,
+        "panX": 0,
+        "panY": 0,
+        "scale": 1.0842105263157895,
+        "cx": 360,
+        "cy": 524
+      }
+    },
+    {
+      "name": "zoom phone: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "name": "stations: a Relay Station is built",
+      "ok": true,
+      "detail": {
+        "x": 575.546587203354,
+        "y": 249.41052631578947
+      }
+    },
+    {
+      "name": "stations: hovering a rebuilding station shows its progress",
+      "ok": true,
+      "detail": {
+        "visible": true,
+        "text": "Station 1: rebuilding 1/3 · back in 2 waves",
+        "at": 1000002
+      }
+    },
+    {
+      "name": "stations: moving the mouse away hides it",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "name": "stations: no console errors",
+      "ok": true,
+      "detail": []
+    },
     {
       "name": "portal local: loadingFinished exactly once",
       "ok": true,
@@ -267,24 +421,24 @@
         {
           "seed": 3,
           "tier": 1,
-          "deviceId": "7unm9lh64xqw8eny",
+          "deviceId": "v68ri3qjr9zxrr9q",
           "runIndex": 1,
-          "t": 1792138094676,
+          "t": 1792141507500,
           "type": "run_start",
-          "runId": "a7yuuqo3",
-          "sessionId": "bwufazfl",
-          "build": "local-202610160808"
+          "runId": "8usr6t49",
+          "sessionId": "u8ww07gn",
+          "build": "local-202610160904"
         },
         {
-          "seed": 354243285,
+          "seed": 1748884942,
           "tier": 1,
-          "deviceId": "7unm9lh64xqw8eny",
+          "deviceId": "v68ri3qjr9zxrr9q",
           "runIndex": 2,
-          "t": 1792138099250,
+          "t": 1792141512002,
           "type": "run_start",
-          "runId": "pckehndj",
-          "sessionId": "bwufazfl",
-          "build": "local-202610160808"
+          "runId": "01hyvc6h",
+          "sessionId": "u8ww07gn",
+          "build": "local-202610160904"
         }
       ]
     },
@@ -658,7 +812,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 791151856,
+        "seed": 952193639,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -693,9 +847,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "burstFire",
-          "reflect",
-          "hotBarrel"
+          "bounce",
+          "hotBarrel",
+          "bounty"
         ],
         "picks": 0,
         "perks": {},
@@ -724,7 +878,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 7,
+        "tick": 10,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -738,7 +892,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 791151856,
+        "seed": 952193639,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -780,12 +934,12 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "burstFire": 1
+          "bounce": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
-          "chain": 0,
+          "chain": 2,
           "mining": 0,
           "firewall": 0
         },
@@ -820,24 +974,24 @@
         {
           "kind": "midgame",
           "placement": "restart",
-          "t": 1792138103206,
+          "t": 1792141515891,
           "type": "ad_request",
-          "runId": "diyx2lmz",
-          "sessionId": "w66yd0wf",
-          "deviceId": "qey8aocqgeqt4h0q",
-          "build": "local-202610160808"
+          "runId": "lfyy59m5",
+          "sessionId": "6l9bin5m",
+          "deviceId": "0r5e3lc98ff8ljp3",
+          "build": "local-202610160904"
         },
         {
           "kind": "midgame",
           "placement": "restart",
           "result": "completed",
-          "ms": 2304,
-          "t": 1792138105510,
+          "ms": 2301,
+          "t": 1792141518192,
           "type": "ad_result",
-          "runId": "diyx2lmz",
-          "sessionId": "w66yd0wf",
-          "deviceId": "qey8aocqgeqt4h0q",
-          "build": "local-202610160808"
+          "runId": "lfyy59m5",
+          "sessionId": "6l9bin5m",
+          "deviceId": "0r5e3lc98ff8ljp3",
+          "build": "local-202610160904"
         }
       ]
     },
@@ -884,7 +1038,7 @@
         "coreHp": 5,
         "speed": 1,
         "paused": false,
-        "fps": 62,
+        "fps": 64,
         "seed": 3,
         "levels": {
           "damage": 0,
@@ -1307,7 +1461,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1984113819,
+        "seed": 1227670382,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1342,9 +1496,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "overchargeLink",
           "dataMine",
-          "patch"
+          "conductive",
+          "bounce"
         ],
         "picks": 0,
         "perks": {},
@@ -1387,7 +1541,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1984113819,
+        "seed": 1227670382,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1429,13 +1583,13 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "overchargeLink": 1
+          "dataMine": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
           "chain": 0,
-          "mining": 0,
+          "mining": 2,
           "firewall": 0
         },
         "fusionTiers": {},
@@ -1865,7 +2019,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1721202657,
+        "seed": 869583143,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1900,9 +2054,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "shatter",
-          "dataMine",
-          "coldAura"
+          "critSpike",
+          "conductive",
+          "deepFreeze"
         ],
         "picks": 0,
         "perks": {},
@@ -1931,10 +2085,10 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 10,
+        "tick": 8,
         "phase": "wave",
         "enemies": 1,
-        "visible": 1,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -1945,7 +2099,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1721202657,
+        "seed": 869583143,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1987,11 +2141,11 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "shatter": 1
+          "critSpike": 1
         },
         "setTiers": {
-          "overload": 0,
-          "cryo": 2,
+          "overload": 2,
+          "cryo": 0,
           "chain": 0,
           "mining": 0,
           "firewall": 0
@@ -2145,7 +2299,7 @@
           "speed": 5,
           "paused": false,
           "fps": 60,
-          "seed": 867850250,
+          "seed": 60485985,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2180,9 +2334,9 @@
           "placing": false,
           "crystal": [],
           "offer": [
-            "coldAura",
-            "shatter",
-            "hardening"
+            "dataMine",
+            "hardening",
+            "reflect"
           ],
           "picks": 0,
           "perks": {},
@@ -2219,7 +2373,7 @@
       "ok": true,
       "detail": {
         "ok": false,
-        "ms": 161,
+        "ms": 152,
         "toast": {
           "text": "No ad right now",
           "opacity": "1",
@@ -2248,7 +2402,7 @@
         "speed": 5,
         "paused": false,
         "fps": 58,
-        "seed": 867850250,
+        "seed": 60485985,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2290,11 +2444,11 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "coldAura": 1
+          "dataMine": 1
         },
         "setTiers": {
           "overload": 0,
-          "cryo": 2,
+          "cryo": 0,
           "chain": 0,
           "mining": 0,
           "firewall": 0
@@ -2337,7 +2491,7 @@
           "speed": 1,
           "paused": false,
           "fps": 67,
-          "seed": 414986516,
+          "seed": 584457465,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2372,9 +2526,9 @@
           "placing": false,
           "crystal": [],
           "offer": [
-            "overclockRounds",
-            "coldAura",
-            "bounce"
+            "hotBarrel",
+            "permafrost",
+            "patch"
           ],
           "picks": 0,
           "perks": {},
@@ -2576,11 +2730,11 @@
       }
     },
     {
-      "name": "portrait pick overlay: all 195 texts ≥ 28 px",
+      "name": "portrait pick overlay: all 196 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 195,
+        "count": 196,
         "bad": []
       }
     },
@@ -2793,11 +2947,11 @@
       }
     },
     {
-      "name": "portrait: all 201 texts ≥ 28 px",
+      "name": "portrait: all 202 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 201,
+        "count": 202,
         "bad": []
       }
     },
@@ -2808,7 +2962,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3138,7 +3292,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 3,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3221,7 +3375,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 912,
+        "tick": 915,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3527,7 +3681,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1022,
+        "tick": 1025,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3921,11 +4075,11 @@
       }
     },
     {
-      "name": "portrait 360×640: all 189 texts ≥ 28 px",
+      "name": "portrait 360×640: all 190 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 189,
+        "count": 190,
         "bad": []
       }
     },
@@ -4145,7 +4299,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1028,
+        "tick": 1025,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4689,7 +4843,7 @@
         "speed": 5,
         "paused": false,
         "fps": 57,
-        "seed": 1194577832,
+        "seed": 922365302,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -4724,8 +4878,8 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "overclockRounds",
-          "burstFire",
+          "permafrost",
+          "energySiphon",
           "reflect"
         ],
         "picks": 0,
@@ -4914,11 +5068,11 @@
       }
     },
     {
-      "name": "landscape 1280×720 pick overlay: all 195 texts ≥ 16 px",
+      "name": "landscape 1280×720 pick overlay: all 196 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 195,
+        "count": 196,
         "bad": []
       }
     },
@@ -5131,11 +5285,11 @@
       }
     },
     {
-      "name": "landscape 1280×720: all 201 texts ≥ 16 px",
+      "name": "landscape 1280×720: all 202 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 201,
+        "count": 202,
         "bad": []
       }
     },
@@ -5312,7 +5466,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 910,
+        "tick": 913,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6144,11 +6298,11 @@
       }
     },
     {
-      "name": "landscape 907×510 pick overlay: all 195 texts ≥ 16 px",
+      "name": "landscape 907×510 pick overlay: all 196 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 195,
+        "count": 196,
         "bad": []
       }
     },
@@ -6361,11 +6515,11 @@
       }
     },
     {
-      "name": "landscape 907×510: all 201 texts ≥ 16 px",
+      "name": "landscape 907×510: all 202 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 201,
+        "count": 202,
         "bad": []
       }
     },
@@ -6376,7 +6530,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -6459,7 +6613,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -6542,7 +6696,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 911,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6834,7 +6988,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 911,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -7479,16 +7633,16 @@
       "name": "portrait protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 1742,
-        "p2": 1742
+        "p1": 1743,
+        "p2": 1743
       }
     },
     {
-      "name": "portrait protocols panel: all 201 texts ≥ 28 px",
+      "name": "portrait protocols panel: all 202 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 201,
+        "count": 202,
         "bad": []
       }
     },
@@ -7758,11 +7912,11 @@
       }
     },
     {
-      "name": "landscape protocols panel: all 201 texts ≥ 16 px",
+      "name": "landscape protocols panel: all 202 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 201,
+        "count": 202,
         "bad": []
       }
     },
@@ -7819,11 +7973,11 @@
       }
     },
     {
-      "name": "portrait editor (place): all 201 texts ≥ 28 px",
+      "name": "portrait editor (place): all 202 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 201,
+        "count": 202,
         "bad": []
       }
     },
@@ -8098,11 +8252,11 @@
       }
     },
     {
-      "name": "portrait editor (arrange): all 211 texts ≥ 28 px",
+      "name": "portrait editor (arrange): all 212 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 211,
+        "count": 212,
         "bad": []
       }
     },
@@ -8212,11 +8366,11 @@
       ]
     },
     {
-      "name": "portrait field drag: all 211 texts ≥ 28 px",
+      "name": "portrait field drag: all 212 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 211,
+        "count": 212,
         "bad": []
       }
     },
@@ -8310,11 +8464,11 @@
       }
     },
     {
-      "name": "portrait-169 editor (place): all 195 texts ≥ 28 px",
+      "name": "portrait-169 editor (place): all 196 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 195,
+        "count": 196,
         "bad": []
       }
     },
@@ -8539,11 +8693,11 @@
       }
     },
     {
-      "name": "portrait-169 editor (arrange): all 205 texts ≥ 28 px",
+      "name": "portrait-169 editor (arrange): all 206 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 205,
+        "count": 206,
         "bad": []
       }
     },
@@ -8653,11 +8807,11 @@
       ]
     },
     {
-      "name": "portrait-169 field drag: all 205 texts ≥ 28 px",
+      "name": "portrait-169 field drag: all 206 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 205,
+        "count": 206,
         "bad": []
       }
     },
@@ -8751,11 +8905,11 @@
       }
     },
     {
-      "name": "landscape editor (place): all 201 texts ≥ 16 px",
+      "name": "landscape editor (place): all 202 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 201,
+        "count": 202,
         "bad": []
       }
     },
@@ -9030,11 +9184,11 @@
       }
     },
     {
-      "name": "landscape editor (arrange): all 211 texts ≥ 16 px",
+      "name": "landscape editor (arrange): all 212 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 211,
+        "count": 212,
         "bad": []
       }
     },
@@ -9144,11 +9298,11 @@
       ]
     },
     {
-      "name": "landscape field drag: all 211 texts ≥ 16 px",
+      "name": "landscape field drag: all 212 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 211,
+        "count": 212,
         "bad": []
       }
     },
@@ -9310,16 +9464,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792138275433,
+        "lastSeen": 1792141688214,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "cryoField": 1,
-          "ricochet": 1
+          "criticalMass": 1,
+          "compound": 1
         },
         "loadout": [
-          "cryoField",
-          "ricochet"
+          "criticalMass",
+          "compound"
         ],
         "presets": [
           [],
@@ -9332,7 +9486,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16953.069999999967,
+          "realMs": 16951.451199999967,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -9361,7 +9515,11 @@
           "autoStats": []
         },
         "economy": 2,
-        "codex": {}
+        "codex": {},
+        "dailyPaid": {
+          "day": "",
+          "n": 0
+        }
       }
     },
     {
@@ -9399,7 +9557,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 910,
+        "tick": 913,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -9455,11 +9613,11 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "coldAura": 1
+          "critSpike": 1
         },
         "setTiers": {
-          "overload": 0,
-          "cryo": 2,
+          "overload": 2,
+          "cryo": 0,
           "chain": 0,
           "mining": 0,
           "firewall": 0
@@ -9598,16 +9756,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792138305115,
+        "lastSeen": 1792141717895,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
           "compound": 1,
-          "cryoField": 1
+          "ricochet": 1
         },
         "loadout": [
           "compound",
-          "cryoField"
+          "ricochet"
         ],
         "presets": [
           [],
@@ -9620,7 +9778,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16967.83879999998,
+          "realMs": 16950.976666666633,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -9649,7 +9807,11 @@
           "autoStats": []
         },
         "economy": 2,
-        "codex": {}
+        "codex": {},
+        "dailyPaid": {
+          "day": "",
+          "n": 0
+        }
       }
     },
     {
@@ -9743,12 +9905,12 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "coldAura": 1
+          "arc": 1
         },
         "setTiers": {
           "overload": 0,
-          "cryo": 2,
-          "chain": 0,
+          "cryo": 0,
+          "chain": 2,
           "mining": 0,
           "firewall": 0
         },
@@ -9797,12 +9959,12 @@
       "ok": true,
       "detail": {
         "cards": {
-          "criticalMass": 1,
-          "cryoField": 1
+          "ricochet": 1,
+          "spikes": 1
         },
         "loadout": [
-          "criticalMass",
-          "cryoField"
+          "ricochet",
+          "spikes"
         ]
       }
     },
@@ -9848,12 +10010,12 @@
       "ok": true,
       "detail": {
         "tags": [
-          "overload",
-          "cryo"
+          "chain",
+          "firewall"
         ],
         "cards": [
-          "criticalMass",
-          "cryoField"
+          "ricochet",
+          "spikes"
         ],
         "sets": {
           "overload": 0,
@@ -9874,12 +10036,12 @@
       "ok": true,
       "detail": {
         "cards": {
-          "compound": 1,
-          "criticalMass": 1
+          "criticalMass": 1,
+          "cryoField": 1
         },
         "loadout": [
-          "compound",
-          "criticalMass"
+          "criticalMass",
+          "cryoField"
         ]
       }
     },
@@ -9925,12 +10087,12 @@
       "ok": true,
       "detail": {
         "tags": [
-          "mining",
-          "overload"
+          "overload",
+          "cryo"
         ],
         "cards": [
-          "compound",
-          "criticalMass"
+          "criticalMass",
+          "cryoField"
         ],
         "sets": {
           "overload": 0,
@@ -9968,11 +10130,11 @@
       }
     },
     {
-      "name": "portrait stats panel: all 198 texts ≥ 28 px",
+      "name": "portrait stats panel: all 199 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 198,
+        "count": 199,
         "bad": []
       }
     },
@@ -9988,7 +10150,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15584.543333333317,
+          "realMs": 15584.836666666648,
           "simTicks": 2333,
           "waves": 3,
           "kills": {
@@ -10046,11 +10208,11 @@
       }
     },
     {
-      "name": "landscape stats panel: all 198 texts ≥ 16 px",
+      "name": "landscape stats panel: all 199 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 198,
+        "count": 199,
         "bad": []
       }
     },
@@ -10066,7 +10228,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15584.703333333317,
+          "realMs": 15586.376666668737,
           "simTicks": 2333,
           "waves": 3,
           "kills": {
@@ -10103,18 +10265,10 @@
       "detail": []
     },
     {
-      "name": "lb portrait 360×640: registers once with the mocked API",
+      "name": "lb portrait 360×640: no registration on load",
       "ok": true,
       "detail": {
-        "id": {
-          "id": "p_smoke",
-          "secret": "sekret",
-          "name": "NeonVirus-4821",
-          "friendCode": "K7M2QX",
-          "portal": "local",
-          "linked": false
-        },
-        "players": 1
+        "players": 0
       }
     },
     {
@@ -10136,10 +10290,27 @@
       }
     },
     {
+      "name": "lb portrait 360×640: opening RANKS registers once with the mocked API",
+      "ok": true,
+      "detail": {
+        "id": {
+          "id": "p_smoke",
+          "secret": "sekret",
+          "name": "NeonVirus-4821",
+          "friendCode": "K7M2QX",
+          "portal": "local",
+          "linked": false
+        },
+        "players": 1
+      }
+    },
+    {
       "name": "lb portrait 360×640: panel loads the tier board with my row pinned",
       "ok": true,
       "detail": {
         "visible": true,
+        "view": "board",
+        "friends": -1,
         "kind": "tier",
         "scope": "global",
         "status": "",
@@ -10204,42 +10375,30 @@
           "add": {
             "x": 39,
             "y": 1154,
-            "w": 315,
+            "w": 206,
+            "h": 66
+          },
+          "following": {
+            "x": 257,
+            "y": 1154,
+            "w": 206,
             "h": 66
           },
           "close": {
-            "x": 366,
+            "x": 475,
             "y": 1154,
-            "w": 315,
+            "w": 206,
             "h": 66
           }
         }
       }
     },
     {
-      "name": "lb portrait 360×640: board calls are authenticated",
-      "ok": true,
-      "detail": [
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret"
-      ]
-    },
-    {
-      "name": "lb portrait 360×640 ranks panel: all 95 texts ≥ 28 px",
+      "name": "lb portrait 360×640 ranks panel: all 96 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 95,
+        "count": 96,
         "bad": []
       }
     },
@@ -10254,6 +10413,8 @@
       "detail": {
         "p": {
           "visible": true,
+          "view": "board",
+          "friends": -1,
           "kind": "daily",
           "scope": "friends",
           "status": "",
@@ -10306,13 +10467,19 @@
             "add": {
               "x": 39,
               "y": 1154,
-              "w": 315,
+              "w": 206,
+              "h": 66
+            },
+            "following": {
+              "x": 257,
+              "y": 1154,
+              "w": 206,
               "h": 66
             },
             "close": {
-              "x": 366,
+              "x": 475,
               "y": 1154,
-              "w": 315,
+              "w": 206,
               "h": 66
             }
           }
@@ -10321,6 +10488,7 @@
           "/boards/tier/1?scope=global&limit=13",
           "/boards/daily?scope=global&limit=13",
           "/boards/daily?scope=friends&limit=13",
+          "/boards/weekly/1?scope=friends&limit=13",
           "/boards/weekly/1?scope=friends&limit=13",
           "/boards/weekly/1?scope=friends&limit=13",
           "/boards/weekly/1?scope=friends&limit=13",
@@ -10338,7 +10506,31 @@
         "/boards/weekly/1?scope=friends&limit=13",
         "/boards/weekly/1?scope=friends&limit=13",
         "/boards/weekly/1?scope=friends&limit=13",
+        "/boards/weekly/1?scope=friends&limit=13",
         "/boards/daily/2026-10-16?scope=global&limit=1"
+      ]
+    },
+    {
+      "name": "lb portrait 360×640: board calls are authenticated",
+      "ok": true,
+      "detail": [
+        "",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret"
       ]
     },
     {
@@ -10358,6 +10550,201 @@
       "detail": [
         "ABCDEF"
       ]
+    },
+    {
+      "name": "lb portrait 360×640: FOLLOWING lists followed players with UNFOLLOW, inside the screen",
+      "ok": true,
+      "detail": {
+        "p": {
+          "visible": true,
+          "view": "friends",
+          "friends": 1,
+          "kind": "weekly",
+          "scope": "friends",
+          "status": "",
+          "rows": 2,
+          "board": "w:2026-10-12:1",
+          "me": null,
+          "rects": {
+            "kind:tier": {
+              "x": 39,
+              "y": 108,
+              "w": 207.33333333333334,
+              "h": 66
+            },
+            "kind:daily": {
+              "x": 256.33333333333337,
+              "y": 108,
+              "w": 207.33333333333334,
+              "h": 66
+            },
+            "kind:weekly": {
+              "x": 473.6666666666667,
+              "y": 108,
+              "w": 207.33333333333334,
+              "h": 66
+            },
+            "scope:global": {
+              "x": 39,
+              "y": 186,
+              "w": 160,
+              "h": 66
+            },
+            "scope:friends": {
+              "x": 209,
+              "y": 186,
+              "w": 160,
+              "h": 66
+            },
+            "tier:next": {
+              "x": 607,
+              "y": 186,
+              "w": 74,
+              "h": 66
+            },
+            "tier:prev": {
+              "x": 391,
+              "y": 186,
+              "w": 74,
+              "h": 66
+            },
+            "unfollow:ABCDEF": {
+              "x": 501,
+              "y": 364,
+              "w": 180,
+              "h": 48
+            },
+            "rename": {
+              "x": 511,
+              "y": 992,
+              "w": 170,
+              "h": 66
+            },
+            "copy": {
+              "x": 511,
+              "y": 1070,
+              "w": 170,
+              "h": 66
+            },
+            "add": {
+              "x": 39,
+              "y": 1154,
+              "w": 206,
+              "h": 66
+            },
+            "following": {
+              "x": 257,
+              "y": 1154,
+              "w": 206,
+              "h": 66
+            },
+            "close": {
+              "x": 475,
+              "y": 1154,
+              "w": 206,
+              "h": 66
+            }
+          }
+        },
+        "outF": []
+      }
+    },
+    {
+      "name": "lb portrait 360×640: UNFOLLOW sends DELETE and reloads the list",
+      "ok": true,
+      "detail": {
+        "friends": [],
+        "p": {
+          "visible": true,
+          "view": "friends",
+          "friends": 0,
+          "kind": "weekly",
+          "scope": "friends",
+          "status": "You follow nobody yet · ADD FRIEND with their code",
+          "rows": 2,
+          "board": "w:2026-10-12:1",
+          "me": null,
+          "rects": {
+            "kind:tier": {
+              "x": 39,
+              "y": 108,
+              "w": 207.33333333333334,
+              "h": 66
+            },
+            "kind:daily": {
+              "x": 256.33333333333337,
+              "y": 108,
+              "w": 207.33333333333334,
+              "h": 66
+            },
+            "kind:weekly": {
+              "x": 473.6666666666667,
+              "y": 108,
+              "w": 207.33333333333334,
+              "h": 66
+            },
+            "scope:global": {
+              "x": 39,
+              "y": 186,
+              "w": 160,
+              "h": 66
+            },
+            "scope:friends": {
+              "x": 209,
+              "y": 186,
+              "w": 160,
+              "h": 66
+            },
+            "tier:next": {
+              "x": 607,
+              "y": 186,
+              "w": 74,
+              "h": 66
+            },
+            "tier:prev": {
+              "x": 391,
+              "y": 186,
+              "w": 74,
+              "h": 66
+            },
+            "rename": {
+              "x": 511,
+              "y": 992,
+              "w": 170,
+              "h": 66
+            },
+            "copy": {
+              "x": 511,
+              "y": 1070,
+              "w": 170,
+              "h": 66
+            },
+            "add": {
+              "x": 39,
+              "y": 1154,
+              "w": 206,
+              "h": 66
+            },
+            "following": {
+              "x": 257,
+              "y": 1154,
+              "w": 206,
+              "h": 66
+            },
+            "close": {
+              "x": 475,
+              "y": 1154,
+              "w": 206,
+              "h": 66
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "lb portrait 360×640: BACK returns to the board",
+      "ok": true,
+      "detail": null
     },
     {
       "name": "lb portrait 360×640: CLOSE hides the panel",
@@ -10382,7 +10769,7 @@
         "tick": 1,
         "phase": "wave",
         "enemies": 1,
-        "visible": 1,
+        "visible": 0,
         "projectiles": 0,
         "dead": true,
         "overlay": true,
@@ -10392,8 +10779,8 @@
         "coreHp": 0,
         "speed": 5,
         "paused": false,
-        "fps": 53,
-        "seed": 1682601640,
+        "fps": 51,
+        "seed": 424242,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -10435,7 +10822,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "arc": 1
+          "hardening": 1
         },
         "setTiers": {
           "overload": 0,
@@ -10470,13 +10857,13 @@
           "day": "2026-10-16",
           "wave": 1,
           "ticks": 1,
-          "hash": "e756342b",
-          "commit": "8f6b7edf34a844c430128a3a734e02805ac81921-dirty",
-          "replay": "gz:H4sIAAAAAAAAAyWOQ"
+          "hash": "0e705dbb",
+          "commit": "75392d0db4f20a5b7c996bd22eb6e328f4ec3f86-dirty",
+          "replay": "gz:H4sIAAAAAAAAAyWOs"
         },
         "rp": {
           "v": 1,
-          "seed": 1682601640,
+          "seed": 424242,
           "tier": 1,
           "claim": {
             "workshop": {
@@ -10497,17 +10884,17 @@
         "st": {
           "wave": 1,
           "tick": 1,
-          "seed": 1682601640,
+          "seed": 424242,
           "commands": 1
         }
       }
     },
     {
-      "name": "lb portrait 360×640 death + rank: all 189 texts ≥ 28 px",
+      "name": "lb portrait 360×640 death + rank: all 190 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 189,
+        "count": 190,
         "bad": []
       }
     },
@@ -10521,7 +10908,7 @@
         "tick": 1,
         "phase": "wave",
         "enemies": 1,
-        "visible": 1,
+        "visible": 0,
         "projectiles": 0,
         "dead": true,
         "overlay": true,
@@ -10531,8 +10918,8 @@
         "coreHp": 0,
         "speed": 5,
         "paused": false,
-        "fps": 55,
-        "seed": 1682601640,
+        "fps": 54,
+        "seed": 424242,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -10574,7 +10961,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "arc": 1
+          "hardening": 1
         },
         "setTiers": {
           "overload": 0,
@@ -10616,18 +11003,10 @@
       "detail": []
     },
     {
-      "name": "lb landscape: registers once with the mocked API",
+      "name": "lb landscape: no registration on load",
       "ok": true,
       "detail": {
-        "id": {
-          "id": "p_smoke",
-          "secret": "sekret",
-          "name": "NeonVirus-4821",
-          "friendCode": "K7M2QX",
-          "portal": "local",
-          "linked": false
-        },
-        "players": 1
+        "players": 0
       }
     },
     {
@@ -10649,10 +11028,27 @@
       }
     },
     {
+      "name": "lb landscape: opening RANKS registers once with the mocked API",
+      "ok": true,
+      "detail": {
+        "id": {
+          "id": "p_smoke",
+          "secret": "sekret",
+          "name": "NeonVirus-4821",
+          "friendCode": "K7M2QX",
+          "portal": "local",
+          "linked": false
+        },
+        "players": 1
+      }
+    },
+    {
       "name": "lb landscape: panel loads the tier board with my row pinned",
       "ok": true,
       "detail": {
         "visible": true,
+        "view": "board",
+        "friends": -1,
         "kind": "tier",
         "scope": "global",
         "status": "",
@@ -10720,6 +11116,12 @@
             "w": 360,
             "h": 42
           },
+          "following": {
+            "x": 856,
+            "y": 372,
+            "w": 360,
+            "h": 42
+          },
           "close": {
             "x": 856,
             "y": 634,
@@ -10730,29 +11132,11 @@
       }
     },
     {
-      "name": "lb landscape: board calls are authenticated",
-      "ok": true,
-      "detail": [
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret"
-      ]
-    },
-    {
-      "name": "lb landscape ranks panel: all 101 texts ≥ 16 px",
+      "name": "lb landscape ranks panel: all 102 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 101,
+        "count": 102,
         "bad": []
       }
     },
@@ -10767,6 +11151,8 @@
       "detail": {
         "p": {
           "visible": true,
+          "view": "board",
+          "friends": -1,
           "kind": "daily",
           "scope": "friends",
           "status": "",
@@ -10822,6 +11208,12 @@
               "w": 360,
               "h": 42
             },
+            "following": {
+              "x": 856,
+              "y": 372,
+              "w": 360,
+              "h": 42
+            },
             "close": {
               "x": 856,
               "y": 634,
@@ -10834,6 +11226,7 @@
           "/boards/tier/1?scope=global&limit=15",
           "/boards/daily?scope=global&limit=15",
           "/boards/daily?scope=friends&limit=15",
+          "/boards/weekly/1?scope=friends&limit=15",
           "/boards/weekly/1?scope=friends&limit=15",
           "/boards/weekly/1?scope=friends&limit=15",
           "/boards/weekly/1?scope=friends&limit=15",
@@ -10851,7 +11244,31 @@
         "/boards/weekly/1?scope=friends&limit=15",
         "/boards/weekly/1?scope=friends&limit=15",
         "/boards/weekly/1?scope=friends&limit=15",
+        "/boards/weekly/1?scope=friends&limit=15",
         "/boards/daily/2026-10-16?scope=global&limit=1"
+      ]
+    },
+    {
+      "name": "lb landscape: board calls are authenticated",
+      "ok": true,
+      "detail": [
+        "",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret"
       ]
     },
     {
@@ -10871,6 +11288,201 @@
       "detail": [
         "ABCDEF"
       ]
+    },
+    {
+      "name": "lb landscape: FOLLOWING lists followed players with UNFOLLOW, inside the screen",
+      "ok": true,
+      "detail": {
+        "p": {
+          "visible": true,
+          "view": "friends",
+          "friends": 1,
+          "kind": "weekly",
+          "scope": "friends",
+          "status": "",
+          "rows": 2,
+          "board": "w:2026-10-12:1",
+          "me": null,
+          "rects": {
+            "kind:tier": {
+              "x": 64,
+              "y": 82,
+              "w": 246.66666666666666,
+              "h": 42
+            },
+            "kind:daily": {
+              "x": 320.66666666666663,
+              "y": 82,
+              "w": 246.66666666666666,
+              "h": 42
+            },
+            "kind:weekly": {
+              "x": 577.3333333333333,
+              "y": 82,
+              "w": 246.66666666666666,
+              "h": 42
+            },
+            "scope:global": {
+              "x": 64,
+              "y": 134,
+              "w": 130,
+              "h": 42
+            },
+            "scope:friends": {
+              "x": 204,
+              "y": 134,
+              "w": 130,
+              "h": 42
+            },
+            "tier:next": {
+              "x": 770,
+              "y": 134,
+              "w": 54,
+              "h": 42
+            },
+            "tier:prev": {
+              "x": 616,
+              "y": 134,
+              "w": 54,
+              "h": 42
+            },
+            "unfollow:ABCDEF": {
+              "x": 674,
+              "y": 254,
+              "w": 150,
+              "h": 30
+            },
+            "rename": {
+              "x": 856,
+              "y": 144,
+              "w": 360,
+              "h": 42
+            },
+            "copy": {
+              "x": 856,
+              "y": 268,
+              "w": 360,
+              "h": 42
+            },
+            "add": {
+              "x": 856,
+              "y": 320,
+              "w": 360,
+              "h": 42
+            },
+            "following": {
+              "x": 856,
+              "y": 372,
+              "w": 360,
+              "h": 42
+            },
+            "close": {
+              "x": 856,
+              "y": 634,
+              "w": 360,
+              "h": 42
+            }
+          }
+        },
+        "outF": []
+      }
+    },
+    {
+      "name": "lb landscape: UNFOLLOW sends DELETE and reloads the list",
+      "ok": true,
+      "detail": {
+        "friends": [],
+        "p": {
+          "visible": true,
+          "view": "friends",
+          "friends": 0,
+          "kind": "weekly",
+          "scope": "friends",
+          "status": "You follow nobody yet · ADD FRIEND with their code",
+          "rows": 2,
+          "board": "w:2026-10-12:1",
+          "me": null,
+          "rects": {
+            "kind:tier": {
+              "x": 64,
+              "y": 82,
+              "w": 246.66666666666666,
+              "h": 42
+            },
+            "kind:daily": {
+              "x": 320.66666666666663,
+              "y": 82,
+              "w": 246.66666666666666,
+              "h": 42
+            },
+            "kind:weekly": {
+              "x": 577.3333333333333,
+              "y": 82,
+              "w": 246.66666666666666,
+              "h": 42
+            },
+            "scope:global": {
+              "x": 64,
+              "y": 134,
+              "w": 130,
+              "h": 42
+            },
+            "scope:friends": {
+              "x": 204,
+              "y": 134,
+              "w": 130,
+              "h": 42
+            },
+            "tier:next": {
+              "x": 770,
+              "y": 134,
+              "w": 54,
+              "h": 42
+            },
+            "tier:prev": {
+              "x": 616,
+              "y": 134,
+              "w": 54,
+              "h": 42
+            },
+            "rename": {
+              "x": 856,
+              "y": 144,
+              "w": 360,
+              "h": 42
+            },
+            "copy": {
+              "x": 856,
+              "y": 268,
+              "w": 360,
+              "h": 42
+            },
+            "add": {
+              "x": 856,
+              "y": 320,
+              "w": 360,
+              "h": 42
+            },
+            "following": {
+              "x": 856,
+              "y": 372,
+              "w": 360,
+              "h": 42
+            },
+            "close": {
+              "x": 856,
+              "y": 634,
+              "w": 360,
+              "h": 42
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "lb landscape: BACK returns to the board",
+      "ok": true,
+      "detail": null
     },
     {
       "name": "lb landscape: CLOSE hides the panel",
@@ -10895,7 +11507,7 @@
         "tick": 1,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": true,
         "overlay": true,
@@ -10906,7 +11518,7 @@
         "speed": 5,
         "paused": false,
         "fps": 56,
-        "seed": 1682601640,
+        "seed": 424242,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -10948,7 +11560,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "arc": 1
+          "hardening": 1
         },
         "setTiers": {
           "overload": 0,
@@ -10983,13 +11595,13 @@
           "day": "2026-10-16",
           "wave": 1,
           "ticks": 1,
-          "hash": "e756342b",
-          "commit": "8f6b7edf34a844c430128a3a734e02805ac81921-dirty",
-          "replay": "gz:H4sIAAAAAAAAAyWOQ"
+          "hash": "0e705dbb",
+          "commit": "75392d0db4f20a5b7c996bd22eb6e328f4ec3f86-dirty",
+          "replay": "gz:H4sIAAAAAAAAAyWOs"
         },
         "rp": {
           "v": 1,
-          "seed": 1682601640,
+          "seed": 424242,
           "tier": 1,
           "claim": {
             "workshop": {
@@ -11010,17 +11622,17 @@
         "st": {
           "wave": 1,
           "tick": 1,
-          "seed": 1682601640,
+          "seed": 424242,
           "commands": 1
         }
       }
     },
     {
-      "name": "lb landscape death + rank: all 195 texts ≥ 16 px",
+      "name": "lb landscape death + rank: all 196 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 195,
+        "count": 196,
         "bad": []
       }
     },
@@ -11034,7 +11646,7 @@
         "tick": 1,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": true,
         "overlay": true,
@@ -11045,7 +11657,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1682601640,
+        "seed": 424242,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -11087,7 +11699,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "arc": 1
+          "hardening": 1
         },
         "setTiers": {
           "overload": 0,
@@ -11135,21 +11747,21 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1131,
+        "tick": 1132,
         "phase": "wave",
-        "enemies": 200,
-        "visible": 200,
-        "projectiles": 1,
+        "enemies": 199,
+        "visible": 199,
+        "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 72,
-        "energy": 175.087106017192,
-        "bits": 72,
-        "coreHp": 999999966610.3925,
+        "kills": 73,
+        "energy": 176.31977077363894,
+        "bits": 73,
+        "coreHp": 999999966371.6223,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 559484986,
+        "seed": 1443450531,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -11207,7 +11819,7 @@
     {
       "name": "stress desktop: ≥ 55 FPS average",
       "ok": true,
-      "detail": 60.00318953831433
+      "detail": 60.00199342170836
     },
     {
       "name": "stress desktop: no console errors",
@@ -11229,13 +11841,13 @@
         "dead": false,
         "overlay": false,
         "kills": 73,
-        "energy": 176.47449856733522,
+        "energy": 176.36275071633239,
         "bits": 73,
-        "coreHp": 999999966353.4935,
+        "coreHp": 999999966351.2935,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 2126021969,
+        "seed": 672195800,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,

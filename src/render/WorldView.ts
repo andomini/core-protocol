@@ -100,6 +100,9 @@ export class WorldView {
   private readonly orbiters: Phaser.GameObjects.Image[] = [];
   private readonly pulses: Pulse[] = [];
   private readonly range: Phaser.GameObjects.Graphics;
+  private readonly grid: Phaser.GameObjects.TileSprite;
+  /** The player's field zoom and core position the grid was last placed for. */
+  private gridAt = [0, 0, 0];
   private frame = 0;
   private coreFlashUntil = 0;
   /** Displayed core colours, easing toward coreColors() of the crystal. */
@@ -120,13 +123,12 @@ export class WorldView {
     this.coreX = L.cx;
     this.coreY = L.cy;
     // Grid aligned so a major line crosses the core; it spills under the HUD/panel, which are opaque.
-    const x0 = L.cx - Math.ceil((L.cx - a.x) / GRID_TILE) * GRID_TILE;
-    const y0 = L.cy - Math.ceil((L.cy - a.y) / GRID_TILE) * GRID_TILE;
-    scene.add
-      .tileSprite(x0, y0, a.x + a.w - x0 + GRID_TILE, a.y + a.h - y0 + GRID_TILE, 'grid')
+    this.grid = scene.add
+      .tileSprite(0, 0, a.w + 2 * GRID_TILE, a.h + 2 * GRID_TILE, 'grid')
       .setOrigin(0)
       .setTileScale(1 / RS)
       .setDepth(DEPTH.grid);
+    this.setFieldZoom(1);
     this.coreLight = scene.add.image(L.cx, L.cy, 'core_light').setScale(ps(1.6)).setDepth(DEPTH.light).setBlendMode(Phaser.BlendModes.ADD);
     for (let i = 0; i < PULSES; i++) {
       const img = scene.add.image(0, 0, 'tracer').setDepth(DEPTH.pulse).setBlendMode(Phaser.BlendModes.ADD).setTint(GRID_MAJOR);
@@ -164,6 +166,7 @@ export class WorldView {
     const g = this.range.clear();
     this.rangeDrawn = this.session().stats.range;
     this.scaleDrawn = this.L.scale;
+    this.centreDrawn = this.L.cx * 1e5 + this.L.cy;
     const r = this.rangeDrawn * this.L.scale;
     const { cx, cy } = this.L;
     g.fillStyle(CORE, 0.025).fillCircle(cx, cy, r);
@@ -230,6 +233,7 @@ export class WorldView {
   private readonly tmp = { x: 0, y: 0 };
   private rangeDrawn = 0;
   private scaleDrawn = 0;
+  private centreDrawn = 0;
 
   draw(alpha: number, now: number): void {
     const dt = this.lastNow === 0 ? 16 : Math.min(100, now - this.lastNow);
@@ -238,7 +242,7 @@ export class WorldView {
     const L = this.L;
     const sess = this.session();
     const w = sess.world;
-    if (sess.stats.range !== this.rangeDrawn || this.L.scale !== this.scaleDrawn) this.drawRange();
+    if (sess.stats.range !== this.rangeDrawn || this.L.scale !== this.scaleDrawn || this.L.cx * 1e5 + this.L.cy !== this.centreDrawn) this.drawRange();
     const [main, accent] = coreColors(w.crystal, w.perks);
     const k = 1 - Math.exp(-dt / 300);
     this.coreMain = main === this.coreMain ? main : mixColor(this.coreMain, main, k);
@@ -523,6 +527,25 @@ export class WorldView {
     for (let i = 0; i < this.orbiters.length; i++) {
       const a = now * 0.0005 + i * Math.PI;
       this.orbiters[i]!.setPosition(L.cx + Math.cos(a) * r, L.cy + Math.sin(a) * r).setTint(i === 0 ? this.coreMain : this.coreAccent);
+    }
+  }
+
+  /**
+   * The player's field zoom `z` (1 = none): the grid scales with it and keeps a major line through the core. The data
+   * pulses run on the unzoomed grid lines, so they are hidden while zoomed or panned.
+   */
+  setFieldZoom(z: number): void {
+    const { L } = this;
+    if (z === this.gridAt[0] && L.cx === this.gridAt[1] && L.cy === this.gridAt[2]) return;
+    this.gridAt = [z, L.cx, L.cy];
+    const a = L.arena;
+    const t = GRID_TILE * z;
+    this.grid.setPosition(L.cx - Math.ceil((L.cx - a.x) / t) * t, L.cy - Math.ceil((L.cy - a.y) / t) * t).setScale(z);
+    const plain = z === 1;
+    // Back to the plain view: re-seat the pulses on the grid lines through the core.
+    for (const p of this.pulses) {
+      if (plain && !p.img.visible) this.resetPulse(p, true);
+      p.img.setVisible(plain);
     }
   }
 

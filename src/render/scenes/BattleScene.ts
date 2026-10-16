@@ -44,6 +44,7 @@ import { Hud } from '../../ui/Hud';
 import { text } from '../../ui/kit';
 import { UpgradePanel } from '../../ui/UpgradePanel';
 import { circleInRect, type Layout } from '../../ui/layout';
+import { type FieldZoom, freshZoom, isZoomed, panBy, zoomAt, type ZoomFrame } from '../fieldZoom';
 import battleJson from '../../data/battle.json';
 import { RunLifecycle } from '../../portal/lifecycle';
 import { services } from '../../services';
@@ -67,6 +68,12 @@ const STRESS_KINDS: EnemyKind[] = ['basic', 'fast', 'tank', 'ranged'];
 /** Player-facing speeds; up to maxSpeed only through dev hooks / stress (labs unlock ×3–×5 in M4). */
 const SPEEDS: number[] = battleJson.speeds;
 
+/** Wheel notches → zoom factor per px of wheel delta; drag px before an empty-field press becomes a pan. */
+const WHEEL_ZOOM = 0.0015;
+const PAN_SLOP = 10;
+/** The player's field zoom, kept across runs in this tab. */
+let fieldZoom: FieldZoom = freshZoom();
+
 function newSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
 }
@@ -88,6 +95,15 @@ export class BattleScene extends Phaser.Scene {
   private modTipAt = -1;
   private baseScale = 1;
   private zoomed = false;
+  /** The arena's own scale (pulls back as the breach widens); L.scale is this × the player's zoom. */
+  private autoScale = 1;
+  /** The unzoomed view (arena and core position) the player's zoom and pan are measured from. */
+  private zoomFrame!: ZoomFrame;
+  /** Pointers down on the arena (logical px), for pinch and pan. */
+  private readonly touches = new Map<number, { x: number; y: number }>();
+  private pinch: { d: number; mx: number; my: number } | null = null;
+  private pan: { x: number; y: number; moved: boolean } | null = null;
+  private zoomBtn!: Button;
   editor!: CrystalEditor;
   genome!: GenomeStrip;
   /** The offer index whose new module is being placed (spec 2026-10-14 §A), or −1. */
@@ -193,7 +209,13 @@ export class BattleScene extends Phaser.Scene {
     // A copy: L.scale zooms out as the breach widens (arenaRadius), Home keeps the shared layout.
     this.L = { ...(this.registry.get('layout') as Layout) };
     this.baseScale = this.L.scale;
+    this.autoScale = this.L.scale;
     this.zoomed = false;
+    this.zoomFrame = { arena: this.L.arena, cx: this.L.cx, cy: this.L.cy };
+    zoomAt(fieldZoom, this.zoomFrame, 1, this.L.cx, this.L.cy);
+    this.touches.clear();
+    this.pinch = null;
+    this.pan = null;
     this.flags = readFlags(location.search);
     this.gd = battleData(DEFAULT_DATA, this.flags);
     this.life = new RunLifecycle({ guard: services.guard, ads: services.ads, telemetry: services.telemetry, tickHz: this.gd.config.tickHz });
@@ -272,18 +294,41 @@ export class BattleScene extends Phaser.Scene {
     this.modTip = new SetTooltip(this, this.L, this.gd, DEPTH.overlay - 2);
     // Mouse hover (or a tap on touch) over a crystal module: what it does and whether its cluster counts.
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (this.gestureMove(p)) return;
       this.fieldMove(p.worldX, p.worldY);
       this.hoverModule(p.worldX, p.worldY, false, !p.wasTouch);
     });
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      // The RESET ZOOM button's own press: the field under it is not tapped.
+      if (this.zoomBtn.bg.visible && this.inRect(this.zoomBtn.r, p.worldX, p.worldY)) return;
+      if (this.gestureDown(p)) return;
       this.fieldDown(p.worldX, p.worldY);
       this.hoverModule(p.worldX, p.worldY, true);
     });
     this.dragBg = this.add.graphics().setDepth(DEPTH.overlay - 2).setVisible(false);
     this.dragLines = [0, 1, 2].map(() => text(this, 0, 0, '', this.L.minFont + 2, { weight: '700', stroke: true }).setOrigin(0.5, 0).setDepth(DEPTH.overlay - 1).setVisible(false));
     // Drag a module straight on the field (no editor): drop on an outlined hex moves or swaps it.
-    this.input.on('pointerup', (p: Phaser.Input.Pointer) => this.fieldUp(p.worldX, p.worldY));
-    this.input.on('pointerupoutside', (p: Phaser.Input.Pointer) => this.fieldUp(p.worldX, p.worldY));
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      this.gestureUp(p);
+      this.fieldUp(p.worldX, p.worldY);
+    });
+    this.input.on('pointerupoutside', (p: Phaser.Input.Pointer) => {
+      this.gestureUp(p);
+      this.fieldUp(p.worldX, p.worldY);
+    });
+    // Field zoom: the wheel over the arena (about the cursor), a two-finger pinch, and a drag on the empty field pans.
+    this.input.on('wheel', (p: Phaser.Input.Pointer, _o: unknown, _dx: number, dy: number) => {
+      if (!this.zoomAllowed() || !this.inArena(p.worldX, p.worldY)) return;
+      zoomAt(fieldZoom, this.zoomFrame, Math.exp(-dy * WHEEL_ZOOM), p.worldX, p.worldY);
+      // The tooltip was placed for the old zoom: the next mouse move reopens it.
+      if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
+    });
+    {
+      const a = this.L.arena;
+      const portrait = this.L.o === 'portrait';
+      const [bw, bh] = portrait ? [156, 52] : [124, 40];
+      this.zoomBtn = new Button(this, { x: a.x + 24, y: a.y + a.h - bh - 20, w: bw, h: bh }, 'RESET ZOOM', this.L.minFont + 2, DEPTH.overlay - 3, () => this.resetZoom(), { fillA: 0.8 }).setVisible(false);
+    }
     this.genome = new GenomeStrip(this, this.L);
     this.editor = new CrystalEditor(this, this.L, this.gd, this.crystal, () => this.session.world, {
       place: (slot) => this.placeModule(slot),
@@ -590,6 +635,7 @@ export class BattleScene extends Phaser.Scene {
   closeEditor(done: boolean, note?: string): void {
     if (!this.editor.visible) return;
     this.editor.hide();
+    this.syncZoom();
     this.life.hold('editor', false);
     this.paused = this.pausedBeforeEditor;
     if (this.tiersBeforeEditor) this.announceTiers(this.tiersBeforeEditor, note);
@@ -772,7 +818,7 @@ export class BattleScene extends Phaser.Scene {
   /** Field drag (no editor): a press on a module arms it; the battle pauses only once the drag starts. */
   private fieldDown(x: number, y: number): void {
     const w = this.session.world;
-    this.fieldDrag = null;
+    this.cancelFieldDrag();
     if (w.dead || w.phase === 'pick' || this.editor.visible || this.protocols.visible || this.statsPanel.visible || this.exitBtn.bg.visible) return;
     const i = this.crystal.moduleAt(w, x, y);
     if (i >= 0) this.fieldDrag = { i, x, y, moved: false, pausedBefore: this.paused, tiers: null };
@@ -1360,13 +1406,118 @@ export class BattleScene extends Phaser.Scene {
     }
   };
 
-  /** The camera pulls back as the arena grows, so the spawn ring stays at the arena edge (snaps on the first frame). */
+  /**
+   * The camera pulls back as the arena grows, so the spawn ring stays at the arena edge (snaps on the first frame);
+   * the player's zoom and pan go on top (not while the crystal editor, which centres on the core, is open).
+   */
   private zoomTick(delta: number): void {
     const target = (this.baseScale * this.gd.config.spawnRadius) / arenaRadius(this.gd, this.session.world.wave);
-    const L = this.L;
-    if (!this.zoomed || Math.abs(target - L.scale) < target * 1e-3) L.scale = target;
-    else L.scale += (target - L.scale) * (1 - Math.exp(-delta / 700));
+    if (!this.zoomed || Math.abs(target - this.autoScale) < target * 1e-3) this.autoScale = target;
+    else this.autoScale += (target - this.autoScale) * (1 - Math.exp(-delta / 700));
     this.zoomed = true;
+    this.syncZoom();
+  }
+
+  /** L from the arena's own scale and the player's zoom and pan (none while the crystal editor is open). */
+  private syncZoom(): void {
+    const own = !this.editor.visible;
+    const z = own ? fieldZoom.z : 1;
+    const L = this.L;
+    L.scale = this.autoScale * z;
+    L.cx = this.zoomFrame.cx + (own ? fieldZoom.panX : 0);
+    L.cy = this.zoomFrame.cy + (own ? fieldZoom.panY : 0);
+    this.view.setFieldZoom(z);
+    this.zoomBtn.setVisible(own && isZoomed(fieldZoom) && this.zoomAllowed());
+  }
+
+  private inArena(x: number, y: number): boolean {
+    return this.inRect(this.L.arena, x, y);
+  }
+
+  private inRect(a: { x: number; y: number; w: number; h: number }, x: number, y: number): boolean {
+    return x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h;
+  }
+
+  /** Zoom and pan only on the bare battlefield: no panel, editor, pause menu, pick or death screen over it. */
+  private zoomAllowed(): boolean {
+    const w = this.session.world;
+    return !w.dead && w.phase !== 'pick' && !this.editor.visible && !this.protocols.visible && !this.statsPanel.visible && !this.exitBtn.bg.visible && this.fieldDrag?.moved !== true;
+  }
+
+  private resetZoom(): void {
+    fieldZoom = freshZoom();
+    if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
+    this.syncZoom();
+  }
+
+  /** Field zoom, for the UI smoke. */
+  zoomState(): { z: number; panX: number; panY: number; scale: number; cx: number; cy: number } {
+    return { ...fieldZoom, scale: this.L.scale, cx: this.L.cx, cy: this.L.cy };
+  }
+
+  /** A press on the arena: a second finger starts a pinch (and ends a module drag); true = the press is the pinch's. */
+  private gestureDown(p: Phaser.Input.Pointer): boolean {
+    if (!this.inArena(p.worldX, p.worldY) || (!this.zoomAllowed() && this.touches.size === 0)) return false;
+    this.touches.set(p.id, { x: p.worldX, y: p.worldY });
+    if (this.touches.size === 2) {
+      this.cancelFieldDrag();
+      this.pan = null;
+      const [a, b] = [...this.touches.values()] as [{ x: number; y: number }, { x: number; y: number }];
+      this.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+      if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
+      return true;
+    }
+    if (this.touches.size === 1) this.pan = { x: p.worldX, y: p.worldY, moved: false };
+    return this.touches.size > 2;
+  }
+
+  /** A pinch zooms about the fingers' midpoint and follows it; one pointer on the empty field pans once zoomed. True = consumed. */
+  private gestureMove(p: Phaser.Input.Pointer): boolean {
+    const t = this.touches.get(p.id);
+    if (t === undefined) return false;
+    const [dx, dy] = [p.worldX - t.x, p.worldY - t.y];
+    t.x = p.worldX;
+    t.y = p.worldY;
+    if (this.pinch !== null) {
+      const [a, b] = [...this.touches.values()] as [{ x: number; y: number }, { x: number; y: number }];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      const [mx, my] = [(a.x + b.x) / 2, (a.y + b.y) / 2];
+      if (this.zoomAllowed()) {
+        if (this.pinch.d > 0 && d > 0) zoomAt(fieldZoom, this.zoomFrame, d / this.pinch.d, mx, my);
+        panBy(fieldZoom, this.zoomFrame, mx - this.pinch.mx, my - this.pinch.my);
+      }
+      this.pinch = { d, mx, my };
+      return true;
+    }
+    const pan = this.pan;
+    if (pan === null || this.fieldDrag !== null || !this.zoomAllowed() || !isZoomed(fieldZoom)) return false;
+    if (!pan.moved) {
+      if (Math.hypot(p.worldX - pan.x, p.worldY - pan.y) < PAN_SLOP) return false;
+      pan.moved = true;
+      if (this.modTipAt >= 0) this.hoverModule(-1e6, -1e6, true);
+      panBy(fieldZoom, this.zoomFrame, p.worldX - pan.x, p.worldY - pan.y);
+      return true;
+    }
+    panBy(fieldZoom, this.zoomFrame, dx, dy);
+    return true;
+  }
+
+  private gestureUp(p: Phaser.Input.Pointer): void {
+    this.touches.delete(p.id);
+    if (this.touches.size < 2) this.pinch = null;
+    // A pan lasts one press; a finger left over from a pinch does not start one.
+    this.pan = null;
+  }
+
+  /** A module drag cut short (a pinch began): nothing moves, the battle resumes as it was. */
+  private cancelFieldDrag(): void {
+    const d = this.fieldDrag;
+    this.fieldDrag = null;
+    if (!d?.moved) return;
+    this.crystal.edit = null;
+    this.hideDragLines();
+    this.life.hold('fieldDrag', false);
+    this.paused = d.pausedBefore;
   }
 
   override update(time: number, delta: number): void {

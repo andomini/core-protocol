@@ -154,7 +154,8 @@ export class CrystalView {
   }
 
   draw(w: World, sectors: readonly (Tag | null)[], now: number): void {
-    let key = sectors.length * 1009 + arenaRadius(this.data, w.wave) * 7 + Math.round(this.L.scale * 1e4);
+    this.root.setPosition(this.L.cx, this.L.cy);
+    let key = sectors.length * 1009 + arenaRadius(this.data, w.wave) * 7 + Math.round(this.L.scale * 1e4) + Math.round(this.L.cx * 131 + this.L.cy * 7919);
     for (let i = 0; i < sectors.length; i++) key = Math.imul(key, 31) + (sectors[i] === null ? 0 : sectors[i]!.length * 7 + sectors[i]!.charCodeAt(0));
     for (let i = 0; i < w.terrain.length; i++) if (w.terrain[i] === 1) key = Math.imul(key ^ i, 0x9e3779b1);
     if (key !== this.landKey) {
