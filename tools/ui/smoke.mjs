@@ -456,6 +456,21 @@ const scenarios = {
     await minTextCheck(c, 'portrait 360×640');
     await upgradeChecks(c, 'portrait 360×640 upgrades');
     await panelFitCheck(c, 'portrait 360×640', 'portrait-169-upgrades');
+    // The Bounty chip (Bounty Marks III) clears the wave line, its timer and the set chips even at 3-digit waves.
+    await c.call('demoCrystal');
+    await c.call('setWave', 137);
+    await c.p.waitForTimeout(150);
+    const bp = await c.call('bountyPreview', 'BOUNTY 11/12');
+    await c.p.waitForTimeout(80);
+    const hit = (a, b) => a.w > 0 && b.w > 0 && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    const lay169 = cl.layout;
+    check(
+      results,
+      'portrait 360×640: the Bounty chip overlaps no HUD text or set chip and stays on screen',
+      bp && ![bp.wave, bp.secs, bp.chips, ...bp.pairs].some((r) => hit(bp.bounty, r)) && bp.bounty.x >= 0 && bp.bounty.x + bp.bounty.w <= lay169.w && bp.bounty.y + bp.bounty.h <= lay169.panel.y,
+      bp,
+    );
+    await c.shot('hud-bounty-portrait-169');
     check(results, 'portrait 360×640: no console errors', c.errors.length === 0, c.errors);
     await c.close();
 
@@ -607,7 +622,7 @@ const scenarios = {
   },
 
   async editor() {
-    for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
+    for (const [device, label] of [['phone', 'portrait'], ['phone169', 'portrait-169'], ['desktop', 'landscape']]) {
       const h = await open(browser, srv.base, device, '?seed=3');
       h.autoPick = false;
       await h.waitFor((s) => s.pickOpen, 3000, 50);
@@ -641,6 +656,7 @@ const scenarios = {
       const e2 = await h.call('editor');
       check(results, `${label} editor: the pause menu's CRYSTAL opens Arrange`, e2?.open && e2.mode === 'arrange', e2);
       check(results, `${label} editor: the strip leads with the Lattice chip`, /^LATTICE \d+ · \+[\d.]+ % Bits$/.test(e2.strip[0] ?? ''), e2.strip[0]);
+      check(results, `${label} editor: the strip ends above the buttons`, e2.stripEnd > 0 && e2.stripEnd <= e2.stripBottom, { end: e2.stripEnd, bottom: e2.stripBottom });
       // A pair chip tap glows the hexes that add a link to that pair; a second tap clears it.
       // (Some pairs have no hex that adds a cluster link: try the chips in turn.)
       if (e2.chips.length > 0) {
@@ -652,6 +668,7 @@ const scenarios = {
           await h.p.waitForTimeout(100);
           const a = await h.call('editor');
           if (a.glow.length > 0) {
+            check(results, `${label} editor: the strip with a tapped pair ends above the buttons`, a.stripEnd <= a.stripBottom, { end: a.stripEnd, bottom: a.stripBottom });
             await h.shot(`editor-pair-${label}`);
             g1 = a;
             chip = c.key;

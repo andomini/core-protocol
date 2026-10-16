@@ -143,13 +143,24 @@ export function installDevHooks(game: Phaser.Game): void {
     editor: () => {
       const e = battle()?.editor;
       if (!e) return null;
-      return { open: e.visible, mode: e.mode, selected: e.selected, readout: [...e.readoutLines], strip: [...e.stripLines], chips: e.pairChips().map((c) => ({ ...c })), glow: e.glowing().map((x) => [...x]) };
+      return { open: e.visible, mode: e.mode, selected: e.selected, readout: [...e.readoutLines], strip: [...e.stripLines], chips: e.pairChips().map((c) => ({ ...c })), glow: e.glowing().map((x) => [...x]), stripEnd: e.stripEnd, stripBottom: e.stripBottom };
     },
     /** Screen point (logical px) of crystal hex (q, r) at the current zoom. */
     slotScreen: (q: number, r: number) => battle()?.crystal.hexScreen(q, r) ?? null,
     /** Issues a moveModule command (as the editor would). */
     moveModule: (from: [number, number], to: [number, number]) => battle()?.command({ type: 'moveModule', from, to }),
     /** Fusion chips shown in the set bar (pair key → rect) and the pair whose card is open. */
+    /** Shows `label` in the HUD's Bounty chip (render only; the next real change replaces it) and returns the logical bounds of the chip and its HUD neighbours. */
+    bountyPreview: (label: string) => {
+      const b = battle();
+      if (!b) return null;
+      const box = (t: Phaser.GameObjects.Text) => {
+        const r = t.getBounds();
+        return { x: r.x, y: r.y, w: r.width, h: r.height };
+      };
+      b.hud.bountyText.setText(label);
+      return { bounty: box(b.hud.bountyText), wave: box(b.hud.waveText), secs: box(b.hud.secsText), chips: b.chips.rect, pairs: Object.values(b.chips.pairs) };
+    },
     fusionChips: () => {
       const c = battle()?.chips;
       return c ? { pairs: c.pairs, tip: c.tipKey } : null;

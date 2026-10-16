@@ -29,7 +29,7 @@ interface Geo {
   hp: Rect;
   hpFont: number;
   timer: Rect;
-  /** Bounty chip anchor (right-aligned). */
+  /** Bounty chip anchor (right-aligned); portrait: the arena's bottom-right corner (the HUD rows are full). */
   bounty: [number, number, number];
 }
 
@@ -49,7 +49,7 @@ function geometry(L: Layout): Geo {
       hp: { x: 70, y: 86, w: 430, h: 34 },
       hpFont: 28,
       timer: { x: 0, y: h.h - 6, w: h.w, h: 6 },
-      bounty: [500, 44, 22],
+      bounty: [L.arena.x + L.arena.w - 32, L.arena.y + L.arena.h - 40, 22],
     };
   }
   const x = h.x + 28;
@@ -78,14 +78,14 @@ export interface HudHandlers {
 export class Hud {
   private readonly g: Geo;
   private readonly bars: Phaser.GameObjects.Graphics;
-  private readonly waveText: Phaser.GameObjects.Text;
-  private readonly secsText: Phaser.GameObjects.Text;
+  readonly waveText: Phaser.GameObjects.Text;
+  readonly secsText: Phaser.GameObjects.Text;
   private readonly energyText: Phaser.GameObjects.Text;
   private readonly hpText: Phaser.GameObjects.Text;
   readonly speedBtn: Button;
   private readonly pauseBtn: Button;
   private readonly pausedBanner: Phaser.GameObjects.Text;
-  private readonly bountyText: Phaser.GameObjects.Text;
+  readonly bountyText: Phaser.GameObjects.Text;
   private last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null as boolean | null, bounty: '' };
   private hpShown = 1;
   private hitUntil = 0;

@@ -4,7 +4,7 @@
 import type { GameData, StatId } from '../sim/data';
 import type { Effect, Tag } from '../sim/perkData';
 import { fusionEffects, fusionSteps, fusionTierIndex, slotGains } from '../sim/crystal';
-import { latticeMean, latticeNow } from '../sim/perks';
+import { latticeBonus as bonusOf, latticeMean, latticeNow } from '../sim/perks';
 import type { World } from '../sim/state';
 import type { ModTarget } from '../sim/stats';
 
@@ -309,7 +309,7 @@ export function setTierLines(data: GameData, tag: Tag, tier: number): string[] {
  */
 export function latticeLine(data: GameData, w: World, final = false): string {
   const mean = latticeMean(w);
-  const pct = Math.round(data.sets.latticeCoef * mean * 1000) / 10;
+  const pct = Math.round(bonusOf(w, data) * 1000) / 10;
   const shown = final ? `avg ${Math.round(mean * 10) / 10}` : `${latticeNow(w, data)}`;
   return `LATTICE ${shown} · +${pct} % Bits`;
 }

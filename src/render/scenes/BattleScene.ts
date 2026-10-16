@@ -122,7 +122,7 @@ export class BattleScene extends Phaser.Scene {
   private tier = 1;
   private speeds: number[] = SPEEDS;
   /** The death settlement already paid into the meta save (undone on a revive). */
-  private paid: { s: Settlement; runKeys: number; doubled: boolean; lifetimeBefore: LifetimeStats } | null = null;
+  private paid: { s: Settlement; runKeys: number; doubled: boolean; lifetimeBefore: LifetimeStats; codexBefore: Record<string, number> } | null = null;
   private starter: PackCard[] | null = null;
   /** Fast Boot (card): waves played at ×4 unless the player picks another speed. */
   private fastBoot = 0;
@@ -362,8 +362,9 @@ export class BattleScene extends Phaser.Scene {
     if (this.flags.stress) return;
     const m = services.meta.meta;
     const lifetimeBefore = structuredClone(m.lifetime);
+    const codexBefore = { ...m.codex };
     const s = settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest });
-    this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore };
+    this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore, codexBefore };
     addRunToLifetime(m.lifetime, this.runStats, {
       waves: w.wave,
       simTicks: w.tick,
@@ -397,7 +398,10 @@ export class BattleScene extends Phaser.Scene {
       const p = this.paid;
       if (p) {
         const m = services.meta.meta;
-        m.bits = Math.max(0, m.bits - p.s.bits * (p.doubled ? 2 : 1));
+        // The ×2 ad doubled everything but the one-off Codex Bits; the Codex levels go back too, so the next
+        // death pays its first-III reward again.
+        m.bits = Math.max(0, m.bits - p.s.bits - (p.doubled ? p.s.bits - p.s.codexBits : 0));
+        m.codex = p.codexBefore;
         m.keys = Math.max(0, m.keys - p.runKeys);
         m.runs = Math.max(0, m.runs - 1);
         m.lifetime = p.lifetimeBefore;

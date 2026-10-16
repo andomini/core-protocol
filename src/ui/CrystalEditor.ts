@@ -47,6 +47,16 @@ export interface EditorHandlers {
   done: () => void;
 }
 
+interface StripEntry {
+  tags: Tag[];
+  label: string;
+  color: string;
+  on: boolean;
+  plain: string;
+  /** A pair chip's fusion key (tappable). */
+  key?: string;
+}
+
 interface Line {
   text: string;
   color: string;
@@ -122,6 +132,9 @@ export class CrystalEditor {
   private readonly fs: number;
   private readonly lineH: number;
   private readonly readoutY: number;
+  /** The strip and the rules end above this (the button row's top less a gap). */
+  readonly stripBottom: number;
+  private showRules = false;
   private armedAt = 0;
   private perk = '';
   private hoverHex: [number, number] | null = null;
@@ -141,6 +154,8 @@ export class CrystalEditor {
   /** For the smoke: the readout and the bonus strip as plain strings. */
   readoutLines: string[] = [];
   stripLines: string[] = [];
+  /** For the smoke: the strip's bottom edge and the limit it must stay above (the buttons' top less a gap). */
+  stripEnd = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -185,6 +200,7 @@ export class CrystalEditor {
     const bh = portrait ? 76 : 54;
     const gap = portrait ? 16 : 12;
     const by = L.h - bh - (portrait ? 24 : 18);
+    this.stripBottom = by - (portrait ? 12 : 8);
     const r3 = (i: number): Rect => {
       const bw = (this.area.w - gap * 2) / 3;
       return { x: this.area.x + i * (bw + gap), y: by, w: bw, h: bh };
@@ -244,7 +260,7 @@ export class CrystalEditor {
     this.sub.setVisible(true);
     for (const t of this.readout) t.setVisible(true);
     this.stripG.setVisible(true);
-    this.rules.setVisible(showRules);
+    this.showRules = showRules;
     this.crystal.setZoom({ scale: this.scale(this.world()) });
     this.refresh(now);
   }
@@ -375,17 +391,21 @@ export class CrystalEditor {
     });
   }
 
-  /** The bonus strip: every tag (count · set tier), then every pair with a link (links · fusion tier). */
+  /**
+   * The bonus strip: the Lattice chip, every tag (count · set tier), then every pair with a link or with both
+   * tags on the crystal (links · fusion tier → next). It never runs into the buttons: when it would, the pair
+   * chips drop the "→ next" part, then the pairs with no link (unless tapped) go, then the tail folds into "+N".
+   */
   private drawStrip(w: World): void {
     const g = this.stripG.clear();
     const counts = tagCounts(w, this.data);
     const links = fusionLinkCounts(w, this.data);
-    const entries: { tags: Tag[]; label: string; color: string; on: boolean; plain: string; key?: string }[] = [];
+    const head: StripEntry[] = [];
     const lattice = latticeLine(this.data, w);
-    entries.push({ tags: [], label: lattice, color: '#ffd23b', on: true, plain: lattice });
+    head.push({ tags: [], label: lattice, color: '#ffd23b', on: true, plain: lattice });
     for (const tag of TAGS) {
       const tier = w.setTiers[tag] ?? 0;
-      entries.push({
+      head.push({
         tags: [tag],
         label: `${counts[tag]} · ${tier > 0 ? `${tier}-set` : '–'}`,
         color: tier > 0 ? TAG_CSS[tag] : TEXT_DIM,
@@ -395,53 +415,94 @@ export class CrystalEditor {
     }
     // Pair chips: every pair with a link or with both tags on the crystal (tap → its link hexes glow).
     const present = new Set(w.crystal.map((m) => m.tag));
+    const pairs: (StripEntry & { short: string; bare: boolean })[] = [];
     for (const key of fusionKeys()) {
       const n = links[key] ?? 0;
       const [ta, tb] = fusionTags(key);
       if (n <= 0 && !(present.has(ta) && present.has(tb))) continue;
       const tier = w.fusionTiers[key] ?? 0;
       const label = this.pairLabel(w, key, n);
-      entries.push({
+      pairs.push({
         tags: [ta, tb],
         label,
+        short: `${tier > 0 ? fusionLevel(this.data, tier) : '–'} · ${n}${w.fusionPending[key] ? '…' : ''}`,
+        bare: n <= 0 && w.fusionPending[key] === undefined && this.pair !== key,
         color: this.pair === key ? '#2bffb0' : tier > 0 ? '#ffffff' : TEXT_DIM,
         on: true,
         plain: `${this.data.sets.fusions[key]!.name} ${label}`,
         key,
       });
     }
+    this.stripLines = [...head, ...pairs].map((e) => e.plain);
+    const top = this.readoutY + this.lineH * 3 + Math.round(this.fs * 0.6);
+    let entries: StripEntry[] = [...head, ...pairs];
+    let lay = this.layStrip(entries, top);
+    if (lay.end > this.stripBottom) {
+      entries = [...head, ...pairs.map((e) => ({ ...e, label: e.short }))];
+      lay = this.layStrip(entries, top);
+    }
+    if (lay.end > this.stripBottom) {
+      entries = [...head, ...pairs.filter((e) => !e.bare).map((e) => ({ ...e, label: e.short }))];
+      lay = this.layStrip(entries, top);
+    }
+    const total = head.length + pairs.length;
+    if (lay.end > this.stripBottom) {
+      // Fold the tail into "+N" until the rest fits.
+      const kept = entries.slice();
+      let folded = entries;
+      while (kept.length > 1) {
+        kept.pop();
+        folded = [...kept, { tags: [], label: `+${total - kept.length}`, color: TEXT_DIM, on: true, plain: '' }];
+        lay = this.layStrip(folded, top);
+        if (lay.end <= this.stripBottom) break;
+      }
+      entries = folded;
+    }
     this.chipRects = [];
-    this.stripLines = entries.map((e) => e.plain);
+    entries.forEach((e, i) => {
+      const t = this.stripT[i]!.setVisible(true);
+      const p = lay.at[i]!;
+      const icon = lay.icon;
+      e.tags.forEach((tag, k) => drawTagIcon(g, tag, p.x + icon / 2 + k * (icon + 2), p.cy, icon, TAG_COLOR[tag], e.on ? 1 : 0.35));
+      t.setPosition(p.x + p.wIcons + (e.tags.length > 0 ? 6 : 0), p.cy);
+      if (e.key) {
+        this.chipRects.push({ key: e.key, r: { x: p.x - 4, y: p.y, w: p.wd + 8, h: lay.rowH } });
+        if (this.pair === e.key) g.lineStyle(2, 0x2bffb0, 0.9).strokeRect(p.x - 4, p.y + 1, p.wd + 8, lay.rowH - 2);
+      }
+    });
+    for (let i = entries.length; i < this.stripT.length; i++) this.stripT[i]!.setVisible(false);
+    // The rules (first open) sit under the strip, only when they fit above the buttons.
+    const ry = lay.end + Math.round(this.fs * 0.5);
+    this.rules.setY(ry).setVisible(this.showRules && ry + this.rules.height <= this.stripBottom);
+    this.stripEnd = lay.end;
+  }
+
+  /** Lays the strip entries out in rows from `top` (texts set, not yet placed); `end` is the last row's bottom. */
+  private layStrip(entries: readonly StripEntry[], top: number): { at: { x: number; y: number; cy: number; wd: number; wIcons: number }[]; end: number; rowH: number; icon: number } {
     const icon = Math.round(this.fs * 1.15);
     const rowH = Math.round(this.fs * 1.55);
     const gapX = Math.round(this.fs * 0.9);
     const right = this.area.x + this.area.w;
     let x = this.area.x;
-    let y = this.readoutY + this.lineH * 3 + Math.round(this.fs * 0.6);
+    let y = top;
+    const at: { x: number; y: number; cy: number; wd: number; wIcons: number }[] = [];
     entries.forEach((e, i) => {
       let t = this.stripT[i];
       if (!t) {
-        t = text(this.scene, 0, 0, '', this.fs, { weight: '700' }).setOrigin(0, 0.5).setDepth(D + 0.31);
+        t = text(this.scene, 0, 0, '', this.fs, { weight: '700' }).setOrigin(0, 0.5).setDepth(D + 0.31).setVisible(false);
         this.stripT.push(t);
       }
-      t.setText(e.label).setColor(e.color).setVisible(true);
+      t.setText(e.label).setColor(e.color);
       const wIcons = e.tags.length * (icon + 2);
       const wd = wIcons + (e.tags.length > 0 ? 6 : 0) + t.width;
       if (x > this.area.x && x + wd > right) {
         x = this.area.x;
         y += rowH;
       }
-      const cy = y + rowH / 2;
-      e.tags.forEach((tag, k) => drawTagIcon(g, tag, x + icon / 2 + k * (icon + 2), cy, icon, TAG_COLOR[tag], e.on ? 1 : 0.35));
-      t.setPosition(x + wIcons + (e.tags.length > 0 ? 6 : 0), cy);
-      if (e.key) {
-        this.chipRects.push({ key: e.key, r: { x: x - 4, y, w: wd + 8, h: rowH } });
-        if (this.pair === e.key) g.lineStyle(2, 0x2bffb0, 0.9).strokeRect(x - 4, y + 1, wd + 8, rowH - 2);
-      }
+      at.push({ x, y, cy: y + rowH / 2, wd, wIcons });
       x += wd + gapX;
     });
-    for (let i = entries.length; i < this.stripT.length; i++) this.stripT[i]!.setVisible(false);
-    this.rules.setY(y + rowH + Math.round(this.fs * 0.5));
+    return { at, end: y + rowH, rowH, icon };
   }
 
   private placeAt(slot: [number, number] | null): void {

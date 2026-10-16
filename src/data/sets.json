@@ -87,6 +87,7 @@
   "apexSet": 4,
   "weldTicks": 150,
   "latticeCoef": 0.015,
+  "latticeMax": 0.22,
   "fusions": {
     "overload+cryo": {
       "name": "Thermal Shock",
@@ -173,7 +174,9 @@
         "3": [
           { "type": "ruleChange", "rule": "lightningRange", "op": "mul", "value": 1.3 }
         ],
-        "5": []
+        "5": [
+          { "type": "lightningFreeze", "seconds": 0.75 }
+        ]
       }
     },
     "cryo+mining": {

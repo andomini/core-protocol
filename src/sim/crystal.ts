@@ -101,7 +101,9 @@ export function autoSlot(w: World, data: GameData, tag: Tag): [number, number] |
     }
     const st = sectors[moduleSector(data, q, r)];
     let score = same * a.sameTag + links * a.link + (st === tag ? a.sectorMatch : 0) + (st === null ? a.sectorEmpty : 0) - hexDist(q, r) * a.ring;
-    if (near && links > 0) {
+    // Any neighbour can change the links: another tag adds one, the same tag can make a different cluster the
+    // counted (largest) one and drop the old cluster's links. Rises score, drops cost the tier lost.
+    if (near && links + same > 0) {
       pm!.q = q;
       pm!.r = r;
       const l1 = linkCountsOf(probe, perks);
@@ -110,6 +112,7 @@ export function autoSlot(w: World, data: GameData, tag: Tag): [number, number] |
         const t0 = fusionTierAt(data, key, l0[key] ?? 0, c0!);
         const t1 = fusionTierAt(data, key, l1[key] ?? 0, c1);
         if (t1 > t0) score += a.linkNear * fusionTierIndex(data, key, t1);
+        else if (t1 < t0) score -= a.linkNear * fusionTierIndex(data, key, t0);
       }
     }
     if (score > bestScore) {

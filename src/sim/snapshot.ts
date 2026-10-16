@@ -1,6 +1,8 @@
 import { crystalTagCounts } from './crystal';
+import type { GameData } from './data';
 import { SECTOR_DIRS } from './hex';
 import { assertFiniteDeep } from './num';
+import { rebuildCrystal } from './perks';
 import { fusionKeys, STRUCTURE_KINDS, TAGS } from './perkData';
 import { type World, WORLD_VERSION } from './state';
 import { canonicalLevels } from './stats';
@@ -52,7 +54,7 @@ function tagRecord(v: number): Record<(typeof TAGS)[number], number> {
 }
 
 /** Parses a snapshot back into a World; every failure is an Error mentioning "snapshot". */
-export function restore(s: string): World {
+export function restore(s: string, data?: GameData): World {
   let parsed: unknown;
   try {
     parsed = JSON.parse(s);
@@ -137,7 +139,9 @@ export function restore(s: string): World {
     throw new Error('snapshot: malformed world');
   }
   // Runs saved before crystal combos v2 (spec 2026-10-16 phase 1): no weld waiting, empty Lattice and gene
-  // accumulators (the gene mean falls back to the counts now), no frost, blueprint or Marks yet.
+  // accumulators (the gene mean falls back to the counts now), no frost, blueprint or Marks yet. Their tiers
+  // were built by the old rules (global links, old ladders): with `data`, they are rebuilt below.
+  const preV2 = w.fusionPending === undefined;
   w.fusionPending ??= {};
   w.latticeSum ??= 0;
   w.latticeTicks ??= 0;
@@ -179,5 +183,6 @@ export function restore(s: string): World {
   } catch (err) {
     throw new Error(`snapshot: ${(err as Error).message}`);
   }
+  if (preV2 && data !== undefined) rebuildCrystal(w as World, data);
   return w as World;
 }

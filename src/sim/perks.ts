@@ -274,6 +274,36 @@ export function settleWeld(w: World, data: GameData, events: SimEvent[] | null):
   }
 }
 
+/**
+ * Rebuilds every set and fusion tier from the crystal under the current rules (snapshot migration of runs
+ * saved before crystal combos v2, whose tiers and `set:` / `fusion:` mods came from older ladders and global
+ * link counts). Tiers apply at once (no weld: they were held before the save); timers that still exist keep
+ * their progress; the HP share is kept.
+ */
+export function rebuildCrystal(w: World, data: GameData): void {
+  const stale = (k: string) => k.startsWith('set:') || k.startsWith('fusion:');
+  const oldTimers: World['timers'] = {};
+  keepHealthShare(w, data, () => {
+    w.mods = w.mods.filter((m) => !stale(m.source));
+    for (const k of Object.keys(w.timers)) {
+      if (!stale(k)) continue;
+      oldTimers[k] = w.timers[k]!;
+      delete w.timers[k];
+    }
+    for (const t of TAGS) w.setTiers[t] = 0;
+    w.fusionTiers = {};
+    w.fusionPending = {};
+    refreshTiers(w, data, null);
+    for (const key of fusionKeys()) {
+      const p = w.fusionPending[key];
+      if (p === undefined) continue;
+      delete w.fusionPending[key];
+      setFusionTier(w, data, key, 0, p.tier, null);
+    }
+    for (const k of Object.keys(w.timers)) if (oldTimers[k] !== undefined) w.timers[k] = oldTimers[k];
+  });
+}
+
 /** Every tick: Lattice (sum of fusion tier indices, spec 2026-10-16 §4) and gene (set counts, §5) accumulators. */
 export function accumulateCrystal(w: World, data: GameData): void {
   w.latticeSum = clampValue(w.latticeSum + latticeNow(w, data));
@@ -294,9 +324,14 @@ export function latticeMean(w: World): number {
   return w.latticeTicks > 0 ? w.latticeSum / w.latticeTicks : 0;
 }
 
-/** Run-end Bits multiplier from the Lattice: 1 + latticeCoef × the tick-averaged Lattice. */
+/** Run-end Bits bonus share from the Lattice: latticeCoef × the tick-averaged Lattice, at most latticeMax. */
+export function latticeBonus(w: World, data: GameData): number {
+  return Math.min(data.sets.latticeCoef * latticeMean(w), data.sets.latticeMax);
+}
+
+/** Run-end Bits multiplier from the Lattice: 1 + latticeBonus. */
 export function latticeMul(w: World, data: GameData): number {
-  return 1 + data.sets.latticeCoef * latticeMean(w);
+  return 1 + latticeBonus(w, data);
 }
 
 /** Run start: sets completed by card tags alone, then the opening (wave-1) pick. */

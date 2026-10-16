@@ -9,8 +9,9 @@ import { fusionKeys, TAGS, type Tag, validateSets } from '../src/sim/perkData';
 import { accumulateCrystal, grantPerk, latticeMean, latticeMul, latticeNow, perkProfile, settleWeld } from '../src/sim/perks';
 import { geneMean, mutate, resetGeneAcc } from '../src/sim/mutations';
 import { restore, snapshot } from '../src/sim/snapshot';
-import { createWorld } from '../src/sim/state';
+import { createWorld, type World } from '../src/sim/state';
 import { step } from '../src/sim/step';
+import { latticeLine } from '../src/ui/perkText';
 import { ofType, stepN, testData } from './helpers';
 
 const D = DEFAULT_DATA;
@@ -121,6 +122,15 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     const mul = perkProfile(w, D).rules.runEndBits * (1 + D.sets.latticeCoef * (990 / 100));
     expect(w.bits / (w.bits - death.bonusBits)).toBeCloseTo(mul, 9);
     expect(death.bonusBits).toBeGreaterThan(0);
+  });
+
+  it('Lattice: the run-end Bits bonus is capped at latticeMax', () => {
+    const w = quiet();
+    w.latticeSum = 1e6;
+    w.latticeTicks = 10;
+    expect(D.sets.latticeCoef * latticeMean(w)).toBeGreaterThan(D.sets.latticeMax);
+    expect(latticeMul(w, D)).toBe(1 + D.sets.latticeMax);
+    expect(latticeLine(D, w)).toMatch(new RegExp(`\\+${Math.round(D.sets.latticeMax * 1000) / 10} % Bits$`));
   });
 
   it('Apex: links ≥ apexLinks and both set counts ≥ apexSet; never for firewall pairs', () => {
@@ -237,6 +247,25 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     expect(pairLinkSlots(w, D, 'cryo+mining')).toEqual([]);
   });
 
+  it('auto-place avoids a slot that makes another same-tag cluster the counted one (fusion drop)', () => {
+    // ⚡A (3 stacks) links to 🔗; ⚡B (3 stacks, later index) touches nothing. A module next to B would make B the
+    // counted ⚡ cluster (4 > 3) and drop Overcharge I at once.
+    const w = quiet();
+    for (let i = 0; i < 3; i++) grantPerk(w, D, 'overclockRounds', null, i === 0 ? at(0) : undefined);
+    grantPerk(w, D, 'bounce', null, at(1));
+    for (let i = 0; i < 3; i++) grantPerk(w, D, 'hotBarrel', null, i === 0 ? at(6) : undefined);
+    expect(fusionLinkCounts(w, D)['overload+chain']).toBe(1);
+    const linksAfter = (data: typeof D): number => {
+      const p = structuredClone(w);
+      const s = autoSlot(p, data, 'overload')!;
+      p.crystal.push({ q: s[0], r: s[1], perk: 'burstFire', tag: 'overload' });
+      p.perks.burstFire = 1;
+      return fusionLinkCounts(p, D)['overload+chain'] ?? 0;
+    };
+    expect(linksAfter(testData({ crystal: { auto: { linkNear: 0 } } }))).toBe(0);
+    expect(linksAfter(D)).toBeGreaterThanOrEqual(1);
+  });
+
   it('new World keys have defaults and old snapshots migrate to them', () => {
     const w = quiet();
     expect(w.fusionPending).toEqual({});
@@ -260,5 +289,30 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     expect(back.blueprint).toEqual([]);
     expect(back.marks).toEqual({ killed: 0, jackpots: 0, plan: [] });
     expect(JSON.parse(snapshot(back))).toEqual(JSON.parse(snapshot(w)));
+  });
+
+  it('a pre-v2 snapshot restored with data rebuilds its tiers and mods under the new rules', () => {
+    const w = quiet();
+    for (const [id, s] of [
+      ['overclockRounds', at(0)],
+      ['burstFire', at(1)],
+      ['bounce', o(1)],
+    ] as const)
+      grantPerk(w, D, id, null, s);
+    settleWeld(Object.assign(w, { tick: w.tick + D.sets.weldTicks }), D, null);
+    const want = JSON.parse(snapshot(w)) as { world: World };
+    // The old rules' leftovers: a fusion tier the crystal does not hold, its mod, and a stale set mod.
+    w.fusionTiers['cryo+mining'] = 3;
+    w.mods.push({ stat: 'damage', op: 'mul', value: 9, source: 'fusion:cryo+mining:3' }, { stat: 'damage', op: 'mul', value: 9, source: 'set:cryo:2' });
+    const old = JSON.parse(snapshot(w)) as { world: Record<string, unknown> };
+    for (const k of ['fusionPending', 'latticeSum', 'latticeTicks', 'geneAcc', 'geneTicks', 'tagCountsNow', 'frost', 'blueprint', 'marks', 'fusionBest']) delete old.world[k];
+    const plain = restore(JSON.stringify(old));
+    expect(plain.fusionTiers['cryo+mining']).toBe(3);
+    const back = restore(JSON.stringify(old), D);
+    expect(back.fusionTiers).toEqual(want.world.fusionTiers);
+    expect(back.setTiers).toEqual(want.world.setTiers);
+    expect(back.fusionPending).toEqual({});
+    expect(back.mods.filter((m) => m.value === 9)).toEqual([]);
+    expect([...back.mods].map((m) => m.source).sort()).toEqual([...want.world.mods].map((m) => m.source).sort());
   });
 });

@@ -1,12 +1,12 @@
 {
-  "date": "2026-10-16T01:24:09.403Z",
+  "date": "2026-10-16T01:41:52.444Z",
   "metrics": {
-    "portrait.firstPickMs": 2,
-    "portrait.firstVisibleSimS": 0.03,
-    "landscape 1280×720.firstPickMs": 2,
-    "landscape 1280×720.firstVisibleSimS": 0.03,
+    "portrait.firstPickMs": 3,
+    "portrait.firstVisibleSimS": 0,
+    "landscape 1280×720.firstPickMs": 1,
+    "landscape 1280×720.firstVisibleSimS": 0,
     "landscape 907×510.firstPickMs": 1,
-    "landscape 907×510.firstVisibleSimS": 0,
+    "landscape 907×510.firstVisibleSimS": 0.03,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
   },
@@ -267,24 +267,24 @@
         {
           "seed": 3,
           "tier": 1,
-          "deviceId": "om8397rxmuy97l66",
+          "deviceId": "4pq7kinjkw3yun0v",
           "runIndex": 1,
-          "t": 1792113569521,
+          "t": 1792114627790,
           "type": "run_start",
-          "runId": "vqygzns1",
-          "sessionId": "u53j1ujl",
-          "build": "local-202610160119"
+          "runId": "kfu85qpf",
+          "sessionId": "y6c9e6pv",
+          "build": "local-202610160137"
         },
         {
-          "seed": 1463748301,
+          "seed": 1913158453,
           "tier": 1,
-          "deviceId": "om8397rxmuy97l66",
+          "deviceId": "4pq7kinjkw3yun0v",
           "runIndex": 2,
-          "t": 1792113574015,
+          "t": 1792114632341,
           "type": "run_start",
-          "runId": "a6s5eo1r",
-          "sessionId": "u53j1ujl",
-          "build": "local-202610160119"
+          "runId": "71xppm46",
+          "sessionId": "y6c9e6pv",
+          "build": "local-202610160137"
         }
       ]
     },
@@ -658,7 +658,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 75269209,
+        "seed": 1854935152,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -693,9 +693,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "reflect",
-          "arc",
-          "hardening"
+          "shatter",
+          "bounce",
+          "critSpike"
         ],
         "picks": 0,
         "perks": {},
@@ -734,11 +734,11 @@
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 5.5,
+        "coreHp": 5,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 75269209,
+        "seed": 1854935152,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -780,14 +780,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "reflect": 1
+          "shatter": 1
         },
         "setTiers": {
           "overload": 0,
-          "cryo": 0,
+          "cryo": 2,
           "chain": 0,
           "mining": 0,
-          "firewall": 2
+          "firewall": 0
         },
         "fusionTiers": {},
         "keys": 0,
@@ -820,24 +820,24 @@
         {
           "kind": "midgame",
           "placement": "restart",
-          "t": 1792113577869,
+          "t": 1792114636209,
           "type": "ad_request",
-          "runId": "3ylzig1a",
-          "sessionId": "n9coiwju",
-          "deviceId": "1vuqw6r13tz2mlck",
-          "build": "local-202610160119"
+          "runId": "0l43a2hc",
+          "sessionId": "u9p3qu1n",
+          "deviceId": "r4ugpodidchgjwi8",
+          "build": "local-202610160137"
         },
         {
           "kind": "midgame",
           "placement": "restart",
           "result": "completed",
-          "ms": 2303,
-          "t": 1792113580172,
+          "ms": 2301,
+          "t": 1792114638510,
           "type": "ad_result",
-          "runId": "3ylzig1a",
-          "sessionId": "n9coiwju",
-          "deviceId": "1vuqw6r13tz2mlck",
-          "build": "local-202610160119"
+          "runId": "0l43a2hc",
+          "sessionId": "u9p3qu1n",
+          "deviceId": "r4ugpodidchgjwi8",
+          "build": "local-202610160137"
         }
       ]
     },
@@ -884,7 +884,7 @@
         "coreHp": 5,
         "speed": 1,
         "paused": false,
-        "fps": 63,
+        "fps": 62,
         "seed": 3,
         "levels": {
           "damage": 0,
@@ -1307,7 +1307,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1101034970,
+        "seed": 840843629,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1342,9 +1342,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "glassCannon",
-          "bounty",
-          "burstFire"
+          "hotBarrel",
+          "reflect",
+          "arc"
         ],
         "picks": 0,
         "perks": {},
@@ -1376,18 +1376,18 @@
         "tick": 7,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 3.75,
+        "coreHp": 5,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1101034970,
+        "seed": 840843629,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1429,7 +1429,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "glassCannon": 1
+          "hotBarrel": 1
         },
         "setTiers": {
           "overload": 2,
@@ -1865,7 +1865,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 679311721,
+        "seed": 193369960,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1896,13 +1896,13 @@
         "tab": "atk",
         "amount": 1,
         "commands": 0,
-        "pickOpen": true,
+        "pickOpen": false,
         "placing": false,
         "crystal": [],
         "offer": [
-          "dataMine",
-          "hotBarrel",
-          "critSpike"
+          "bounty",
+          "patch",
+          "conductive"
         ],
         "picks": 0,
         "perks": {},
@@ -1931,7 +1931,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 10,
+        "tick": 7,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1945,7 +1945,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 679311721,
+        "seed": 193369960,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1987,13 +1987,13 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "dataMine": 1
+          "bounty": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
           "chain": 0,
-          "mining": 2,
+          "mining": 0,
           "firewall": 0
         },
         "fusionTiers": {},
@@ -2145,7 +2145,7 @@
           "speed": 5,
           "paused": false,
           "fps": 60,
-          "seed": 555664133,
+          "seed": 1056513019,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2176,13 +2176,13 @@
           "tab": "atk",
           "amount": 1,
           "commands": 0,
-          "pickOpen": true,
+          "pickOpen": false,
           "placing": false,
           "crystal": [],
           "offer": [
-            "bunker",
-            "energySiphon",
-            "hotBarrel"
+            "bounty",
+            "reflect",
+            "overclockRounds"
           ],
           "picks": 0,
           "perks": {},
@@ -2234,7 +2234,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 26,
+        "tick": 20,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2244,11 +2244,11 @@
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 7.700000000000001,
+        "coreHp": 5,
         "speed": 5,
         "paused": false,
         "fps": 58,
-        "seed": 555664133,
+        "seed": 1056513019,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2290,14 +2290,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "bunker": 1
+          "bounty": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
           "chain": 0,
-          "mining": 0,
-          "firewall": 2
+          "mining": 2,
+          "firewall": 0
         },
         "fusionTiers": {},
         "keys": 0,
@@ -2336,8 +2336,8 @@
           "coreHp": 100,
           "speed": 1,
           "paused": false,
-          "fps": 66,
-          "seed": 331372398,
+          "fps": 67,
+          "seed": 261215949,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2372,9 +2372,9 @@
           "placing": false,
           "crystal": [],
           "offer": [
-            "bounce",
-            "burstFire",
-            "hotBarrel"
+            "energySiphon",
+            "hardening",
+            "critSpike"
           ],
           "picks": 0,
           "perks": {},
@@ -2787,7 +2787,9 @@
           "Firewall 0·0"
         ],
         "chips": [],
-        "glow": []
+        "glow": [],
+        "stripEnd": 1135,
+        "stripBottom": 1446
       }
     },
     {
@@ -2806,7 +2808,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3525,7 +3527,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1020,
+        "tick": 1022,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4143,7 +4145,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1028,
+        "tick": 1031,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4518,6 +4520,62 @@
       "detail": []
     },
     {
+      "name": "portrait 360×640: the Bounty chip overlaps no HUD text or set chip and stays on screen",
+      "ok": true,
+      "detail": {
+        "bounty": {
+          "x": 455,
+          "y": 778.2,
+          "w": 233,
+          "h": 43.60000000000002
+        },
+        "wave": {
+          "x": 24,
+          "y": 14,
+          "w": 262,
+          "h": 62.400000000000006
+        },
+        "secs": {
+          "x": 290,
+          "y": 28,
+          "w": 48,
+          "h": 32
+        },
+        "chips": {
+          "x": 18,
+          "y": 150,
+          "w": 450.20000000000005,
+          "h": 52
+        },
+        "pairs": [
+          {
+            "x": 18,
+            "y": 210,
+            "w": 63.24,
+            "h": 52
+          },
+          {
+            "x": 89.24000000000001,
+            "y": 210,
+            "w": 63.24,
+            "h": 52
+          },
+          {
+            "x": 160.48000000000002,
+            "y": 210,
+            "w": 63.24,
+            "h": 52
+          },
+          {
+            "x": 231.72000000000003,
+            "y": 210,
+            "w": 63.24,
+            "h": 52
+          }
+        ]
+      }
+    },
+    {
       "name": "portrait 360×640: no console errors",
       "ok": true,
       "detail": []
@@ -4631,7 +4689,7 @@
         "speed": 5,
         "paused": false,
         "fps": 58,
-        "seed": 55886913,
+        "seed": 1510569829,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -4666,9 +4724,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "bunker",
-          "permafrost",
-          "coldAura"
+          "shatter",
+          "hotBarrel",
+          "critSpike"
         ],
         "picks": 0,
         "perks": {},
@@ -4715,7 +4773,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 69,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4795,7 +4853,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 69,
+        "fps": 67,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4984,7 +5042,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": true,
-        "fps": 62,
+        "fps": 61,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -5067,7 +5125,9 @@
           "Firewall 0·0"
         ],
         "chips": [],
-        "glow": []
+        "glow": [],
+        "stripEnd": 240,
+        "stripBottom": 640
       }
     },
     {
@@ -5086,7 +5146,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -5169,7 +5229,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 3,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -5252,7 +5312,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 914,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -5544,7 +5604,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 917,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6295,7 +6355,9 @@
           "Firewall 0·0"
         ],
         "chips": [],
-        "glow": []
+        "glow": [],
+        "stripEnd": 240,
+        "stripBottom": 640
       }
     },
     {
@@ -6314,7 +6376,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -6397,7 +6459,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -6480,7 +6542,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 912,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6772,7 +6834,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 914,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -7264,11 +7326,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
-        "visible": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
+        "visible": 0,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -7487,10 +7549,10 @@
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 1,
-        "tick": 1,
-        "phase": "wave",
-        "enemies": 1,
+        "wave": 0,
+        "tick": 0,
+        "phase": "pause",
+        "enemies": 0,
         "visible": 0,
         "projectiles": 0,
         "dead": false,
@@ -7691,8 +7753,8 @@
       "name": "landscape protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 1740,
-        "p2": 1740
+        "p1": 1743,
+        "p2": 1743
       }
     },
     {
@@ -7751,7 +7813,9 @@
           "Firewall 0·0"
         ],
         "chips": [],
-        "glow": []
+        "glow": [],
+        "stripEnd": 1135,
+        "stripBottom": 1446
       }
     },
     {
@@ -7794,7 +7858,9 @@
             "Firewall 0·0"
           ],
           "chips": [],
-          "glow": []
+          "glow": [],
+          "stripEnd": 1135,
+          "stripBottom": 1446
         }
       }
     },
@@ -7923,13 +7989,31 @@
             }
           }
         ],
-        "glow": []
+        "glow": [],
+        "stripEnd": 1307,
+        "stripBottom": 1446
       }
     },
     {
       "name": "portrait editor: the strip leads with the Lattice chip",
       "ok": true,
       "detail": "LATTICE 0 · +0 % Bits"
+    },
+    {
+      "name": "portrait editor: the strip ends above the buttons",
+      "ok": true,
+      "detail": {
+        "end": 1307,
+        "bottom": 1446
+      }
+    },
+    {
+      "name": "portrait editor: the strip with a tapped pair ends above the buttons",
+      "ok": true,
+      "detail": {
+        "end": 1307,
+        "bottom": 1446
+      }
     },
     {
       "name": "portrait editor: a pair chip tap glows its link hexes, a second tap clears them",
@@ -8099,6 +8183,345 @@
       "detail": []
     },
     {
+      "name": "portrait-169 editor: a new-module card opens the editor in Place mode with a readout",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "place",
+        "selected": -1,
+        "readout": [
+          "Cryo 0 → 1",
+          "south-west wedge: empty → Cryo"
+        ],
+        "strip": [
+          "LATTICE 0 · +0 % Bits",
+          "Overload 0·0",
+          "Cryo 0·0",
+          "Chain 0·0",
+          "Mining 0·0",
+          "Firewall 0·0"
+        ],
+        "chips": [],
+        "glow": [],
+        "stripEnd": 1063,
+        "stripBottom": 1168
+      }
+    },
+    {
+      "name": "portrait-169 editor (place): all 191 texts ≥ 28 px",
+      "ok": true,
+      "detail": {
+        "min": 28,
+        "count": 191,
+        "bad": []
+      }
+    },
+    {
+      "name": "portrait-169 editor: a slot tap places the module there and switches to Arrange",
+      "ok": true,
+      "detail": {
+        "slot": [
+          -1,
+          2
+        ],
+        "crystal": [
+          [
+            -1,
+            2
+          ]
+        ],
+        "e1": {
+          "open": true,
+          "mode": "arrange",
+          "selected": -1,
+          "readout": [
+            "Cryo 0 → 1",
+            "south-west wedge: empty → Cryo"
+          ],
+          "strip": [
+            "LATTICE 0 · +0 % Bits",
+            "Overload 0·0",
+            "Cryo 1·0",
+            "Chain 0·0",
+            "Mining 0·0",
+            "Firewall 0·0"
+          ],
+          "chips": [],
+          "glow": [],
+          "stripEnd": 1063,
+          "stripBottom": 1168
+        }
+      }
+    },
+    {
+      "name": "portrait-169 editor: DONE closes it and the battle resumes",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "name": "portrait-169 editor: the pause menu's CRYSTAL opens Arrange",
+      "ok": true,
+      "detail": {
+        "open": true,
+        "mode": "arrange",
+        "selected": -1,
+        "readout": [
+          "Select a module"
+        ],
+        "strip": [
+          "LATTICE 0 · +0 % Bits",
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ],
+        "chips": [
+          {
+            "key": "overload+cryo",
+            "r": {
+              "x": 20,
+              "y": 1063,
+              "w": 158,
+              "h": 43
+            }
+          },
+          {
+            "key": "overload+chain",
+            "r": {
+              "x": 195,
+              "y": 1063,
+              "w": 153,
+              "h": 43
+            }
+          },
+          {
+            "key": "cryo+chain",
+            "r": {
+              "x": 365,
+              "y": 1063,
+              "w": 158,
+              "h": 43
+            }
+          },
+          {
+            "key": "chain+firewall",
+            "r": {
+              "x": 540,
+              "y": 1063,
+              "w": 159,
+              "h": 43
+            }
+          },
+          {
+            "key": "mining+firewall",
+            "r": {
+              "x": 20,
+              "y": 1106,
+              "w": 153,
+              "h": 43
+            }
+          }
+        ],
+        "glow": [],
+        "stripEnd": 1149,
+        "stripBottom": 1168
+      }
+    },
+    {
+      "name": "portrait-169 editor: the strip leads with the Lattice chip",
+      "ok": true,
+      "detail": "LATTICE 0 · +0 % Bits"
+    },
+    {
+      "name": "portrait-169 editor: the strip ends above the buttons",
+      "ok": true,
+      "detail": {
+        "end": 1149,
+        "bottom": 1168
+      }
+    },
+    {
+      "name": "portrait-169 editor: the strip with a tapped pair ends above the buttons",
+      "ok": true,
+      "detail": {
+        "end": 1149,
+        "bottom": 1168
+      }
+    },
+    {
+      "name": "portrait-169 editor: a pair chip tap glows its link hexes, a second tap clears them",
+      "ok": true,
+      "detail": {
+        "chip": "mining+firewall",
+        "g1": [
+          [
+            -3,
+            1
+          ]
+        ],
+        "g2": [],
+        "chips": [
+          "overload+cryo",
+          "overload+chain",
+          "cryo+chain",
+          "chain+firewall",
+          "mining+firewall"
+        ]
+      }
+    },
+    {
+      "name": "portrait-169 editor: a selected module shows coloured targets",
+      "ok": true,
+      "detail": {
+        "from": [
+          -1,
+          2
+        ],
+        "to": [
+          -2,
+          3
+        ]
+      }
+    },
+    {
+      "name": "portrait-169 editor: a move changes the bonus strip",
+      "ok": true,
+      "detail": {
+        "before": [
+          "LATTICE 0 · +0 % Bits",
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ],
+        "after": [
+          "LATTICE 0 · +0 % Bits",
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock – · 1 → I weld",
+          "Overcharge – · 2 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 3 → II weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ]
+      }
+    },
+    {
+      "name": "portrait-169 editor (arrange): all 201 texts ≥ 28 px",
+      "ok": true,
+      "detail": {
+        "min": 28,
+        "count": 201,
+        "bad": []
+      }
+    },
+    {
+      "name": "portrait-169 editor: UNDO restores the crystal and the strip",
+      "ok": true,
+      "detail": {
+        "strip": [
+          "LATTICE 0 · +0 % Bits",
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ],
+        "crystal": [
+          [
+            -1,
+            2
+          ],
+          [
+            0,
+            2
+          ],
+          [
+            -1,
+            3
+          ],
+          [
+            -2,
+            3
+          ],
+          [
+            -2,
+            2
+          ],
+          [
+            -3,
+            3
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            -2,
+            1
+          ],
+          [
+            -3,
+            2
+          ],
+          [
+            -2,
+            0
+          ]
+        ]
+      }
+    },
+    {
+      "name": "portrait-169 editor: DONE returns to the pause menu",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "portrait-169 editor: no console errors",
+      "ok": true,
+      "detail": []
+    },
+    {
       "name": "landscape editor: a new-module card opens the editor in Place mode with a readout",
       "ok": true,
       "detail": {
@@ -8118,7 +8541,9 @@
           "Firewall 0·0"
         ],
         "chips": [],
-        "glow": []
+        "glow": [],
+        "stripEnd": 240,
+        "stripBottom": 640
       }
     },
     {
@@ -8161,7 +8586,9 @@
             "Firewall 0·0"
           ],
           "chips": [],
-          "glow": []
+          "glow": [],
+          "stripEnd": 240,
+          "stripBottom": 640
         }
       }
     },
@@ -8290,13 +8717,31 @@
             }
           }
         ],
-        "glow": []
+        "glow": [],
+        "stripEnd": 352,
+        "stripBottom": 640
       }
     },
     {
       "name": "landscape editor: the strip leads with the Lattice chip",
       "ok": true,
       "detail": "LATTICE 0 · +0 % Bits"
+    },
+    {
+      "name": "landscape editor: the strip ends above the buttons",
+      "ok": true,
+      "detail": {
+        "end": 352,
+        "bottom": 640
+      }
+    },
+    {
+      "name": "landscape editor: the strip with a tapped pair ends above the buttons",
+      "ok": true,
+      "detail": {
+        "end": 352,
+        "bottom": 640
+      }
     },
     {
       "name": "landscape editor: a pair chip tap glows its link hexes, a second tap clears them",
@@ -8559,16 +9004,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792113741464,
+        "lastSeen": 1792114804638,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
           "cryoField": 1,
-          "spikes": 1
+          "compound": 1
         },
         "loadout": [
           "cryoField",
-          "spikes"
+          "compound"
         ],
         "presets": [
           [],
@@ -8581,7 +9026,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16953.133333333313,
+          "realMs": 16984.432399999965,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -8648,7 +9093,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 911,
+        "tick": 910,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -8658,7 +9103,7 @@
         "kills": 7,
         "energy": 17.6458452722063,
         "bits": 7,
-        "coreHp": 110.00000000000001,
+        "coreHp": 100,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -8704,14 +9149,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "patch": 1
+          "coldAura": 1
         },
         "setTiers": {
           "overload": 0,
-          "cryo": 0,
+          "cryo": 2,
           "chain": 0,
           "mining": 0,
-          "firewall": 2
+          "firewall": 0
         },
         "fusionTiers": {},
         "keys": 0,
@@ -8773,7 +9218,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 64,
         "seed": 4,
         "levels": {
           "damage": 0,
@@ -8847,16 +9292,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792113771096,
+        "lastSeen": 1792114834287,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "criticalMass": 1,
-          "ricochet": 1
+          "ricochet": 1,
+          "spikes": 1
         },
         "loadout": [
-          "criticalMass",
-          "ricochet"
+          "ricochet",
+          "spikes"
         ],
         "presets": [
           [],
@@ -8869,7 +9314,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16951.3733333333,
+          "realMs": 16970.63999999999,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -8946,7 +9391,7 @@
         "kills": 7,
         "energy": 17.6458452722063,
         "bits": 7,
-        "coreHp": 100,
+        "coreHp": 110.00000000000001,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -8980,7 +9425,7 @@
         "unlocked": [],
         "tab": "atk",
         "amount": 1,
-        "commands": 2,
+        "commands": 1,
         "pickOpen": false,
         "placing": false,
         "crystal": [
@@ -8992,14 +9437,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "critSpike": 1
+          "patch": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
         "fusionTiers": {},
         "keys": 0,
@@ -9046,12 +9491,12 @@
       "ok": true,
       "detail": {
         "cards": {
-          "cryoField": 1,
-          "criticalMass": 1
+          "spikes": 1,
+          "cryoField": 1
         },
         "loadout": [
-          "cryoField",
-          "criticalMass"
+          "spikes",
+          "cryoField"
         ]
       }
     },
@@ -9097,12 +9542,12 @@
       "ok": true,
       "detail": {
         "tags": [
-          "cryo",
-          "overload"
+          "firewall",
+          "cryo"
         ],
         "cards": [
-          "cryoField",
-          "criticalMass"
+          "spikes",
+          "cryoField"
         ],
         "sets": {
           "overload": 0,
@@ -9123,12 +9568,12 @@
       "ok": true,
       "detail": {
         "cards": {
-          "ricochet": 1,
-          "spikes": 1
+          "spikes": 1,
+          "cryoField": 1
         },
         "loadout": [
-          "ricochet",
-          "spikes"
+          "spikes",
+          "cryoField"
         ]
       }
     },
@@ -9174,12 +9619,12 @@
       "ok": true,
       "detail": {
         "tags": [
-          "chain",
-          "firewall"
+          "firewall",
+          "cryo"
         ],
         "cards": [
-          "ricochet",
-          "spikes"
+          "spikes",
+          "cryoField"
         ],
         "sets": {
           "overload": 0,
@@ -9237,7 +9682,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15551.663333333323,
+          "realMs": 15617.923333333318,
           "simTicks": 2333,
           "waves": 3,
           "kills": {
@@ -9315,7 +9760,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15551.09999999999,
+          "realMs": 15618.059999999987,
           "simTicks": 2333,
           "waves": 3,
           "kills": {
@@ -9358,21 +9803,21 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 1132,
+        "tick": 1131,
         "phase": "wave",
-        "enemies": 199,
-        "visible": 199,
-        "projectiles": 0,
+        "enemies": 200,
+        "visible": 200,
+        "projectiles": 1,
         "dead": false,
         "overlay": false,
-        "kills": 73,
-        "energy": 176.50601719197707,
-        "bits": 73,
-        "coreHp": 999999966355.6061,
+        "kills": 72,
+        "energy": 174.62292263610314,
+        "bits": 72,
+        "coreHp": 999999966597.194,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1976677317,
+        "seed": 1165151370,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -9452,13 +9897,13 @@
         "dead": false,
         "overlay": false,
         "kills": 73,
-        "energy": 176.54899713467051,
+        "energy": 175.3856733524355,
         "bits": 73,
-        "coreHp": 999999966227.8969,
+        "coreHp": 999999966248.4891,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 73261136,
+        "seed": 2102416896,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,

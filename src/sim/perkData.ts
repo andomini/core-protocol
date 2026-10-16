@@ -181,6 +181,8 @@ export interface SetsData {
   weldTicks: number;
   /** Lattice: run-end Bits × (1 + latticeCoef × the tick-averaged sum of fusion tier indices) (§4). */
   latticeCoef: number;
+  /** Lattice ceiling: the run-end Bits bonus from the Lattice never exceeds this share (spec §Balance: ≤ +22 %). */
+  latticeMax: number;
   /** One fusion per tag pair, keyed "a+b" in TAGS order (fusionKey). */
   fusions: Record<string, FusionDef>;
 }
@@ -376,6 +378,7 @@ export function validateSets(s: SetsData): void {
   wholePos(s.apexSet, 'sets.apexSet');
   wholePos(s.weldTicks, 'sets.weldTicks');
   check(finite(s.latticeCoef) && s.latticeCoef >= 0, 'sets.latticeCoef must be a finite number >= 0');
+  check(finite(s.latticeMax) && s.latticeMax >= 0, 'sets.latticeMax must be a finite number >= 0');
   s.tiers.forEach((t, i) => {
     wholePos(t, `sets.tiers[${i}]`);
     if (i > 0) check(t > s.tiers[i - 1]!, 'sets.tiers must be increasing');
@@ -407,8 +410,7 @@ export function validateSets(s: SetsData): void {
     for (const t of Object.keys(f!.tiers)) check(s.fusionTiers.includes(Number(t)), `sets.fusions.${key}.tiers.${t} is not a fusion tier`);
     for (const t of s.fusionTiers) {
       const eff = f!.tiers[String(t)];
-      // An empty ladder step is allowed (a tier kept for the link count whose effects are pending a redesign).
-      check(Array.isArray(eff), `sets.fusions.${key}.tiers.${t} must list effects`);
+      check(Array.isArray(eff) && eff.length > 0, `sets.fusions.${key}.tiers.${t} must list effects`);
       eff!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.tiers.${t}[${i}]`, true));
     }
     validateStructureLadder(key, f!, s.fusionTiers);

@@ -37,7 +37,7 @@ export class MetaStore {
 
   constructor(
     private readonly kv: KeyValue,
-    data: GameData,
+    private readonly data: GameData,
     md: MetaData,
     private readonly now: () => number = () => Date.now(),
   ) {
@@ -87,7 +87,7 @@ export class MetaStore {
       return null;
     }
     try {
-      return { world: restore(r.data.snapshot), opts: r.data.opts, savedAt: r.data.savedAt, stats: validateRunStats(r.data.stats) };
+      return { world: restore(r.data.snapshot, this.data), opts: r.data.opts, savedAt: r.data.savedAt, stats: validateRunStats(r.data.stats) };
     } catch {
       this.clearRun();
       return null;
