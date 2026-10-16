@@ -58,7 +58,7 @@ for (let p = 1; p <= players; p++) {
     const tier = m.tierUnlocked;
     const res = runBot(D, 'greedy', buildRunOptions(m, D, M, tier, p * 1000 + r), 90, 'greedy-pick');
     minutes += res.simMinutes;
-    const s = settleRun(m, D, M, { tier, wave: res.wave, bits: res.world.bits, keys: res.world.keys, doubled: false });
+    const s = settleRun(m, D, M, { tier, wave: res.wave, bits: res.world.bits, keys: res.world.keys, doubled: false, fusionsReached: res.world.fusionBest });
     const buys = spend(m);
     buysPerRun.push(buys);
     rows.push({ run: r, tier, wave: res.wave, minutes: Math.round(minutes), bits: s.bits, buys });

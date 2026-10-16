@@ -17,6 +17,10 @@ export type SimEvent =
   /** `dealt`: damage actually removed (no overkill); `healed`: Lifesteal HP from this hit. */
   | { type: 'hit'; enemyId: number; damage: number; dealt: number; crit: boolean; source: HitSource; healed: number }
   | { type: 'kill'; enemyId: number; kind: EnemyKind; energy: number; bits: number; keys: number }
+  /** A Bounty Mark was killed (its kill event already paid `energy`/`bits`, Mark multipliers included). */
+  | { type: 'markKill'; enemyId: number; x: number; y: number; energy: number; bits: number }
+  /** The Bounty jackpot paid `bits` (the run's `n`th jackpot) at the Mark killed at (x, y). */
+  | { type: 'bountyJackpot'; bits: number; n: number; x: number; y: number }
   /** `blocked`: absorbed by the 🛡 immunity window. */
   | { type: 'coreHit'; enemyId: number; damage: number; ranged: boolean; blocked: boolean; absorbed: number }
   /** A virus attack landed on a structure (`damage` after Defense; the structure's own HP, not the core's). */

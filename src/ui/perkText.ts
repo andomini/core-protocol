@@ -3,7 +3,7 @@
 
 import type { GameData, StatId } from '../sim/data';
 import type { Effect, Tag } from '../sim/perkData';
-import { fusionEffects, fusionSteps } from '../sim/crystal';
+import { fusionEffects, fusionSteps, fusionTierIndex, slotGains } from '../sim/crystal';
 import { latticeMean, latticeNow } from '../sim/perks';
 import type { World } from '../sim/state';
 import type { ModTarget } from '../sim/stats';
@@ -101,6 +101,20 @@ function structureLine(data: GameData, e: Extract<Effect, { type: 'structure' }>
   return line.charAt(0).toUpperCase() + line.slice(1);
 }
 
+/** Bounty Marks: one line per field the step sets (a later step only lists what it raises). */
+function markLine(e: Extract<Effect, { type: 'mark' }>): string {
+  const parts: string[] = [];
+  if (e.count !== undefined) {
+    const mul = [e.energyMul !== undefined ? `×${round(e.energyMul)} Energy` : '', e.bitsMul !== undefined ? `×${round(e.bitsMul)} Bits` : ''].filter((x) => x !== '');
+    parts.push(`${round(e.count)} Marked virus${e.count === 1 ? '' : 'es'}/wave${mul.length > 0 ? `: ${mul.join(' ')}` : ''}`);
+  }
+  if (e.critMul !== undefined) parts.push(`crit kill on a Mark ×${round(e.critMul)} more`);
+  if (e.bossBitsMul !== undefined) parts.push(`boss always Marked: ×${round(e.bossBitsMul)} Bits`);
+  if (e.jackpotEvery !== undefined) parts.push(`jackpot every ${round(e.jackpotEvery)} Marks${e.jackpotCap !== undefined ? ` (max ${round(e.jackpotCap)}/run)` : ''}`);
+  const line = parts.join('; ');
+  return line.charAt(0).toUpperCase() + line.slice(1);
+}
+
 /** One line describing a single effect (one stack). */
 export function effectLine(data: GameData, e: Effect): string {
   switch (e.type) {
@@ -164,6 +178,8 @@ export function effectLine(data: GameData, e: Effect): string {
       return `Thorns slow attackers ${pct(e.strength)} for ${round(e.seconds)}s`;
     case 'structure':
       return structureLine(data, e);
+    case 'mark':
+      return markLine(e);
     case 'ruleChange': {
       const f = RULE_TEXT[e.rule];
       return f ? f(e.op, e.value) : `${e.rule} ${e.op === 'mul' ? '×' : '+'}${round(e.value)}`;
@@ -296,4 +312,18 @@ export function latticeLine(data: GameData, w: World, final = false): string {
   const pct = Math.round(data.sets.latticeCoef * mean * 1000) / 10;
   const shown = final ? `avg ${Math.round(mean * 10) / 10}` : `${latticeNow(w, data)}`;
   return `LATTICE ${shown} · +${pct} % Bits`;
+}
+
+/** Pick-card fusion badges for taking `id` (at its auto slot): "opens X", "+1 link → X II", "Apex ready: X". */
+export function pickBadges(data: GameData, w: World, id: string): string[] {
+  const out: string[] = [];
+  for (const f of slotGains(w, data, id)?.fusions ?? []) {
+    if (f.tierTo <= f.tierFrom) continue;
+    const name = data.sets.fusions[f.key]!.name.toUpperCase();
+    const steps = fusionSteps(data, f.key);
+    if (fusionTierIndex(data, f.key, f.tierTo) === steps.length && steps.length > data.sets.fusionTiers.length) out.push(`Apex ready: ${name}`);
+    else if (f.tierFrom === 0) out.push(`opens ${name} ${fusionLevel(data, f.tierTo)}`);
+    else out.push(`+${f.to - f.from} link → ${name} ${fusionLevel(data, f.tierTo)}`);
+  }
+  return out;
 }

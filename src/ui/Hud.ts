@@ -3,10 +3,11 @@
 // Also paints the opaque backing under the upgrade panel (src/ui/UpgradePanel.ts draws the panel).
 
 import Phaser from 'phaser';
-import { BG, BREAK, CYAN, ENERGY_CSS, HP_LOW, HP_OK, PANEL_FILL, TEXT_DIM, WHITE } from '../render/palette';
+import { BG, BREAK, CYAN, ENERGY_CSS, HP_LOW, HP_OK, MARK_CSS, PANEL_FILL, TEXT_DIM, WHITE } from '../render/palette';
 import { ps } from '../render/resolution';
 import { DEPTH } from '../render/WorldView';
 import type { GameData } from '../sim/data';
+import { fusionMark } from '../sim/perks';
 import type { World } from '../sim/state';
 import type { CoreStats } from '../sim/stats';
 import { pauseTicks, waveTicks } from '../sim/waves';
@@ -28,6 +29,8 @@ interface Geo {
   hp: Rect;
   hpFont: number;
   timer: Rect;
+  /** Bounty chip anchor (right-aligned). */
+  bounty: [number, number, number];
 }
 
 function geometry(L: Layout): Geo {
@@ -46,6 +49,7 @@ function geometry(L: Layout): Geo {
       hp: { x: 70, y: 86, w: 430, h: 34 },
       hpFont: 28,
       timer: { x: 0, y: h.h - 6, w: h.w, h: 6 },
+      bounty: [500, 44, 22],
     };
   }
   const x = h.x + 28;
@@ -62,6 +66,7 @@ function geometry(L: Layout): Geo {
     hp: { x: x + 36, y: 110, w: h.w - 92, h: 28 },
     hpFont: 18,
     timer: { x, y: 90, w: h.w - 56, h: 6 },
+    bounty: [h.x + h.w - 30, 170, 18],
   };
 }
 
@@ -80,7 +85,8 @@ export class Hud {
   readonly speedBtn: Button;
   private readonly pauseBtn: Button;
   private readonly pausedBanner: Phaser.GameObjects.Text;
-  private last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null as boolean | null };
+  private readonly bountyText: Phaser.GameObjects.Text;
+  private last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null as boolean | null, bounty: '' };
   private hpShown = 1;
   private hitUntil = 0;
 
@@ -113,6 +119,9 @@ export class Hud {
     scene.add.image(g.hpIcon[0], g.hpIcon[1], 'ic_hp').setScale(ps(g.hpIcon[2])).setDepth(D).setBlendMode(Phaser.BlendModes.ADD);
     this.hpText = text(scene, g.hp.x + g.hp.w / 2, g.hp.y + g.hp.h / 2, '', g.hpFont, { stroke: true }).setOrigin(0.5).setDepth(D + 0.2);
     this.bars = scene.add.graphics().setDepth(D + 0.1);
+    this.bountyText = text(scene, g.bounty[0], g.bounty[1], '', Math.max(L.minFont, g.bounty[2]), { font: 'title', weight: '900', color: MARK_CSS, glow: MARK_CSS, blur: 8 })
+      .setOrigin(1, 0.5)
+      .setDepth(D);
     this.speedBtn = new Button(scene, g.speed, '×1', g.btnFont, D, h.onSpeed, { font: 'title' });
     this.pauseBtn = new Button(scene, g.pause, '', g.btnFont, D, h.onPause);
     this.pauseBtn.drawPauseIcon(false);
@@ -128,7 +137,7 @@ export class Hud {
   }
 
   reset(): void {
-    this.last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null };
+    this.last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null, bounty: '' };
     this.hpShown = 1;
   }
 
@@ -150,6 +159,8 @@ export class Hud {
     if (energy !== L.energy) this.energyText.setText((L.energy = energy));
     const hp = `${formatNum(Math.ceil(w.core.hp - 1e-6))} / ${formatNum(st.health)}`;
     if (hp !== L.hp) this.hpText.setText((L.hp = hp));
+    const bounty = bountyChip(w, this.data);
+    if (bounty !== L.bounty) this.bountyText.setText((L.bounty = bounty));
     if (speed !== L.speed) {
       L.speed = speed;
       this.speedBtn.label.setText(`×${speed}`);
@@ -188,4 +199,11 @@ export class Hud {
     g.lineStyle(hit ? 6 : 6, hit ? HP_LOW : color, hit ? 0.45 : 0.15).strokeRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
     g.lineStyle(2, hit ? WHITE : color, hit ? 1 : 0.8).strokeRect(r.x, r.y, r.w, r.h);
   }
+}
+
+/** "BOUNTY n/12" while the Bounty Marks jackpot is live and under its per-run cap, else ''. */
+export function bountyChip(w: World, data: GameData): string {
+  const m = fusionMark(w, data);
+  if (m === null || m.jackpotEvery <= 0 || w.marks.jackpots >= m.jackpotCap) return '';
+  return `BOUNTY ${w.marks.killed % m.jackpotEvery}/${m.jackpotEvery}`;
 }

@@ -137,7 +137,7 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
     expect(w.fusionTiers['overload+mining']).toBe(1);
     expect(ofType(ev, 'fusion')).toEqual([{ type: 'fusion', key: 'overload+mining', tier: 1, prev: 3, a: at(0), b: o(1) }]);
     expect(w.mods.filter((m) => m.source.startsWith('fusion:overload+mining:3'))).toEqual([]);
-    expect(worldStats(w, D).critChance).toBeCloseTo(crit - 0.05, 12);
+    expect(worldStats(w, D).critChance).toBeCloseTo(crit - 0.03, 12);
     ev = move(w, at(6), o(2));
     expect(w.fusionTiers['overload+mining']).toBe(1);
     expect(ofType(ev, 'fusion')).toEqual([]);

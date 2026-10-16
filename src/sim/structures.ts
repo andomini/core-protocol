@@ -371,9 +371,17 @@ function fireTurrets(w: World, data: GameData, st: CoreStats, prof: PerkProfile,
     gridFor(data).kNearest(s.x, s.y, turret.range ?? 0, targets + (w.kills - kills0), nearS);
     if (nearS.length === 0) continue;
     hitS.length = 0;
+    // Bounty Marks × Bastion (both ≥ II): a Marked virus in range is shot first.
+    if (prof.markTurrets) {
+      const r2 = (turret.range ?? 0) * (turret.range ?? 0);
+      for (const e of w.enemies) {
+        if (hitS.length >= targets) break;
+        if (e.marked === true && e.hp > 0 && (e.x - s.x) * (e.x - s.x) + (e.y - s.y) * (e.y - s.y) <= r2) hitS.push(e);
+      }
+    }
     for (const e of nearS) {
-      if (e.hp <= 0) continue;
       if (hitS.length >= targets) break;
+      if (e.hp <= 0 || hitS.includes(e)) continue;
       hitS.push(e);
     }
     if (hitS.length === 0) continue;

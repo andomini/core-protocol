@@ -46,7 +46,7 @@ import { services } from '../../services';
 import { battleData, type DevFlags, readFlags, stressTuning } from '../devFlags';
 import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
-import { CRIMSON, ENERGY, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_RED } from '../palette';
+import { CRIMSON, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_RED } from '../palette';
 import { SetTooltip } from '../../ui/SetTooltip';
 import { fusionLevel, fusionLines, fusionReachedLines, fusionTags, latticeLine, totalLines } from '../../ui/perkText';
 import { RunSession } from '../RunSession';
@@ -362,7 +362,7 @@ export class BattleScene extends Phaser.Scene {
     if (this.flags.stress) return;
     const m = services.meta.meta;
     const lifetimeBefore = structuredClone(m.lifetime);
-    const s = settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul });
+    const s = settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest });
     this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore };
     addRunToLifetime(m.lifetime, this.runStats, {
       waves: w.wave,
@@ -382,6 +382,8 @@ export class BattleScene extends Phaser.Scene {
     if (s.newBest) parts.push('NEW BEST');
     if (s.milestones.length) parts.push(`MILESTONE ${s.milestones.map((m) => `W${m}`).join(' ')}`);
     if (s.tierUnlocked) parts.push(`TIER ${s.tierUnlocked} UNLOCKED`);
+    if (s.codexBits > 0) parts.push(`CODEX +${formatNum(s.codexBits)} BITS`);
+    else if (s.codexNew.length) parts.push(`CODEX +${s.codexNew.length}`);
     if (this.starter) parts.push('STARTER CARDS UNLOCKED');
     return parts.join(' · ');
   }
@@ -415,10 +417,12 @@ export class BattleScene extends Phaser.Scene {
     if (!p || p.doubled) return;
     void this.rewarded('doubleBits').then((ok) => {
       if (!ok || !this.paid || this.paid.doubled) return;
-      services.meta.meta.bits += this.paid.s.bits;
+      // The one-off Codex Bits are not doubled.
+      const extra = this.paid.s.bits - this.paid.s.codexBits;
+      services.meta.meta.bits += extra;
       this.paid.doubled = true;
       services.meta.save();
-      this.death.update2({ bits: this.paid.s.bits * 2, canDouble: false });
+      this.death.update2({ bits: this.paid.s.bits + extra, canDouble: false });
     });
   }
 
@@ -1009,6 +1013,19 @@ export class BattleScene extends Phaser.Scene {
         const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
         this.fx.pulse(sx, sy, 22 * L.scale, TAG_COLOR.mining);
         this.numbers.popup(sx, sy, `+${formatNum(e.energy)} E${e.bits > 0 ? ` +${formatNum(e.bits)} B` : ''}`, TAG_CSS.mining);
+        break;
+      }
+      case 'markKill': {
+        // Bounty Mark down: a gold burst and its pay.
+        const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
+        this.fx.pulse(sx, sy, 30 * L.scale, MARK);
+        this.numbers.popup(sx, sy, `+${formatNum(e.energy)} E +${formatNum(e.bits)} B`, MARK_CSS);
+        break;
+      }
+      case 'bountyJackpot': {
+        const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
+        this.fx.waveRing(sx, sy, 60 * L.scale, MARK);
+        this.showBanner(`BOUNTY JACKPOT +${formatPrice(e.bits)} BITS`, MARK_CSS, now);
         break;
       }
       case 'waveStart':

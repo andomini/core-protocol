@@ -7,7 +7,7 @@ import type { EnemyKind } from '../sim/data';
 import type { Enemy } from '../sim/state';
 import type { Layout } from '../ui/layout';
 import { TAGS, type Tag } from '../sim/perkData';
-import { CORE, CORE_HIT, CRIMSON, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
+import { CORE, CORE_HIT, CRIMSON, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, MARK, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
 import { ImagePool } from './pools';
 import { ps, RS } from './resolution';
 import type { RunSession } from './RunSession';
@@ -294,6 +294,20 @@ export class WorldView {
       }
       const r = e.radius * L.scale * ENEMY_VIS;
       if (gene !== null) bars.lineStyle(Math.max(1.5, r * 0.14), TAG_COLOR[gene], 0.75 * fade).strokeCircle(sx, sy, r + 3);
+      // Bounty Mark: a gold reticle (ring + four turning ticks).
+      if (e.marked === true) {
+        const rr = r + 8;
+        const lw = Math.max(2, r * 0.12);
+        bars.lineStyle(lw * 3, MARK, 0.15 * fade).strokeCircle(sx, sy, rr);
+        bars.lineStyle(lw, MARK, 0.95 * fade).strokeCircle(sx, sy, rr);
+        const a0 = now * 0.0015;
+        for (let i = 0; i < 4; i++) {
+          const a = a0 + (i * Math.PI) / 2;
+          const c = Math.cos(a);
+          const d = Math.sin(a);
+          bars.lineBetween(sx + c * (rr - 5), sy + d * (rr - 5), sx + c * (rr + 9), sy + d * (rr + 9));
+        }
+      }
       if (s.kind === 'boss') {
         const bw = Math.max(120, r * 3.2);
         const by = sy - r - 26;

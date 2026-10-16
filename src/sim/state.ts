@@ -148,8 +148,13 @@ export interface World {
   frost: Record<string, number>;
   /** Blueprint copied in at run start (phase 6); empty = none. */
   blueprint: BlueprintHex[];
-  /** Bounty Marks (phase 2): Marks killed and jackpots paid this run. */
-  marks: { killed: number; jackpots: number };
+  /**
+   * Bounty Marks (phase 2): Marks killed and jackpots paid this run; `plan`: this wave's Mark draw (createStream
+   * 'mark:'+wave) as spawn-queue lengths left at spawn time (1 = the last spawn), the first `count` of them Marked.
+   */
+  marks: { killed: number; jackpots: number; plan: number[] };
+  /** The run's best tier per fusion pair (a link count like fusionTiers; absent = never reached): the Codex reads it at run end. */
+  fusionBest: Record<string, number>;
   /** Perk ids on offer (display order) while `phase === 'pick'`; empty otherwise. */
   offer: string[];
   /** Rerolls used on the open offer. */
@@ -301,7 +306,8 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     tagCountsNow: blankGenome(),
     frost: {},
     blueprint: [],
-    marks: { killed: 0, jackpots: 0 },
+    marks: { killed: 0, jackpots: 0, plan: [] },
+    fusionBest: {},
     offer: [],
     rerolls: 0,
     picks: 0,

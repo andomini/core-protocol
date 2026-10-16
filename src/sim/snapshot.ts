@@ -146,7 +146,10 @@ export function restore(s: string): World {
   w.tagCountsNow ??= crystalTagCounts(w as World);
   w.frost ??= {};
   w.blueprint ??= [];
-  w.marks ??= { killed: 0, jackpots: 0 };
+  w.marks ??= { killed: 0, jackpots: 0, plan: [] };
+  // Phase 2: no Mark plan yet (the next wave start draws one); the best tiers start from the tiers now.
+  if (isRecord(w.marks)) w.marks.plan ??= [];
+  if (w.fusionBest === undefined && isRecord(w.fusionTiers)) w.fusionBest = { ...w.fusionTiers };
   if (
     !isRecord(w.fusionPending) ||
     !Object.values(w.fusionPending).every((p) => isRecord(p) && Number.isInteger(p.tier) && Number.isInteger(p.links) && Number.isInteger(p.sinceTick)) ||
@@ -159,7 +162,11 @@ export function restore(s: string): World {
     !Array.isArray(w.blueprint) ||
     !isRecord(w.marks) ||
     typeof w.marks.killed !== 'number' ||
-    typeof w.marks.jackpots !== 'number'
+    typeof w.marks.jackpots !== 'number' ||
+    !Array.isArray(w.marks.plan) ||
+    !w.marks.plan.every((x) => Number.isInteger(x)) ||
+    !isRecord(w.fusionBest) ||
+    !Object.values(w.fusionBest).every((x) => Number.isInteger(x))
   ) {
     throw new Error('snapshot: malformed world');
   }

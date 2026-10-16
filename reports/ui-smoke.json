@@ -1,12 +1,12 @@
 {
-  "date": "2026-10-16T00:02:33.894Z",
+  "date": "2026-10-16T01:24:09.403Z",
   "metrics": {
-    "portrait.firstPickMs": 4,
-    "portrait.firstVisibleSimS": 0,
-    "landscape 1280×720.firstPickMs": 5,
+    "portrait.firstPickMs": 2,
+    "portrait.firstVisibleSimS": 0.03,
+    "landscape 1280×720.firstPickMs": 2,
     "landscape 1280×720.firstVisibleSimS": 0.03,
-    "landscape 907×510.firstPickMs": 5,
-    "landscape 907×510.firstVisibleSimS": 0.03,
+    "landscape 907×510.firstPickMs": 1,
+    "landscape 907×510.firstVisibleSimS": 0,
     "stress.desktop.fps": 60,
     "stress.phone.cpu4x.fps": 60
   },
@@ -267,24 +267,24 @@
         {
           "seed": 3,
           "tier": 1,
-          "deviceId": "cxouozow85b8uevq",
+          "deviceId": "om8397rxmuy97l66",
           "runIndex": 1,
-          "t": 1792108678500,
+          "t": 1792113569521,
           "type": "run_start",
-          "runId": "jle1rasg",
-          "sessionId": "npj2x9fm",
-          "build": "local-202610152357"
+          "runId": "vqygzns1",
+          "sessionId": "u53j1ujl",
+          "build": "local-202610160119"
         },
         {
-          "seed": 72397826,
+          "seed": 1463748301,
           "tier": 1,
-          "deviceId": "cxouozow85b8uevq",
+          "deviceId": "om8397rxmuy97l66",
           "runIndex": 2,
-          "t": 1792108683055,
+          "t": 1792113574015,
           "type": "run_start",
-          "runId": "sfvrab9a",
-          "sessionId": "npj2x9fm",
-          "build": "local-202610152357"
+          "runId": "a6s5eo1r",
+          "sessionId": "u53j1ujl",
+          "build": "local-202610160119"
         }
       ]
     },
@@ -658,7 +658,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1361243551,
+        "seed": 75269209,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -693,9 +693,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "bunker",
-          "bounce",
-          "bounty"
+          "reflect",
+          "arc",
+          "hardening"
         ],
         "picks": 0,
         "perks": {},
@@ -734,11 +734,11 @@
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 7.700000000000001,
+        "coreHp": 5.5,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1361243551,
+        "seed": 75269209,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -780,7 +780,7 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "bunker": 1
+          "reflect": 1
         },
         "setTiers": {
           "overload": 0,
@@ -820,24 +820,24 @@
         {
           "kind": "midgame",
           "placement": "restart",
-          "t": 1792108686835,
+          "t": 1792113577869,
           "type": "ad_request",
-          "runId": "ptimy6tb",
-          "sessionId": "czvx1snx",
-          "deviceId": "zpig6z220ggyn3d1",
-          "build": "local-202610152357"
+          "runId": "3ylzig1a",
+          "sessionId": "n9coiwju",
+          "deviceId": "1vuqw6r13tz2mlck",
+          "build": "local-202610160119"
         },
         {
           "kind": "midgame",
           "placement": "restart",
           "result": "completed",
-          "ms": 2302,
-          "t": 1792108689137,
+          "ms": 2303,
+          "t": 1792113580172,
           "type": "ad_result",
-          "runId": "ptimy6tb",
-          "sessionId": "czvx1snx",
-          "deviceId": "zpig6z220ggyn3d1",
-          "build": "local-202610152357"
+          "runId": "3ylzig1a",
+          "sessionId": "n9coiwju",
+          "deviceId": "1vuqw6r13tz2mlck",
+          "build": "local-202610160119"
         }
       ]
     },
@@ -1307,7 +1307,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 28098748,
+        "seed": 1101034970,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1342,9 +1342,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "patch",
-          "critSpike",
-          "reflect"
+          "glassCannon",
+          "bounty",
+          "burstFire"
         ],
         "picks": 0,
         "perks": {},
@@ -1373,7 +1373,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 8,
+        "tick": 7,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -1383,11 +1383,11 @@
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 5.5,
+        "coreHp": 3.75,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 28098748,
+        "seed": 1101034970,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1429,14 +1429,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "patch": 1
+          "glassCannon": 1
         },
         "setTiers": {
-          "overload": 0,
+          "overload": 2,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 2
+          "firewall": 0
         },
         "fusionTiers": {},
         "keys": 0,
@@ -1865,7 +1865,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 2014127181,
+        "seed": 679311721,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1900,9 +1900,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "burstFire",
-          "conductive",
-          "permafrost"
+          "dataMine",
+          "hotBarrel",
+          "critSpike"
         ],
         "picks": 0,
         "perks": {},
@@ -1931,7 +1931,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 7,
+        "tick": 10,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -1945,7 +1945,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 2014127181,
+        "seed": 679311721,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1987,13 +1987,13 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "burstFire": 1
+          "dataMine": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
           "chain": 0,
-          "mining": 0,
+          "mining": 2,
           "firewall": 0
         },
         "fusionTiers": {},
@@ -2145,7 +2145,7 @@
           "speed": 5,
           "paused": false,
           "fps": 60,
-          "seed": 251246262,
+          "seed": 555664133,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2180,9 +2180,9 @@
           "placing": false,
           "crystal": [],
           "offer": [
-            "hotBarrel",
-            "bounce",
-            "greedyProtocol"
+            "bunker",
+            "energySiphon",
+            "hotBarrel"
           ],
           "picks": 0,
           "perks": {},
@@ -2219,7 +2219,7 @@
       "ok": true,
       "detail": {
         "ok": false,
-        "ms": 153,
+        "ms": 152,
         "toast": {
           "text": "No ad right now",
           "opacity": "1",
@@ -2234,7 +2234,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 25,
+        "tick": 26,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2244,11 +2244,11 @@
         "kills": 0,
         "energy": 0,
         "bits": 0,
-        "coreHp": 5,
+        "coreHp": 7.700000000000001,
         "speed": 5,
         "paused": false,
         "fps": 58,
-        "seed": 251246262,
+        "seed": 555664133,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2290,14 +2290,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "hotBarrel": 1
+          "bunker": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
         "fusionTiers": {},
         "keys": 0,
@@ -2336,8 +2336,8 @@
           "coreHp": 100,
           "speed": 1,
           "paused": false,
-          "fps": 67,
-          "seed": 2028942226,
+          "fps": 66,
+          "seed": 331372398,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2373,8 +2373,8 @@
           "crystal": [],
           "offer": [
             "bounce",
-            "hardening",
-            "reflect"
+            "burstFire",
+            "hotBarrel"
           ],
           "picks": 0,
           "perks": {},
@@ -2576,11 +2576,11 @@
       }
     },
     {
-      "name": "portrait pick overlay: all 184 texts ≥ 28 px",
+      "name": "portrait pick overlay: all 191 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 184,
+        "count": 191,
         "bad": []
       }
     },
@@ -2779,20 +2779,23 @@
           "south-west wedge: empty → Mining"
         ],
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 0·0",
           "Cryo 0·0",
           "Chain 0·0",
           "Mining 1·0",
           "Firewall 0·0"
-        ]
+        ],
+        "chips": [],
+        "glow": []
       }
     },
     {
-      "name": "portrait: all 189 texts ≥ 28 px",
+      "name": "portrait: all 197 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 189,
+        "count": 197,
         "bad": []
       }
     },
@@ -2803,7 +2806,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3216,7 +3219,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 916,
+        "tick": 912,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3522,7 +3525,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1026,
+        "tick": 1020,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3916,11 +3919,11 @@
       }
     },
     {
-      "name": "portrait 360×640: all 178 texts ≥ 28 px",
+      "name": "portrait 360×640: all 185 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 178,
+        "count": 185,
         "bad": []
       }
     },
@@ -4140,7 +4143,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1030,
+        "tick": 1028,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4628,7 +4631,7 @@
         "speed": 5,
         "paused": false,
         "fps": 58,
-        "seed": 1172000033,
+        "seed": 55886913,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -4663,9 +4666,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "patch",
-          "hotBarrel",
-          "permafrost"
+          "bunker",
+          "permafrost",
+          "coldAura"
         ],
         "picks": 0,
         "perks": {},
@@ -4712,7 +4715,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 69,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4792,7 +4795,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 69,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -4853,11 +4856,11 @@
       }
     },
     {
-      "name": "landscape 1280×720 pick overlay: all 184 texts ≥ 16 px",
+      "name": "landscape 1280×720 pick overlay: all 191 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 184,
+        "count": 191,
         "bad": []
       }
     },
@@ -4981,7 +4984,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": true,
-        "fps": 61,
+        "fps": 62,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -5056,20 +5059,23 @@
           "south-west wedge: empty → Mining"
         ],
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 0·0",
           "Cryo 0·0",
           "Chain 0·0",
           "Mining 1·0",
           "Firewall 0·0"
-        ]
+        ],
+        "chips": [],
+        "glow": []
       }
     },
     {
-      "name": "landscape 1280×720: all 189 texts ≥ 16 px",
+      "name": "landscape 1280×720: all 197 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 189,
+        "count": 197,
         "bad": []
       }
     },
@@ -5163,7 +5169,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 3,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -5246,7 +5252,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 916,
+        "tick": 913,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -5538,7 +5544,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 916,
+        "tick": 913,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6078,11 +6084,11 @@
       }
     },
     {
-      "name": "landscape 907×510 pick overlay: all 184 texts ≥ 16 px",
+      "name": "landscape 907×510 pick overlay: all 191 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 184,
+        "count": 191,
         "bad": []
       }
     },
@@ -6281,20 +6287,23 @@
           "south-west wedge: empty → Mining"
         ],
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 0·0",
           "Cryo 0·0",
           "Chain 0·0",
           "Mining 1·0",
           "Firewall 0·0"
-        ]
+        ],
+        "chips": [],
+        "glow": []
       }
     },
     {
-      "name": "landscape 907×510: all 189 texts ≥ 16 px",
+      "name": "landscape 907×510: all 197 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 189,
+        "count": 197,
         "bad": []
       }
     },
@@ -6305,7 +6314,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -6388,7 +6397,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 2,
+        "tick": 1,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -6471,7 +6480,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 914,
+        "tick": 913,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6763,7 +6772,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 914,
+        "tick": 913,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -7255,11 +7264,11 @@
       "detail": {
         "scene": "Battle",
         "orientation": "portrait",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pause",
-        "enemies": 0,
-        "visible": 0,
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -7348,22 +7357,46 @@
       "ok": true,
       "detail": {
         "pairs": {
-          "overload+mining": {
+          "chain+mining": {
             "x": 18,
             "y": 210,
-            "w": 64.24000000000001,
+            "w": 63.24,
+            "h": 52
+          },
+          "overload+mining": {
+            "x": 89.24000000000001,
+            "y": 210,
+            "w": 63.24,
+            "h": 52
+          },
+          "cryo+firewall": {
+            "x": 160.48000000000002,
+            "y": 210,
+            "w": 63.24,
             "h": 52
           },
           "overload+chain": {
-            "x": 90.24000000000001,
+            "x": 231.72000000000003,
             "y": 210,
-            "w": 64.24000000000001,
+            "w": 63.24,
+            "h": 52
+          },
+          "cryo+chain": {
+            "x": 302.96000000000004,
+            "y": 210,
+            "w": 63.24,
             "h": 52
           },
           "cryo+mining": {
-            "x": 162.48000000000002,
+            "x": 374.20000000000005,
             "y": 210,
-            "w": 64.24000000000001,
+            "w": 63.24,
+            "h": 52
+          },
+          "chain+firewall": {
+            "x": 445.44000000000005,
+            "y": 210,
+            "w": 63.24,
             "h": 52
           }
         },
@@ -7389,11 +7422,11 @@
       }
     },
     {
-      "name": "portrait protocols panel: all 189 texts ≥ 28 px",
+      "name": "portrait protocols panel: all 197 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 189,
+        "count": 197,
         "bad": []
       }
     },
@@ -7401,8 +7434,8 @@
       "name": "portrait protocols: the panel content scrolls to its end",
       "ok": true,
       "detail": {
-        "y": -395.1999999999998,
-        "max": 395.1999999999998
+        "y": -619.1999999999998,
+        "max": 619.1999999999998
       }
     },
     {
@@ -7454,10 +7487,10 @@
       "detail": {
         "scene": "Battle",
         "orientation": "landscape",
-        "wave": 0,
-        "tick": 0,
-        "phase": "pause",
-        "enemies": 0,
+        "wave": 1,
+        "tick": 1,
+        "phase": "wave",
+        "enemies": 1,
         "visible": 0,
         "projectiles": 0,
         "dead": false,
@@ -7547,22 +7580,46 @@
       "ok": true,
       "detail": {
         "pairs": {
-          "overload+mining": {
-            "x": 583.76,
+          "chain+mining": {
+            "x": 358.44000000000005,
             "y": 51.6,
-            "w": 50.08,
+            "w": 49.08,
+            "h": 34
+          },
+          "overload+mining": {
+            "x": 415.52000000000004,
+            "y": 51.6,
+            "w": 49.08,
+            "h": 34
+          },
+          "cryo+firewall": {
+            "x": 472.6,
+            "y": 51.6,
+            "w": 49.08,
             "h": 34
           },
           "overload+chain": {
-            "x": 641.84,
+            "x": 529.6800000000001,
             "y": 51.6,
-            "w": 50.08,
+            "w": 49.08,
+            "h": 34
+          },
+          "cryo+chain": {
+            "x": 586.7600000000001,
+            "y": 51.6,
+            "w": 49.08,
             "h": 34
           },
           "cryo+mining": {
-            "x": 699.9200000000001,
+            "x": 643.8400000000001,
             "y": 51.6,
-            "w": 50.08,
+            "w": 49.08,
+            "h": 34
+          },
+          "chain+firewall": {
+            "x": 700.9200000000002,
+            "y": 51.6,
+            "w": 49.08,
             "h": 34
           }
         },
@@ -7574,26 +7631,50 @@
       "ok": true,
       "detail": {
         "pairs": {
-          "overload+mining": {
-            "x": 583.76,
+          "chain+mining": {
+            "x": 358.44000000000005,
             "y": 51.6,
-            "w": 50.08,
+            "w": 49.08,
+            "h": 34
+          },
+          "overload+mining": {
+            "x": 415.52000000000004,
+            "y": 51.6,
+            "w": 49.08,
+            "h": 34
+          },
+          "cryo+firewall": {
+            "x": 472.6,
+            "y": 51.6,
+            "w": 49.08,
             "h": 34
           },
           "overload+chain": {
-            "x": 641.84,
+            "x": 529.6800000000001,
             "y": 51.6,
-            "w": 50.08,
+            "w": 49.08,
+            "h": 34
+          },
+          "cryo+chain": {
+            "x": 586.7600000000001,
+            "y": 51.6,
+            "w": 49.08,
             "h": 34
           },
           "cryo+mining": {
-            "x": 699.9200000000001,
+            "x": 643.8400000000001,
             "y": 51.6,
-            "w": 50.08,
+            "w": 49.08,
+            "h": 34
+          },
+          "chain+firewall": {
+            "x": 700.9200000000002,
+            "y": 51.6,
+            "w": 49.08,
             "h": 34
           }
         },
-        "tip": "overload+mining"
+        "tip": "chain+mining"
       }
     },
     {
@@ -7610,16 +7691,16 @@
       "name": "landscape protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 1742,
-        "p2": 1742
+        "p1": 1740,
+        "p2": 1740
       }
     },
     {
-      "name": "landscape protocols panel: all 189 texts ≥ 16 px",
+      "name": "landscape protocols panel: all 197 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 189,
+        "count": 197,
         "bad": []
       }
     },
@@ -7627,8 +7708,8 @@
       "name": "landscape protocols: the panel content scrolls to its end",
       "ok": true,
       "detail": {
-        "y": -87.20000000000005,
-        "max": 87.20000000000005
+        "y": -296.4,
+        "max": 296.4
       }
     },
     {
@@ -7662,20 +7743,23 @@
           "south-west wedge: empty → Cryo"
         ],
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 0·0",
           "Cryo 0·0",
           "Chain 0·0",
           "Mining 0·0",
           "Firewall 0·0"
-        ]
+        ],
+        "chips": [],
+        "glow": []
       }
     },
     {
-      "name": "portrait editor (place): all 189 texts ≥ 28 px",
+      "name": "portrait editor (place): all 197 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 189,
+        "count": 197,
         "bad": []
       }
     },
@@ -7702,12 +7786,15 @@
             "south-west wedge: empty → Cryo"
           ],
           "strip": [
+            "LATTICE 0 · +0 % Bits",
             "Overload 0·0",
             "Cryo 1·0",
             "Chain 0·0",
             "Mining 0·0",
             "Firewall 0·0"
-          ]
+          ],
+          "chips": [],
+          "glow": []
         }
       }
     },
@@ -7727,15 +7814,146 @@
           "Select a module"
         ],
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 4·4",
-          "Cryo 2·2",
+          "Cryo 1·0",
           "Chain 3·2",
           "Mining 2·2",
           "Firewall 3·2",
-          "Thermal Shock 2·I",
-          "Overcharge 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ],
+        "chips": [
+          {
+            "key": "overload+cryo",
+            "r": {
+              "x": 20,
+              "y": 1135,
+              "w": 246,
+              "h": 43
+            }
+          },
+          {
+            "key": "overload+chain",
+            "r": {
+              "x": 283,
+              "y": 1135,
+              "w": 241,
+              "h": 43
+            }
+          },
+          {
+            "key": "overload+mining",
+            "r": {
+              "x": 20,
+              "y": 1178,
+              "w": 180,
+              "h": 43
+            }
+          },
+          {
+            "key": "overload+firewall",
+            "r": {
+              "x": 217,
+              "y": 1178,
+              "w": 180,
+              "h": 43
+            }
+          },
+          {
+            "key": "cryo+chain",
+            "r": {
+              "x": 414,
+              "y": 1178,
+              "w": 246,
+              "h": 43
+            }
+          },
+          {
+            "key": "cryo+mining",
+            "r": {
+              "x": 20,
+              "y": 1221,
+              "w": 180,
+              "h": 43
+            }
+          },
+          {
+            "key": "cryo+firewall",
+            "r": {
+              "x": 217,
+              "y": 1221,
+              "w": 180,
+              "h": 43
+            }
+          },
+          {
+            "key": "chain+mining",
+            "r": {
+              "x": 414,
+              "y": 1221,
+              "w": 180,
+              "h": 43
+            }
+          },
+          {
+            "key": "chain+firewall",
+            "r": {
+              "x": 20,
+              "y": 1264,
+              "w": 255,
+              "h": 43
+            }
+          },
+          {
+            "key": "mining+firewall",
+            "r": {
+              "x": 292,
+              "y": 1264,
+              "w": 241,
+              "h": 43
+            }
+          }
+        ],
+        "glow": []
+      }
+    },
+    {
+      "name": "portrait editor: the strip leads with the Lattice chip",
+      "ok": true,
+      "detail": "LATTICE 0 · +0 % Bits"
+    },
+    {
+      "name": "portrait editor: a pair chip tap glows its link hexes, a second tap clears them",
+      "ok": true,
+      "detail": {
+        "chip": "mining+firewall",
+        "g1": [
+          [
+            -3,
+            1
+          ]
+        ],
+        "g2": [],
+        "chips": [
+          "overload+cryo",
+          "overload+chain",
+          "overload+mining",
+          "overload+firewall",
+          "cryo+chain",
+          "cryo+mining",
+          "cryo+firewall",
+          "chain+mining",
+          "chain+firewall",
+          "mining+firewall"
         ]
       }
     },
@@ -7748,8 +7966,8 @@
           2
         ],
         "to": [
-          0,
-          2
+          -2,
+          3
         ]
       }
     },
@@ -7758,35 +7976,49 @@
       "ok": true,
       "detail": {
         "before": [
-          "Overload 4·4",
-          "Cryo 2·2",
-          "Chain 3·2",
-          "Mining 2·2",
-          "Firewall 3·2",
-          "Thermal Shock 2·I",
-          "Overcharge 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
-        ],
-        "after": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 4·4",
           "Cryo 1·0",
           "Chain 3·2",
           "Mining 2·2",
           "Firewall 3·2",
-          "Thermal Shock 3·II",
-          "Superconductor 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ],
+        "after": [
+          "LATTICE 0 · +0 % Bits",
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock – · 1 → I weld",
+          "Overcharge – · 2 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 3 → II weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
         ]
       }
     },
     {
-      "name": "portrait editor (arrange): all 193 texts ≥ 28 px",
+      "name": "portrait editor (arrange): all 207 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 193,
+        "count": 207,
         "bad": []
       }
     },
@@ -7795,15 +8027,22 @@
       "ok": true,
       "detail": {
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 4·4",
-          "Cryo 2·2",
+          "Cryo 1·0",
           "Chain 3·2",
           "Mining 2·2",
           "Firewall 3·2",
-          "Thermal Shock 2·I",
-          "Overcharge 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
         ],
         "crystal": [
           [
@@ -7819,32 +8058,32 @@
             3
           ],
           [
-            1,
-            1
-          ],
-          [
-            2,
-            0
-          ],
-          [
-            2,
-            1
+            -2,
+            3
           ],
           [
             -2,
             2
           ],
           [
-            -2,
+            -3,
+            3
+          ],
+          [
+            1,
             1
           ],
           [
             -2,
-            0
+            1
           ],
           [
-            -1,
-            -1
+            -3,
+            2
+          ],
+          [
+            -2,
+            0
           ]
         ]
       }
@@ -7871,20 +8110,23 @@
           "south-west wedge: empty → Cryo"
         ],
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 0·0",
           "Cryo 0·0",
           "Chain 0·0",
           "Mining 0·0",
           "Firewall 0·0"
-        ]
+        ],
+        "chips": [],
+        "glow": []
       }
     },
     {
-      "name": "landscape editor (place): all 189 texts ≥ 16 px",
+      "name": "landscape editor (place): all 197 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 189,
+        "count": 197,
         "bad": []
       }
     },
@@ -7911,12 +8153,15 @@
             "south-west wedge: empty → Cryo"
           ],
           "strip": [
+            "LATTICE 0 · +0 % Bits",
             "Overload 0·0",
             "Cryo 1·0",
             "Chain 0·0",
             "Mining 0·0",
             "Firewall 0·0"
-          ]
+          ],
+          "chips": [],
+          "glow": []
         }
       }
     },
@@ -7936,15 +8181,146 @@
           "Select a module"
         ],
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 4·4",
-          "Cryo 2·2",
+          "Cryo 1·0",
           "Chain 3·2",
           "Mining 2·2",
           "Firewall 3·2",
-          "Thermal Shock 2·I",
-          "Overcharge 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ],
+        "chips": [
+          {
+            "key": "overload+cryo",
+            "r": {
+              "x": 784,
+              "y": 240,
+              "w": 166,
+              "h": 28
+            }
+          },
+          {
+            "key": "overload+chain",
+            "r": {
+              "x": 958,
+              "y": 240,
+              "w": 162,
+              "h": 28
+            }
+          },
+          {
+            "key": "overload+mining",
+            "r": {
+              "x": 1128,
+              "y": 240,
+              "w": 123,
+              "h": 28
+            }
+          },
+          {
+            "key": "overload+firewall",
+            "r": {
+              "x": 784,
+              "y": 268,
+              "w": 123,
+              "h": 28
+            }
+          },
+          {
+            "key": "cryo+chain",
+            "r": {
+              "x": 915,
+              "y": 268,
+              "w": 166,
+              "h": 28
+            }
+          },
+          {
+            "key": "cryo+mining",
+            "r": {
+              "x": 1089,
+              "y": 268,
+              "w": 123,
+              "h": 28
+            }
+          },
+          {
+            "key": "cryo+firewall",
+            "r": {
+              "x": 784,
+              "y": 296,
+              "w": 123,
+              "h": 28
+            }
+          },
+          {
+            "key": "chain+mining",
+            "r": {
+              "x": 915,
+              "y": 296,
+              "w": 123,
+              "h": 28
+            }
+          },
+          {
+            "key": "chain+firewall",
+            "r": {
+              "x": 1046,
+              "y": 296,
+              "w": 171,
+              "h": 28
+            }
+          },
+          {
+            "key": "mining+firewall",
+            "r": {
+              "x": 784,
+              "y": 324,
+              "w": 162,
+              "h": 28
+            }
+          }
+        ],
+        "glow": []
+      }
+    },
+    {
+      "name": "landscape editor: the strip leads with the Lattice chip",
+      "ok": true,
+      "detail": "LATTICE 0 · +0 % Bits"
+    },
+    {
+      "name": "landscape editor: a pair chip tap glows its link hexes, a second tap clears them",
+      "ok": true,
+      "detail": {
+        "chip": "mining+firewall",
+        "g1": [
+          [
+            -3,
+            1
+          ]
+        ],
+        "g2": [],
+        "chips": [
+          "overload+cryo",
+          "overload+chain",
+          "overload+mining",
+          "overload+firewall",
+          "cryo+chain",
+          "cryo+mining",
+          "cryo+firewall",
+          "chain+mining",
+          "chain+firewall",
+          "mining+firewall"
         ]
       }
     },
@@ -7957,8 +8333,8 @@
           2
         ],
         "to": [
-          0,
-          2
+          -2,
+          3
         ]
       }
     },
@@ -7967,35 +8343,49 @@
       "ok": true,
       "detail": {
         "before": [
-          "Overload 4·4",
-          "Cryo 2·2",
-          "Chain 3·2",
-          "Mining 2·2",
-          "Firewall 3·2",
-          "Thermal Shock 2·I",
-          "Overcharge 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
-        ],
-        "after": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 4·4",
           "Cryo 1·0",
           "Chain 3·2",
           "Mining 2·2",
           "Firewall 3·2",
-          "Thermal Shock 3·II",
-          "Superconductor 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
+        ],
+        "after": [
+          "LATTICE 0 · +0 % Bits",
+          "Overload 4·4",
+          "Cryo 1·0",
+          "Chain 3·2",
+          "Mining 2·2",
+          "Firewall 3·2",
+          "Thermal Shock – · 1 → I weld",
+          "Overcharge – · 2 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 3 → II weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
         ]
       }
     },
     {
-      "name": "landscape editor (arrange): all 193 texts ≥ 16 px",
+      "name": "landscape editor (arrange): all 207 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 193,
+        "count": 207,
         "bad": []
       }
     },
@@ -8004,15 +8394,22 @@
       "ok": true,
       "detail": {
         "strip": [
+          "LATTICE 0 · +0 % Bits",
           "Overload 4·4",
-          "Cryo 2·2",
+          "Cryo 1·0",
           "Chain 3·2",
           "Mining 2·2",
           "Firewall 3·2",
-          "Thermal Shock 2·I",
-          "Overcharge 1·I",
-          "Ice Wall 1·I",
-          "Relay Stations 1·I"
+          "Thermal Shock – · 2 → I weld",
+          "Overcharge – · 1 → I weld",
+          "Bounty Marks – · 0 → I",
+          "Bastion – · 0 → I",
+          "Superconductor – · 2 → I weld",
+          "Cold Storage – · 0 → I",
+          "Ice Wall – · 0 → I",
+          "Network – · 0 → I",
+          "Minefield – · 3 → II weld",
+          "Relay Stations – · 1 → I weld"
         ],
         "crystal": [
           [
@@ -8028,32 +8425,32 @@
             3
           ],
           [
-            1,
-            1
-          ],
-          [
-            2,
-            0
-          ],
-          [
-            2,
-            1
+            -2,
+            3
           ],
           [
             -2,
             2
           ],
           [
-            -2,
+            -3,
+            3
+          ],
+          [
+            1,
             1
           ],
           [
             -2,
-            0
+            1
           ],
           [
-            -1,
-            -1
+            -3,
+            2
+          ],
+          [
+            -2,
+            0
           ]
         ]
       }
@@ -8162,15 +8559,15 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792108845860,
+        "lastSeen": 1792113741464,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "ricochet": 1,
+          "cryoField": 1,
           "spikes": 1
         },
         "loadout": [
-          "ricochet",
+          "cryoField",
           "spikes"
         ],
         "presets": [
@@ -8184,7 +8581,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16918.009999999966,
+          "realMs": 16953.133333333313,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -8194,7 +8591,7 @@
             "ranged": 0,
             "boss": 0
           },
-          "damage": 292.83039199999996,
+          "damage": 293.316392,
           "maxHit": 5,
           "hitsTaken": 22,
           "bitsEarned": 23,
@@ -8212,7 +8609,8 @@
           "editorSeen": false,
           "autoStats": []
         },
-        "economy": 2
+        "economy": 2,
+        "codex": {}
       }
     },
     {
@@ -8375,7 +8773,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 65,
+        "fps": 67,
         "seed": 4,
         "levels": {
           "damage": 0,
@@ -8449,16 +8847,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792108875559,
+        "lastSeen": 1792113771096,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
           "criticalMass": 1,
-          "compound": 1
+          "ricochet": 1
         },
         "loadout": [
           "criticalMass",
-          "compound"
+          "ricochet"
         ],
         "presets": [
           [],
@@ -8471,7 +8869,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 17019.82333333688,
+          "realMs": 16951.3733333333,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -8481,7 +8879,7 @@
             "ranged": 0,
             "boss": 0
           },
-          "damage": 292.83039199999996,
+          "damage": 293.316392,
           "maxHit": 5,
           "hitsTaken": 22,
           "bitsEarned": 23,
@@ -8499,7 +8897,8 @@
           "editorSeen": false,
           "autoStats": []
         },
-        "economy": 2
+        "economy": 2,
+        "codex": {}
       }
     },
     {
@@ -8537,7 +8936,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 909,
+        "tick": 908,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -8648,11 +9047,11 @@
       "detail": {
         "cards": {
           "cryoField": 1,
-          "ricochet": 1
+          "criticalMass": 1
         },
         "loadout": [
           "cryoField",
-          "ricochet"
+          "criticalMass"
         ]
       }
     },
@@ -8685,11 +9084,11 @@
       }
     },
     {
-      "name": "portrait cards tab: all 60 texts ≥ 28 px",
+      "name": "portrait cards tab: all 62 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 60,
+        "count": 62,
         "bad": []
       }
     },
@@ -8699,11 +9098,11 @@
       "detail": {
         "tags": [
           "cryo",
-          "chain"
+          "overload"
         ],
         "cards": [
           "cryoField",
-          "ricochet"
+          "criticalMass"
         ],
         "sets": {
           "overload": 0,
@@ -8725,11 +9124,11 @@
       "detail": {
         "cards": {
           "ricochet": 1,
-          "criticalMass": 1
+          "spikes": 1
         },
         "loadout": [
           "ricochet",
-          "criticalMass"
+          "spikes"
         ]
       }
     },
@@ -8762,11 +9161,11 @@
       }
     },
     {
-      "name": "landscape cards tab: all 60 texts ≥ 16 px",
+      "name": "landscape cards tab: all 62 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 60,
+        "count": 62,
         "bad": []
       }
     },
@@ -8776,11 +9175,11 @@
       "detail": {
         "tags": [
           "chain",
-          "overload"
+          "firewall"
         ],
         "cards": [
           "ricochet",
-          "criticalMass"
+          "spikes"
         ],
         "sets": {
           "overload": 0,
@@ -8818,11 +9217,11 @@
       }
     },
     {
-      "name": "portrait stats panel: all 187 texts ≥ 28 px",
+      "name": "portrait stats panel: all 194 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 187,
+        "count": 194,
         "bad": []
       }
     },
@@ -8838,8 +9237,8 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15701.533333333324,
-          "simTicks": 2347,
+          "realMs": 15551.663333333323,
+          "simTicks": 2333,
           "waves": 3,
           "kills": {
             "basic": 17,
@@ -8848,9 +9247,9 @@
             "ranged": 0,
             "boss": 0
           },
-          "damage": 275.56973760000005,
+          "damage": 275.58901440000005,
           "maxHit": 5,
-          "hitsTaken": 19,
+          "hitsTaken": 18,
           "bitsEarned": 20,
           "keysEarned": 0,
           "energyEarned": 71.2013616905444,
@@ -8861,11 +9260,11 @@
       }
     },
     {
-      "name": "portrait lifetime stats: all 32 texts ≥ 28 px",
+      "name": "portrait lifetime stats: all 35 texts ≥ 28 px",
       "ok": true,
       "detail": {
         "min": 28,
-        "count": 32,
+        "count": 35,
         "bad": []
       }
     },
@@ -8896,11 +9295,11 @@
       }
     },
     {
-      "name": "landscape stats panel: all 187 texts ≥ 16 px",
+      "name": "landscape stats panel: all 194 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 187,
+        "count": 194,
         "bad": []
       }
     },
@@ -8916,8 +9315,8 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15718.173333333318,
-          "simTicks": 2347,
+          "realMs": 15551.09999999999,
+          "simTicks": 2333,
           "waves": 3,
           "kills": {
             "basic": 17,
@@ -8926,9 +9325,9 @@
             "ranged": 0,
             "boss": 0
           },
-          "damage": 275.56973760000005,
+          "damage": 275.58901440000005,
           "maxHit": 5,
-          "hitsTaken": 19,
+          "hitsTaken": 18,
           "bitsEarned": 20,
           "keysEarned": 0,
           "energyEarned": 71.2013616905444,
@@ -8939,11 +9338,11 @@
       }
     },
     {
-      "name": "landscape lifetime stats: all 30 texts ≥ 16 px",
+      "name": "landscape lifetime stats: all 33 texts ≥ 16 px",
       "ok": true,
       "detail": {
         "min": 16,
-        "count": 30,
+        "count": 33,
         "bad": []
       }
     },
@@ -8961,19 +9360,19 @@
         "wave": 2,
         "tick": 1132,
         "phase": "wave",
-        "enemies": 200,
-        "visible": 200,
+        "enemies": 199,
+        "visible": 199,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
-        "kills": 72,
-        "energy": 173.96213180515758,
-        "bits": 72.02,
-        "coreHp": 999999966358.2462,
+        "kills": 73,
+        "energy": 176.50601719197707,
+        "bits": 73,
+        "coreHp": 999999966355.6061,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1272587679,
+        "seed": 1976677317,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -9045,21 +9444,21 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1132,
+        "tick": 1134,
         "phase": "wave",
         "enemies": 200,
         "visible": 200,
-        "projectiles": 0,
+        "projectiles": 1,
         "dead": false,
         "overlay": false,
-        "kills": 72,
-        "energy": 173.2767449856734,
-        "bits": 72.02,
-        "coreHp": 999999966351.9102,
+        "kills": 73,
+        "energy": 176.54899713467051,
+        "bits": 73,
+        "coreHp": 999999966227.8969,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 2003322909,
+        "seed": 73261136,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,

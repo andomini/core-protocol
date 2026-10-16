@@ -3,7 +3,7 @@ import { pauseTicks, scaleForWave, waveTicks } from './economy';
 import type { SimEvent } from './events';
 import { clampValue, powInt } from './num';
 import { geneMean, mutate, resetGeneAcc } from './mutations';
-import { boostActive, enterPick, isPickWave, type PerkProfile, perkProfile } from './perks';
+import { boostActive, enterPick, isPickWave, maxMarks, type PerkProfile, perkProfile } from './perks';
 import { chance, createStream, nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
 import type { CoreStats } from './stats';
@@ -49,6 +49,7 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   // A boss wave brings fewer regular viruses (the boss is the wave's threat, not an extra on top).
   const n = Math.floor(enemiesPerWave(data, w.wave) * (boss ? data.config.bossWaveEnemyMul : 1));
   for (let i = 0; i < n; i++) queue.push(pickWeighted(w.rng.spawn, kinds, weights));
+  w.marks.plan = markPlan(w.seed, w.wave, n, maxMarks(data));
   // Barrier (card): the shield refills at every wave start.
   if (prof.shieldFrac > 0) w.shield = clampValue(st.health * prof.shieldFrac);
   // Structures (spec 2026-10-15): this wave's wall ring, repairs and push-out (before the Wave Skip return: the ring is per wave).
@@ -67,6 +68,7 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
     w.energy = clampValue(w.energy + energy);
     w.bits = clampValue(w.bits + bits);
     queue.length = 0;
+    w.marks.plan = [];
     events.push({ type: 'waveStart', wave: w.wave, boss });
     events.push({ type: 'waveSkip', wave: w.wave, energy, bits });
     w.spawnQueue = queue;
@@ -78,6 +80,34 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   w.spawnInterval = queue.length > 0 ? Math.max(1, Math.floor((waveTicks(data) * SPAWN_WINDOW) / queue.length)) : 1;
   w.nextSpawnTick = 1;
   events.push({ type: 'waveStart', wave: w.wave, boss });
+}
+
+/**
+ * Bounty Marks (spec 2026-10-16): which of a wave's `n` regular spawns are Marked, on the wave's own stream
+ * (createStream(seed, 'mark:' + wave)) so Marks never perturb spawns or combat. Up to `max` distinct entries,
+ * each the spawn-queue length left when that virus spawns (1 = the last); the first `count` (the tier's) apply.
+ */
+export function markPlan(seed: number, wave: number, n: number, max: number): number[] {
+  const plan: number[] = [];
+  if (max <= 0 || n <= 0) return plan;
+  const rng = createStream(seed, `mark:${wave}`);
+  while (plan.length < Math.min(max, n)) {
+    const r = 1 + nextInt(rng, n);
+    if (!plan.includes(r)) plan.push(r);
+  }
+  return plan;
+}
+
+/** Marks a fresh spawn when the Bounty Marks tier says so: the boss (from tier III), or a planned regular virus. */
+function markSpawn(w: World, e: Enemy, left: number, prof: PerkProfile): void {
+  const m = prof.mark;
+  if (m === null) return;
+  if (e.kind === 'boss') {
+    if (m.bossBitsMul > 0) e.marked = true;
+    return;
+  }
+  const i = w.marks.plan.indexOf(left);
+  if (i >= 0 && i < m.count) e.marked = true;
 }
 
 /**
@@ -193,9 +223,10 @@ export function advanceWave(w: World, data: GameData, st: CoreStats, prof: PerkP
   w.phaseTick += 1;
   const r = arenaRadius(data, w.wave);
   while (w.spawnQueue.length > 0 && w.phaseTick >= w.nextSpawnTick) {
+    const left = w.spawnQueue.length;
     const kind = w.spawnQueue.shift()!;
     const [dx, dy] = data.directions[nextInt(w.rng.spawn, data.directions.length)]!;
-    spawnEnemy(w, data, kind, dx * r, dy * r, events, prof.rules.enemyHp);
+    markSpawn(w, spawnEnemy(w, data, kind, dx * r, dy * r, events, prof.rules.enemyHp), left, prof);
     w.nextSpawnTick += w.spawnInterval;
   }
   if (w.phaseTick >= waveTicks(data)) {

@@ -1,4 +1,5 @@
 // Run settlement: Bits (× labs, × rewarded doubling), Keys (boss drops + milestones), best wave, tier unlock.
+import { fusionTierIndex } from '../sim/crystal';
 import type { GameData } from '../sim/data';
 import { labEffects } from './labs';
 import { type MetaData, unlockWaveFor } from './metaData';
@@ -15,6 +16,8 @@ export interface RunResult {
   doubled: boolean;
   /** Card multiplier (Bits Plus) carried with the run. */
   bitsMul?: number;
+  /** Best fusion tier (link count) each pair reached in the run (World.fusionBest) — feeds the Codex. */
+  fusionsReached?: Record<string, number>;
 }
 
 export interface Settlement {
@@ -24,11 +27,15 @@ export interface Settlement {
   newBest: boolean;
   /** The tier this run unlocked (0 = none). */
   tierUnlocked: number;
+  /** One-off Codex Bits (already in `bits`): pairs that reached III for the first time. */
+  codexBits: number;
+  /** Pairs newly entered in the Codex this run. */
+  codexNew: string[];
 }
 
 export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResult): Settlement {
   const e = labEffects(m, md);
-  const bits = Math.floor(r.bits * e.bitsMul * (r.bitsMul ?? 1) * (r.doubled ? md.ads.doubleBits : 1));
+  let bits = Math.floor(r.bits * e.bitsMul * (r.bitsMul ?? 1) * (r.doubled ? md.ads.doubleBits : 1));
   let keys = Math.floor(r.keys);
   const milestones: number[] = [];
   md.milestones.waves.forEach((w, i) => {
@@ -47,9 +54,22 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
     m.tierUnlocked += 1;
     tierUnlocked = m.tierUnlocked;
   }
+  // Fusion Codex: record the best tier per pair; the first III pays md.codex.bits once (flat, not × labs/ad).
+  let codexBits = 0;
+  const codexNew: string[] = [];
+  for (const [k, tier] of Object.entries(r.fusionsReached ?? {})) {
+    if (data.sets.fusions[k] === undefined) continue;
+    const idx = fusionTierIndex(data, k, tier);
+    const was = m.codex[k] ?? 0;
+    if (idx <= was) continue;
+    if (was === 0) codexNew.push(k);
+    if (was < 3 && idx >= 3) codexBits += md.codex.bits;
+    m.codex[k] = idx;
+  }
+  bits += codexBits;
   m.bits += bits;
   m.keys += keys;
   m.runs += 1;
   m.firstRunDone = true;
-  return { bits, keys, milestones, newBest, tierUnlocked };
+  return { bits, keys, milestones, newBest, tierUnlocked, codexBits, codexNew };
 }

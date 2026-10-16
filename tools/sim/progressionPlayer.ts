@@ -164,7 +164,7 @@ export function simulatePlayer(cfg: PlayerConfig): PlayerResult {
     const capped = !res.dead;
     rate[tier] = res.world.bits / Math.max(0.1, res.simMinutes / speed + MENU_MIN);
     const prevBest = m.best[String(tier)] ?? 0;
-    const s = settleRun(m, D, M, { tier, wave: res.wave, bits: res.world.bits, keys: res.world.keys, doubled: cfg.ads, bitsMul: buildRunOptions(m, D, M, tier, 0).metaBonus?.bitsMul });
+    const s = settleRun(m, D, M, { tier, wave: res.wave, bits: res.world.bits, keys: res.world.keys, doubled: cfg.ads, bitsMul: buildRunOptions(m, D, M, tier, 0).metaBonus?.bitsMul, fusionsReached: res.world.fusionBest });
     if (s.tierUnlocked && !tierAt[s.tierUnlocked]) tierAt[s.tierUnlocked] = hours;
     // Plateau: runs on the same tier without beating that tier's best wave.
     if (tier !== streak.tier || res.wave > prevBest) streak = { start: hours, runs: 0, tier, best: Math.max(prevBest, res.wave) };

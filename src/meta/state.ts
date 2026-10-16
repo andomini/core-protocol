@@ -1,4 +1,5 @@
 // The persistent player state (meta save). Plain JSON; validated on load.
+import { fusionKeys } from '../sim/perkData';
 import { type GameData, STAT_IDS, type StatId } from '../sim/data';
 import { cardDef } from './cards';
 import { emptyLifetime, type LifetimeStats, validateLifetime } from './runStats';
@@ -52,6 +53,8 @@ export interface MetaState {
   settings: Settings;
   /** Workshop price version the levels were paid at (meta.json workshop.refund; 0 = a fresh save, 1 = before refunds). */
   economy: number;
+  /** Fusion Codex: best tier index reached per pair (1 = I … 4 = Apex); missing = not discovered. */
+  codex: Record<string, number>;
 }
 
 export function defaultMeta(): MetaState {
@@ -77,6 +80,7 @@ export function defaultMeta(): MetaState {
     lifetime: emptyLifetime(),
     settings: { sound: true, music: true, reduceMotion: false, autoPlace: false, editorSeen: false, autoStats: [] },
     economy: 0,
+    codex: {},
   };
 }
 
@@ -119,6 +123,13 @@ export function validateMeta(raw: unknown, data: GameData, md: MetaData): MetaSt
   m.starterGiven = raw.starterGiven === true;
   m.lifetime = validateLifetime(raw.lifetime);
   m.economy = int(raw.economy, 1);
+  if (isObj(raw.codex)) {
+    const keys = fusionKeys();
+    for (const [k, v] of Object.entries(raw.codex)) {
+      const t = Math.min(4, int(v, 0));
+      if (keys.includes(k) && t > 0) m.codex[k] = t;
+    }
+  }
   if (isObj(raw.settings)) {
     m.settings.sound = raw.settings.sound !== false;
     m.settings.music = raw.settings.music !== false;

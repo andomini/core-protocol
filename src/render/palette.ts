@@ -35,6 +35,9 @@ export const ENERGY_CSS = '#ffd23f';
 export const BITS = 0x5cf2ff;
 export const BITS_CSS = '#5cf2ff';
 export const BREAK = 0xffb03b;
+/** Bounty Marks: the reticle on a Marked virus and the BOUNTY chip. */
+export const MARK = 0xffc93a;
+export const MARK_CSS = '#ffc93a';
 
 /** Upgrade panel tab accents (ATK / DEF / UTIL / BUILD). */
 export const TAB_COLOR = { atk: 0xff4d7a, def: 0x2bffb0, util: 0xffd23f, build: 0xff9a3c } as const;

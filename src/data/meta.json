@@ -58,5 +58,8 @@
   },
   "ads": {
     "doubleBits": 2
+  },
+  "codex": {
+    "bits": 2000
   }
 }

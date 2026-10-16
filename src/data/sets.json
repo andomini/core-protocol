@@ -125,20 +125,23 @@
       }
     },
     "overload+mining": {
-      "name": "Headhunter",
+      "name": "Bounty Marks",
+      "short": "Bounty",
       "apexLinks": 7,
       "apex": [
-        { "type": "statAdd", "stat": "critChance", "value": 0.03 }
+        { "type": "mark", "jackpotEvery": 8, "jackpotCap": 3 }
       ],
       "tiers": {
         "1": [
+          { "type": "mark", "count": 1, "energyMul": 4, "bitsMul": 4 },
           { "type": "killBonus", "when": "crit", "energyMul": 1.5 }
         ],
         "3": [
-          { "type": "statAdd", "stat": "critChance", "value": 0.05 }
+          { "type": "mark", "count": 2, "critMul": 2 },
+          { "type": "statAdd", "stat": "critChance", "value": 0.03 }
         ],
         "5": [
-          { "type": "onKill", "kind": "boss", "energyMul": 2 }
+          { "type": "mark", "count": 3, "bossBitsMul": 2, "jackpotEvery": 12, "jackpotCap": 2, "jackpot": 100 }
         ]
       }
     },

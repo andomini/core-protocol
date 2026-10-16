@@ -245,7 +245,7 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     expect(w.geneTicks).toBe(0);
     expect(w.frost).toEqual({});
     expect(w.blueprint).toEqual([]);
-    expect(w.marks).toEqual({ killed: 0, jackpots: 0 });
+    expect(w.marks).toEqual({ killed: 0, jackpots: 0, plan: [] });
     grantPerk(w, D, 'overclockRounds', null, at(0));
     const old = JSON.parse(snapshot(w)) as { world: Record<string, unknown> };
     for (const k of ['fusionPending', 'latticeSum', 'latticeTicks', 'geneAcc', 'geneTicks', 'tagCountsNow', 'frost', 'blueprint', 'marks']) delete old.world[k];
@@ -258,7 +258,7 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     expect(back.tagCountsNow.overload).toBe(1);
     expect(back.frost).toEqual({});
     expect(back.blueprint).toEqual([]);
-    expect(back.marks).toEqual({ killed: 0, jackpots: 0 });
+    expect(back.marks).toEqual({ killed: 0, jackpots: 0, plan: [] });
     expect(JSON.parse(snapshot(back))).toEqual(JSON.parse(snapshot(w)));
   });
 });

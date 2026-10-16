@@ -1,9 +1,11 @@
 import type { GameData } from './data';
 import type { SimEvent } from './events';
+import { scaleForWave } from './economy';
 import { clampValue, dsqrt } from './num';
 import { boostActive, type PerkProfile } from './perks';
 import { chance } from './rng';
 import { gridFor } from './spatial';
+import type { MarkValues } from './perkData';
 import type { Enemy, Projectile, World } from './state';
 import { arenaRadius, cleanse, farMul, groundAt } from './territory';
 import type { CoreStats } from './stats';
@@ -103,8 +105,23 @@ export function hitEnemy(
     if (source === 'bounce' || source === 'lightning' || source === 'tesla' || source === 'mine') how *= prof.chainKillMul;
     // The crit x frozen x chain product is capped (data.sets.howCap) so stacked fusions cannot blow a kill up.
     how = Math.min(how, data.sets.howCap);
-    const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how);
-    const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far);
+    // Bounty Marks (spec 2026-10-16): reward lines outside the `how` cap. The boss Mark pays × bossBitsMul Bits only.
+    const m = e.marked === true ? prof.mark : null;
+    let markEnergy = 1;
+    let markBits = 1;
+    if (m !== null) {
+      if (boss) markBits = Math.max(1, m.bossBitsMul);
+      else {
+        markEnergy = Math.max(1, m.energyMul);
+        markBits = Math.max(1, m.bitsMul);
+      }
+      if (crit && m.critMul > 1) {
+        markEnergy *= m.critMul;
+        markBits *= m.critMul;
+      }
+    }
+    const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how * markEnergy);
+    const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far * markBits);
     const keys = data.enemies[e.kind].keys + (boss ? prof.bossKeys : 0);
     w.energy = clampValue(w.energy + energy);
     w.bits = clampValue(w.bits + bits);
@@ -112,6 +129,7 @@ export function hitEnemy(
     w.kills += 1;
     cleanse(w, data, e);
     events.push({ type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys });
+    if (m !== null) payMark(w, data, m, e, energy, bits, events);
     return;
   }
   // At most one knockback per enemy per cooldown: Multishot volleys must not pin the whole crowd.
@@ -119,6 +137,17 @@ export function hitEnemy(
     knockBack(e, data, st.knockback * data.enemies[e.kind].knockback, w.wave);
     e.kbUntil = w.tick + Math.round(data.config.knockbackCooldown * data.config.tickHz);
   }
+}
+
+/** A Mark was killed: count it; every `jackpotEvery` Marks pay the Bounty jackpot (scaled for the wave), at most `jackpotCap` per run. */
+function payMark(w: World, data: GameData, m: MarkValues, e: Enemy, energy: number, bits: number, events: SimEvent[]): void {
+  w.marks.killed += 1;
+  events.push({ type: 'markKill', enemyId: e.id, x: e.x, y: e.y, energy, bits });
+  if (m.jackpotEvery <= 0 || m.jackpot <= 0 || w.marks.jackpots >= m.jackpotCap || w.marks.killed % m.jackpotEvery !== 0) return;
+  const jackpot = scaleForWave(m.jackpot, data.tiers[w.tier - 1]!.bitsMul, data.config.bitsGrowth, Math.max(1, w.wave));
+  w.bits = clampValue(w.bits + jackpot);
+  w.marks.jackpots += 1;
+  events.push({ type: 'bountyJackpot', bits: jackpot, n: w.marks.jackpots, x: e.x, y: e.y });
 }
 
 const near: Enemy[] = [];

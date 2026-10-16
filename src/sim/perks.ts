@@ -10,7 +10,7 @@ import { type CrystalShape, crystalTagCounts, crystalShape, freeSlots, fusionEff
 import { geneKeep } from './mutations';
 import { clampValue, powInt } from './num';
 import { ownedShare } from './territory';
-import { type Effect, FREEZE_ALL_MAX_SHARE, fusionKeys, RARITIES, type Rarity, RULE_IDS, type Rules, type StructureKind, type StructureValues, TAGS, type Tag } from './perkData';
+import { type Effect, FREEZE_ALL_MAX_SHARE, fusionKeys, MARK_FIELDS, type MarkValues, RARITIES, type Rarity, RULE_IDS, type Rules, type StructureKind, type StructureValues, TAGS, type Tag } from './perkData';
 import { createStream, nextInt, pickWeighted } from './rng';
 import type { World } from './state';
 import { effectiveStats, type Modifier } from './stats';
@@ -251,6 +251,8 @@ function setFusionTier(w: World, data: GameData, key: string, prev: number, tier
   shiftTier(w, data, `fusion:${key}`, fusionSteps(data, key), (t) => fusionEffects(data, key, t), prev, tier);
   if (tier > 0) w.fusionTiers[key] = tier;
   else delete w.fusionTiers[key];
+  // The run's best tier per pair (stored like fusionTiers): RunResult.fusionsReached for the Codex.
+  if (tier > (w.fusionBest[key] ?? 0)) w.fusionBest[key] = tier;
   const l = fusionLinks(w, data).find((f) => f.key === key);
   const a = l ? w.crystal[l.a]! : null;
   const b = l ? w.crystal[l.b]! : null;
@@ -463,6 +465,9 @@ export interface PerkProfile {
   thornsSlowTicks: number;
   /** Fusion structures by kind, folded field-wise (max) over the reached tiers; absent = not built. */
   structures: Partial<Record<StructureKind, StructureValues>>;
+  /** Bounty Marks folded over the reached tiers (null = no Marks); `markTurrets`: Bastion turrets prefer Marks (both fusions ≥ II). */
+  mark: MarkValues | null;
+  markTurrets: boolean;
   /** The crystal's sectors, reach and muzzles this tick (spec 2026-10-14 §A). */
   shape: CrystalShape;
   /** Share of the territory that is ours (§B). */
@@ -507,6 +512,8 @@ function blankProfile(data: GameData): PerkProfile {
     thornsSlow: 0,
     thornsSlowTicks: 0,
     structures: {},
+    mark: null,
+    markTurrets: false,
     shape: { sectors: [null, null, null, null, null, null], reach: [0, 0, 0, 0, 0, 0], tips: [] },
     owned: 0,
     geneCrit: 1,
@@ -520,6 +527,53 @@ function blankProfile(data: GameData): PerkProfile {
 function foldStructure(into: Partial<Record<StructureKind, StructureValues>>, e: Extract<Effect, { type: 'structure' }>): void {
   const acc = (into[e.kind] ??= {});
   for (const [k, v] of Object.entries(e)) if (k !== 'type' && k !== 'kind') acc[k] = Math.max(acc[k] ?? 0, v as number);
+}
+
+/** Mark ladders fold field-wise: max, except the jackpot cadence (fewer Marks per jackpot is better: min). */
+function foldMark(p: { mark: MarkValues | null }, e: Extract<Effect, { type: 'mark' }>): void {
+  if (p.mark === null) {
+    const blank = {} as MarkValues;
+    for (const f of MARK_FIELDS) blank[f] = 0;
+    p.mark = blank;
+  }
+  const m = p.mark;
+  for (const f of MARK_FIELDS) {
+    const v = e[f];
+    if (v === undefined) continue;
+    m[f] = f === 'jackpotEvery' && m[f] > 0 ? Math.min(m[f], v) : Math.max(m[f], v);
+  }
+}
+
+/** Bounty Marks as the fusion ladders fold them (the HUD's view of the profile), null = no Marks. */
+export function fusionMark(w: World, data: GameData): MarkValues | null {
+  const p: { mark: MarkValues | null } = { mark: null };
+  for (const key of fusionKeys()) {
+    const tier = w.fusionTiers[key] ?? 0;
+    if (tier === 0) continue;
+    for (const t of fusionSteps(data, key)) {
+      if (t > tier) break;
+      for (const e of fusionEffects(data, key, t)) if (e.type === 'mark') foldMark(p, e);
+    }
+  }
+  return p.mark;
+}
+
+/** Fusion keys whose ladders carry Marks (cached per GameData). */
+const MARK_KEYS = new WeakMap<GameData, string[]>();
+function markKeys(data: GameData): string[] {
+  let k = MARK_KEYS.get(data);
+  if (k === undefined) {
+    k = fusionKeys().filter((key) => fusionSteps(data, key).some((t) => fusionEffects(data, key, t).some((e) => e.type === 'mark')));
+    MARK_KEYS.set(data, k);
+  }
+  return k;
+}
+
+/** Most Marks any ladder step asks for (the per-wave Mark plan draws this many). */
+export function maxMarks(data: GameData): number {
+  let n = 0;
+  for (const key of markKeys(data)) for (const t of fusionSteps(data, key)) for (const e of fusionEffects(data, key, t)) if (e.type === 'mark') n = Math.max(n, e.count ?? 0);
+  return n;
 }
 
 /** One structure kind as the fusion ladders alone fold it (cheap; the renderer's view of the profile), undefined = not built. */
@@ -646,6 +700,9 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
       case 'structure':
         foldStructure(p.structures, e);
         return;
+      case 'mark':
+        foldMark(p, e);
+        return;
     }
   };
   const pd = data.perks.perks;
@@ -670,6 +727,11 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
     }
   }
   for (const c of w.cards) c.effects.forEach((e, i) => fold(e, 1, `card:${c.id}:${i}`));
+  // Bounty Marks × Bastion (spec 2026-10-16 synergies): both at II or more → turrets prefer the Marked target.
+  if (p.mark !== null && p.structures.turret !== undefined) {
+    const ii = data.sets.fusionTiers[1] ?? Infinity;
+    p.markTurrets = markKeys(data).some((k) => (w.fusionTiers[k] ?? 0) >= ii) && structureBuilders(data, 'turret').some((b) => (w.fusionTiers[b.key] ?? 0) >= ii);
+  }
   for (const r of RULE_IDS) p.rules[r] = clampValue((p.rules[r] + (add[r] ?? 0)) * (mul[r] ?? 1));
   // Genes (spec 2026-10-14 §C): Antifreeze shortens every freeze, Insulation weakens bounces and lightning.
   const chain = geneKeep(w, data, 'chain');

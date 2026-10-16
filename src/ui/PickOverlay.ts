@@ -6,13 +6,12 @@ import Phaser from 'phaser';
 import { CYAN, ENERGY, ENERGY_CSS, LOCKED, PANEL_FILL, RARITY_COLOR, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM } from '../render/palette';
 import { DEPTH } from '../render/WorldView';
 import type { GameData } from '../sim/data';
-import { slotGains } from '../sim/crystal';
 import { boostActive, boostAvailable, tagCounts } from '../sim/perks';
 import type { Tag } from '../sim/perkData';
 import type { World } from '../sim/state';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
-import { fusionLevel, fusionTags, perkLines, setProgress, upgradeLines } from './perkText';
+import { perkLines, pickBadges, setProgress, upgradeLines } from './perkText';
 import { pickGeometry, type PickGeometry } from './pickLayout';
 import { drawTagIcon } from './tagIcon';
 
@@ -230,8 +229,8 @@ export class PickOverlay {
       c.lines.setText(line).setColor(TEXT).setOrigin(0.5, 0).setAlign('center').setPosition(ix, c.rarity.y + geo.smallSize + 22).setWordWrapWidth(r.w - pad * 2);
       c.progress.setText(this.progressText(tag, prog)).setColor(TEXT_DIM).setOrigin(0.5, 1).setAlign('center').setPosition(ix, r.y + r.h - 18).setWordWrapWidth(r.w - pad * 2);
     }
-    // A new module that would raise a fusion tier at its auto slot: a second footer line.
-    const fuse = stacks === 0 ? this.fusionText(w, id) : '';
+    // Taking it would raise a fusion tier (new module at its auto slot, or a stack): badges as a second footer line.
+    const fuse = pickBadges(this.data, w, id).join(' · ');
     if (fuse) c.progress.setText(`${c.progress.text}\n${fuse}`);
     // Completes a tier → highlight the progress line in the tag colour.
     const completes = (prog.tier > 0 && this.data.sets.tiers.includes(prog.count)) || fuse !== '';
@@ -253,15 +252,6 @@ export class PickOverlay {
     if (p.next === 0) return `${name} ${p.count} · set complete`;
     if (this.data.sets.tiers.includes(p.count)) return `${name} ${p.count}/${p.count} → SET ON: ${p.tier === p.count ? this.tierText(tag, p.count) : ''}`;
     return `${name} ${p.count}/${p.next} → ${p.nextText}`;
-  }
-
-  /** `Cryo + Overload → THERMAL SHOCK I` when placing `id` at its auto slot raises a fusion tier, else ''. */
-  private fusionText(w: World, id: string): string {
-    const up = slotGains(w, this.data, id)?.fusions.find((f) => f.tierTo > f.tierFrom);
-    if (!up) return '';
-    const [a, b] = fusionTags(up.key);
-    const tags = this.data.sets.tags;
-    return `${tags[a].name} + ${tags[b].name} → ${this.data.sets.fusions[up.key]!.name.toUpperCase()} ${fusionLevel(this.data, up.tierTo)}`;
   }
 
   private tierText(tag: Tag, tier: number): string {

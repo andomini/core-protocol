@@ -20,7 +20,7 @@ export const RULE_IDS = [
 export type RuleId = (typeof RULE_IDS)[number];
 export type Rules = Record<RuleId, number>;
 
-export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'structure'] as const;
+export const EFFECT_TYPES = ['statAdd', 'statMul', 'onHit', 'onCrit', 'onKill', 'periodic', 'conditional', 'ruleChange', 'shield', 'waveSkip', 'capAdd', 'killBonus', 'lightningFreeze', 'thornsSlow', 'structure', 'mark'] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
 /** Battlefield structures a firewall fusion builds (spec 2026-10-15). The wall, turret, mine and station are simulated. */
@@ -117,7 +117,19 @@ export type Effect =
   /** A Thorns hit slows its attacker by `strength` for `seconds`. */
   | { type: 'thornsSlow'; strength: number; seconds: number }
   /** A fusion's battlefield structure; the fields are per kind (STRUCTURE_FIELDS), a tier lists only what it raises. */
-  | ({ type: 'structure'; kind: StructureKind } & { [F in StructureField]?: number });
+  | ({ type: 'structure'; kind: StructureKind } & { [F in StructureField]?: number })
+  /**
+   * Bounty Marks (spec 2026-10-16, phase 2): `count` viruses per wave are Marked and pay × energy/bits; a crit kill
+   * on a Mark × critMul more; the boss is Marked at × bossBitsMul Bits; every `jackpotEvery` Marks killed pay a
+   * jackpot of `jackpot` Bits (scaled for the wave), at most `jackpotCap` per run. Fusion ladders only; a tier lists what it raises.
+   */
+  | ({ type: 'mark' } & { [F in MarkField]?: number });
+
+/** Every number a `mark` effect can carry (folded field-wise: max, except jackpotEvery, where fewer is better: min). */
+export const MARK_FIELDS = ['count', 'energyMul', 'bitsMul', 'critMul', 'bossBitsMul', 'jackpotEvery', 'jackpotCap', 'jackpot'] as const;
+export type MarkField = (typeof MARK_FIELDS)[number];
+/** The Bounty Marks numbers folded over the reached tiers (absent fields = 0). */
+export type MarkValues = Record<MarkField, number>;
 
 export interface PerkDef {
   name: string;
@@ -304,6 +316,17 @@ export function validateEffect(e: Effect, at: string, allowStructure = false): v
       }
       return;
     }
+    case 'mark': {
+      check(allowStructure, `${at}: mark effects belong in sets.fusions only`);
+      for (const [k, v] of Object.entries(e)) {
+        if (k === 'type') continue;
+        check((MARK_FIELDS as readonly string[]).includes(k), `${at}.${k}: unknown mark field`);
+        if (k === 'count' || k === 'jackpotEvery' || k === 'jackpotCap') wholePos(v, `${at}.${k}`);
+        else if (k === 'jackpot') pos(v, `${at}.${k}`);
+        else check(finite(v) && v >= 1, `${at}.${k} must be a finite number >= 1, got ${String(v)}`);
+      }
+      return;
+    }
   }
 }
 
@@ -394,9 +417,29 @@ export function validateSets(s: SetsData): void {
       check(Array.isArray(f!.apex) && f!.apex.length > 0, `sets.fusions.${key}.apex must list effects`);
       wholePos(f!.apexLinks as number, `sets.fusions.${key}.apexLinks`);
       check(f!.apexLinks! > s.fusionTiers[s.fusionTiers.length - 1]!, `sets.fusions.${key}.apexLinks must be above the top fusion tier`);
-      f!.apex!.forEach((e, i) => validateEffect(e, `sets.fusions.${key}.apex[${i}]`));
+      f!.apex!.forEach((e, i) => {
+        check(e.type !== 'structure', `sets.fusions.${key}.apex[${i}]: no structures in an apex`);
+        validateEffect(e, `sets.fusions.${key}.apex[${i}]`, true);
+      });
+    }
+    validateMarkLadder(key, f!, s.fusionTiers);
+  }
+}
+
+/** A Mark ladder sets count, energyMul and bitsMul at its first step; a jackpot cadence needs a jackpot and a cap. */
+function validateMarkLadder(key: string, f: FusionDef, tiers: readonly number[]): void {
+  const steps = [...tiers.map((t) => f.tiers[String(t)]!), ...(f.apex ? [f.apex] : [])];
+  const seen = new Set<string>();
+  let first = true;
+  for (const effs of steps) {
+    for (const e of effs) {
+      if (e.type !== 'mark') continue;
+      for (const k of Object.keys(e)) seen.add(k);
+      if (first) for (const k of ['count', 'energyMul', 'bitsMul']) check(seen.has(k), `sets.fusions.${key}: the first mark step is missing "${k}"`);
+      first = false;
     }
   }
+  if (seen.has('jackpotEvery')) check(seen.has('jackpot') && seen.has('jackpotCap'), `sets.fusions.${key}: a mark jackpotEvery needs jackpot and jackpotCap`);
 }
 
 /**

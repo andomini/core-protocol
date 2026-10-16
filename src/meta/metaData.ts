@@ -51,6 +51,8 @@ export interface MetaData {
   milestones: { waves: number[]; keys: number[]; keysPerTier: number };
   offline: { bitsPerWaveHour: number; capHours: number; minMinutes: number };
   ads: { doubleBits: number };
+  /** Fusion Codex: one-off Bits the first time a pair reaches III (≈ a wave-50 run's Bits / 5). */
+  codex: { bits: number };
   labs: { branches: { id: string; name: string }[]; nodes: LabNode[] };
 }
 
@@ -81,6 +83,7 @@ export function validateMetaData(d: MetaData): MetaData {
     check(Number.isInteger(rf.economy) && rf.economy >= 2, 'workshop.refund.economy must be a whole number ≥ 2');
     curve(rf.from, 'workshop.refund.from');
   }
+  check(typeof d.codex?.bits === 'number' && Number.isFinite(d.codex.bits) && d.codex.bits >= 0, 'codex.bits must be a number ≥ 0');
   check(d.milestones.waves.length === d.milestones.keys.length, 'milestones.waves and keys differ in length');
   const ids = new Set<string>();
   const branches = new Set(d.labs.branches.map((b) => b.id));
