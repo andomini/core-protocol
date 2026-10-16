@@ -49,7 +49,7 @@ this document is its contract.
 
 A run is ranked only if:
 
-- the build has a clean commit (`__COMMIT__` is a 40-hex sha; dev and dirty builds report `<sha>-dirty` or `unknown`, and the server answers `400 build-not-ranked`);
+- the build has a clean commit (`__COMMIT__` is a 40-hex sha; dev and dirty builds report `<sha>-dirty` or `unknown`, and the server answers `400 build-not-ranked`), and the owner registered that commit as ranked (`builds` table, `server/verifier/builds.ts add`; unknown or retired commits get the same 400);
 - no dev or debug flags were set (BattleScene uses `battleData(DEFAULT_DATA, flags)`, and any flag changes the data);
 - the full command log from tick 0 is available (see §3.1);
 - `wave >= leaderboard.json minWave`.
@@ -112,7 +112,7 @@ All JSON. Bodies are at most 4 KB, except `POST /v1/runs`, which allows the repl
 |---|---|---|---|
 | GET `/health` | — | | `{ok, time}` |
 | GET `/daily` | — | | `{day, dayIndex, seed, endsAt, week, weekEndsAt}` (ms epochs) |
-| POST `/players` | — (rate limit: 10/h per IP) | `{portal: "local"\|"crazygames"\|"poki", name?, cgToken?}` | `201` (`200` when an existing CG account is re-linked) `{id, name, friendCode, portal, linked, badges, secret}` |
+| POST `/players` | — (rate limit: 30 successful/h per IP) | `{portal: "local"\|"crazygames"\|"poki", name?, cgToken?}` | `201` (`200` when an existing CG account is re-linked) `{id, name, friendCode, portal, linked, badges, secret}` |
 | GET `/players/me` | player | | `{id, name, friendCode, portal, linked, badges, verifiedBits, canRename, badgeHistory: [{week, tier, rank, wave}]}` |
 | PATCH `/players/me` | player (10/day) | `{name}` | `{name}`, or `400 name-length\|name-charset\|name-profane`, or `403 portal-name` |
 | DELETE `/players/me` | player | | `{deleted: true}`; runs, replays, bests, follows and badges are removed (cascade) |
@@ -175,9 +175,9 @@ The free-plan Worker has 10 ms of CPU per request, so it never replays runs. The
 4. **Loadout legitimacy** (tier runs only; the daily loadout is fixed):
    - `loadoutBits = Σ_workshop curveSum(workshopCurve(stat), 0, level) + Σ_labs cost`. This is what the claimed loadout cost in Bits.
    - `allowance = allowance.freeBits + allowance.earnedMul × verifiedBits` (currently 250,000 + 2 × verifiedBits).
-   - `verifiedBits` is the sum of `earnedBits` over the player's verified **and** flagged tier runs (the replay was genuine). The verifier tracks additions within a pass, so a player's earlier runs in the same batch count.
+   - `verifiedBits` is the sum of `earnedBits` over the player's verified tier runs. A flagged run keeps its `earnedBits` and is credited only when the owner overturns it to verified (otherwise flagged runs would build the allowance that decides later flags). The verifier tracks additions within a pass, so a player's earlier runs in the same batch count.
    - `earnedBits = floor(world.bits × lab bitsMul × card bitsMul × ads.doubleBits)`. This is a generous ceiling on what the run paid out.
-   - If `loadoutBits > allowance`, the status is `flagged`. The run is not shown, but its Bits are still credited. The owner reviews `GET /admin/runs?status=flagged` and can overturn the verdict.
+   - If `loadoutBits > allowance`, the status is `flagged`. The run is not shown and its Bits are not credited yet. The owner reviews `GET /admin/runs?status=flagged` and can overturn the verdict.
    - Players who levelled up before leaderboards existed have no verified history. They get flagged until their verified earnings catch up, or until the owner approves them.
    - Known gaps: cards are not costed, since they come from Keys and ads. A cheater can still hide a fast-forwarded save behind small honest runs, but needs 2× as many real, replay-verified Bits.
 5. Daily runs credit no Bits to the allowance.
@@ -211,9 +211,11 @@ Statuses: `pending → verified | rejected | flagged`; `flagged → verified | r
 
 | | Limit |
 |---|---|
-| Register | 10/h per IP |
+| Register | 30 successful/h per IP; CG re-link 20/h per account (≤ 5 extra device secrets kept) |
 | Rename | 10/day |
-| Submit | 60/h |
+| Submit | 60/h per player, 200/h per IP; replay bytes 20 MB/day per player, 100 MB/day per IP |
+| Rerolls per pick | 5 (perks.json `offer.maxRerolls`, enforced in the sim) |
+| Paid daily attempts | 1/day (leaderboard.json `daily.paidAttemptsPerDay`; later attempts are practice) |
 | Friends add | 60/h |
 | Pending runs per player | 20 |
 | Follows | 100 |

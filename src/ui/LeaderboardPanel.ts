@@ -1,12 +1,13 @@
 // RANKS: online leaderboards (Tier all-time / Daily challenge / Weekly season), Global or Friends, my row
-// pinned, a VERIFYING tag on runs the server has not replayed yet, and the profile (name, friend code).
+// pinned, a VERIFYING tag on runs the server has not replayed yet, the profile (name, friend code) and the
+// list of players I follow (with UNFOLLOW).
 // Everything degrades to a one-line status when the server is unreachable.
 
 import Phaser from 'phaser';
 import { BITS_CSS, CYAN, PANEL_FILL, TEXT, TEXT_DIM } from '../render/palette';
 import { DEPTH } from '../render/WorldView';
 import { dailyLoadout, dayKey, weekKey } from '../meta/leaderboardRules';
-import type { Board, BoardKind, BoardScope, Leaderboard, LbResult } from '../portal/leaderboard';
+import type { Board, BoardKind, BoardScope, Friend, Leaderboard, LbResult } from '../portal/leaderboard';
 import { nameError } from '../portal/leaderboard';
 import { showToast } from '../portal/toast';
 import { formatNum } from './format';
@@ -40,6 +41,9 @@ export class LeaderboardPanel {
   tier = 1;
   /** The last board shown (UI smoke). */
   board: Board | null = null;
+  /** 'friends': the list of players I follow replaces the board. */
+  view: 'board' | 'friends' = 'board';
+  friends: Friend[] | null = null;
   status = '';
   private readonly fixed: Phaser.GameObjects.GameObject[] = [];
   private readonly blocker: Phaser.GameObjects.Zone;
@@ -125,6 +129,7 @@ export class LeaderboardPanel {
   }
 
   private reload(): void {
+    if (this.view === 'friends') return this.loadFriends();
     const gen = ++this.gen;
     this.board = null;
     this.status = 'Loading…';
@@ -199,9 +204,61 @@ export class LeaderboardPanel {
         : this.kind === 'weekly'
           ? `Week of ${bd?.week ?? weekKey(now)} · ${left((bd?.endsAt ?? 0) - now)}`
           : `${bd?.day ?? dayKey(now)} · ${dailyLoadout(bd?.day ?? dayKey(now)).id.toUpperCase()} loadout · ${left((bd?.endsAt ?? 0) - now)}`;
-    this.t(g.left.x, y2 + bh + 10, info, TEXT_DIM);
-    this.renderList(g);
+    this.t(g.left.x, y2 + bh + 10, this.view === 'friends' ? 'Players you follow · their runs show on FRIENDS boards' : info, TEXT_DIM);
+    if (this.view === 'friends') this.renderFriends(g);
+    else this.renderList(g);
     this.renderProfile(g);
+  }
+
+  private loadFriends(): void {
+    const gen = ++this.gen;
+    this.friends = null;
+    this.status = 'Loading…';
+    this.render();
+    void this.lb.friends().then((r) => {
+      if (gen !== this.gen || !this.visible) return;
+      if (r.ok) {
+        this.friends = r.data.following;
+        this.status = r.data.following.length ? '' : 'You follow nobody yet · ADD FRIEND with their code';
+      } else this.status = ERR[r.error] ?? `Leaderboards: ${r.error}`;
+      this.render();
+    });
+  }
+
+  private renderFriends(g: ReturnType<LeaderboardPanel['geom']>): void {
+    const { list, rowH, f } = g;
+    const gr = this.scene.add.graphics().setDepth(D + 0.2);
+    this.objs.push(gr);
+    gr.lineStyle(2, CYAN, 0.5).lineBetween(list.x, list.y + f + 8, list.x + list.w, list.y + f + 8);
+    const xCode = list.x + list.w - (g.portrait ? 200 : 170);
+    this.t(list.x + 4, list.y, 'NAME', '#22e5ff', { title: true });
+    this.t(xCode, list.y, 'CODE', '#22e5ff', { title: true }).setOrigin(1, 0);
+    let y = list.y + f + 18;
+    if (this.status) this.t(list.x + list.w / 2, y + rowH, this.status, TEXT_DIM).setOrigin(0.5, 0).setWordWrapWidth(list.w - 20).setAlign('center');
+    const h = Math.max(rowH - 4, g.portrait ? 48 : 30);
+    const maxRows = Math.max(0, Math.floor((list.y + list.h - y) / (h + 6)));
+    const bw = g.portrait ? 180 : 150;
+    (this.friends ?? []).slice(0, maxRows).forEach((fr, i) => {
+      if (i % 2 === 1) gr.fillStyle(0x22e5ff, 0.05).fillRect(list.x - 6, y - 3, list.w + 12, h + 6);
+      this.t(list.x + 4, y + h / 2, clip(fr.name, g.portrait ? 14 : 22) + (fr.badges > 0 ? ` ★${fr.badges}` : ''), TEXT).setOrigin(0, 0.5);
+      this.t(xCode, y + h / 2, fmtCode(fr.friendCode), '#ffc93a').setOrigin(1, 0.5);
+      this.b(`unfollow:${fr.friendCode}`, { x: list.x + list.w - bw, y, w: bw, h }, 'UNFOLLOW', () => void this.unfollow(fr), { color: '#ff6b8b', edge: 0xff6b8b });
+      y += h + 6;
+    });
+    const more = (this.friends?.length ?? 0) - maxRows;
+    if (more > 0) this.t(list.x + list.w / 2, y, `+${more} more`, TEXT_DIM).setOrigin(0.5, 0);
+  }
+
+  private toggleFriends(): void {
+    this.view = this.view === 'friends' ? 'board' : 'friends';
+    this.reload();
+  }
+
+  private async unfollow(fr: Friend): Promise<void> {
+    const r = await this.lb.removeFriend(fr.friendCode);
+    if (!r.ok) return showToast(ERR[r.error] ?? `Could not unfollow: ${r.error}`, 3000);
+    showToast(`Unfollowed ${fr.name}`, 2500);
+    if (this.visible && this.view === 'friends') this.reload();
   }
 
   private renderList(g: ReturnType<LeaderboardPanel['geom']>): void {
@@ -263,9 +320,10 @@ export class LeaderboardPanel {
       this.t(p.x, y2 + bh / 2, `CODE ${id ? fmtCode(id.friendCode) : '—'}`, '#ffc93a').setOrigin(0, 0.5);
       this.b('copy', { x: p.x + p.w - bw, y: y2, w: bw, h: bh }, 'COPY', () => void this.copy(), { enabled: !!id });
       const y3 = y2 + bh + gap + 6;
-      const hw = (p.w - gap) / 2;
+      const hw = (p.w - 2 * gap) / 3;
       this.b('add', { x: p.x, y: y3, w: hw, h: bh }, 'ADD FRIEND', () => void this.addFriend(), { enabled: !!id, color: '#2bffb0', edge: 0x2bffb0 });
-      this.b('close', { x: p.x + hw + gap, y: y3, w: hw, h: bh }, 'CLOSE', () => this.o.close());
+      this.b('following', { x: p.x + hw + gap, y: y3, w: hw, h: bh }, this.view === 'friends' ? 'BOARD' : 'FOLLOWING', () => this.toggleFriends(), { enabled: !!id });
+      this.b('close', { x: p.x + 2 * (hw + gap), y: y3, w: hw, h: bh }, 'CLOSE', () => this.o.close());
       return;
     }
     // Landscape: a profile column on the right.
@@ -283,6 +341,8 @@ export class LeaderboardPanel {
     this.b('copy', { x: p.x, y, w: p.w, h: bh }, 'COPY CODE', () => void this.copy(), { enabled: !!id });
     y += bh + 10;
     this.b('add', { x: p.x, y, w: p.w, h: bh }, 'ADD FRIEND', () => void this.addFriend(), { enabled: !!id, color: '#2bffb0', edge: 0x2bffb0 });
+    y += bh + 10;
+    this.b('following', { x: p.x, y, w: p.w, h: bh }, this.view === 'friends' ? 'BACK TO BOARD' : 'FOLLOWING', () => this.toggleFriends(), { enabled: !!id });
     y += bh + 16;
     const q = this.lb.queued.length;
     if (q) this.t(p.x, y, `${q} run${q > 1 ? 's' : ''} waiting to upload`, '#ffb03b').setWordWrapWidth(p.w);
@@ -290,14 +350,16 @@ export class LeaderboardPanel {
   }
 
   private setKind(k: BoardKind): void {
-    if (this.kind === k) return;
+    if (this.kind === k && this.view === 'board') return;
     this.kind = k;
+    this.view = 'board';
     this.reload();
   }
 
   private setScope(s: BoardScope): void {
-    if (this.scope === s) return;
+    if (this.scope === s && this.view === 'board') return;
     this.scope = s;
+    this.view = 'board';
     this.reload();
   }
 
@@ -349,7 +411,7 @@ export class LeaderboardPanel {
     const r = await this.lb.addFriend(v);
     if (r.ok) {
       showToast(`Following ${r.data.friend.name}`, 2500);
-      if (this.visible && this.scope === 'friends') this.reload();
+      if (this.visible && (this.scope === 'friends' || this.view === 'friends')) this.reload();
       return;
     }
     const msg: Record<string, string> = {

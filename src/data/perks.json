@@ -1,6 +1,6 @@
 {
   "schedule": {"waves": [1, 2, 3, 5, 8, 10], "every": 5},
-  "offer": {"size": 3, "sizeLab": 4, "rarityWeights": {"common": 70, "rare": 25, "epic": 5}, "pityAfter": 3},
+  "offer": {"size": 3, "sizeLab": 4, "rarityWeights": {"common": 70, "rare": 25, "epic": 5}, "pityAfter": 3, "maxRerolls": 5},
   "freeRerolls": 1,
   "boost": {"energyMul": 2, "waves": 5, "cooldownWaves": 10},
   "rules": {"bounces": 0, "bounceDamage": 0.15, "bounceRange": 160, "lightningTargets": 2, "lightningDamage": 0.25, "lightningRange": 170, "freezeSeconds": 2, "slowBonus": 0, "slowCap": 0.7, "enemyHp": 1, "thornsRanged": 0, "runEndBits": 1, "bossLightning": 0, "enemySpeed": 1},

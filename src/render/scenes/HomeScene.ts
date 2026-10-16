@@ -62,6 +62,7 @@ export class HomeScene extends Phaser.Scene {
   statsPanel!: StatsPanel;
   codexPanel!: CodexPanel;
   lbPanel: LeaderboardPanel | null = null;
+  private dailyStarting = false;
 
   constructor() {
     super('Home');
@@ -340,9 +341,18 @@ export class HomeScene extends Phaser.Scene {
     this.lbPanel?.show(Math.min(services.meta.meta.tier, services.meta.meta.tierUnlocked));
   }
 
-  /** Today's daily challenge: the shared seed and fixed loadout (spec §Daily). */
+  /**
+   * Today's daily challenge: the shared seed and fixed loadout (spec §Daily). The day and seed come from the
+   * server (its clock, possibly a secret seed); offline the device's day is played unranked.
+   */
   startDaily(): void {
-    this.scene.start('Battle', { mode: 'daily' });
+    const lb = services.leaderboard;
+    if (!lb || this.dailyStarting) return;
+    this.dailyStarting = true;
+    void lb.dailyChallenge().then((daily) => {
+      this.dailyStarting = false;
+      if (this.scene.isActive()) this.scene.start('Battle', { mode: 'daily', daily });
+    });
   }
 
   startRun(tier: number): void {

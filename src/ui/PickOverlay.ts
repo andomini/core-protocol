@@ -147,7 +147,11 @@ export class PickOverlay {
     }
     // Buttons.
     this.rerollBtn.setVisible(true);
-    this.rerollBtn.label.setText(w.freeRerolls > 0 ? `REROLL · FREE` : 'REROLL  ▶AD');
+    const canReroll = w.rerolls < this.data.perks.offer.maxRerolls;
+    this.rerollBtn.label.setText(!canReroll ? 'NO REROLLS LEFT' : w.freeRerolls > 0 ? `REROLL · FREE` : 'REROLL  ▶AD');
+    this.rerollBtn.bg.setAlpha(canReroll ? 1 : 0.35);
+    this.rerollBtn.label.setAlpha(canReroll ? 1 : 0.45);
+    if (!canReroll) this.rerollBtn.zone.disableInteractive();
     const canBoost = boostAvailable(w, this.data);
     this.boostBtn.setVisible(true);
     const b = this.data.perks.boost;

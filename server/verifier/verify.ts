@@ -10,15 +10,17 @@
  * 4. POST /v1/admin/verdict          → verified | rejected | flagged (+ earnedBits, loadoutBits)
  * 5. POST /v1/admin/close-week       → for the last few finished weeks (idempotent server side).
  *
- * Transient problems (commit not fetched yet, child crash, timeout) leave the run pending; a run
- * still stuck after STALE_HOURS is rejected so it does not block the weekly close forever.
+ * Transient problems (commit not fetched yet, API errors) leave the run pending; a run still stuck after
+ * STALE_HOURS is rejected so it does not block the weekly close forever. A run whose entry crashes or times
+ * out (a hostile replay: memory, CPU) gets a strike in CACHE/strikes.json and is rejected at MAX_STRIKES.
+ * Pending runs are paged with a cursor, so skipped runs never starve the ones behind them.
  *
  * Usage: tsx server/verifier/verify.ts [--once-id <runId>] [--dry-run]
  * Env (see verifier.env.example): LB_URL, ADMIN_TOKEN, REPO, CACHE, BATCH, MAX_RUNS, TIMEOUT_MS,
- * STALE_HOURS, KEEP_WORKTREES.
+ * STALE_HOURS, MAX_STRIKES, KEEP_WORKTREES, ENTRY_MEMORY_MB.
  */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, symlinkSync, utimesSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -35,6 +37,8 @@ export interface PendingRun {
   commit: string;
   createdAt: number;
   verifiedBits: number;
+  /** Daily runs: the day's seed (the server's, which may be secret). */
+  seed?: number;
 }
 
 /** What the commit's `tools/leaderboard/verifyEntry.ts` prints (entry contract v1). */
@@ -57,14 +61,20 @@ export interface Verdict {
 /** A run that could not be checked this time (it stays pending). */
 export class Transient extends Error {}
 
+/** The entry crashed or timed out on this run: may be the replay's fault, so it counts as a strike. */
+export class Fault extends Transient {}
+
 export interface Deps {
   now(): number;
-  pending(limit: number): Promise<PendingRun[]>;
+  /** Pending runs with id > `after`, oldest first. */
+  pending(limit: number, after: number): Promise<PendingRun[]>;
   replay(id: number): Promise<string>;
   /** Runs the entry of `commit`; throws Transient when it could not run, returns null when the build has no entry. */
   check(commit: string, input: object): Promise<EntryOutput | null>;
   verdict(v: Verdict): Promise<void>;
   closeWeek(week: string): Promise<string>;
+  /** Adds a strike to run `id` and returns its total (persisted across passes). */
+  strike(id: number): number;
   log(msg: string): void;
 }
 
@@ -72,6 +82,8 @@ export interface Options {
   batch: number;
   maxRuns: number;
   staleMs: number;
+  /** Entry crashes/timeouts after which a run is rejected. */
+  maxStrikes: number;
 }
 
 const DAY_MS = 86_400_000;
@@ -92,15 +104,16 @@ export function finishedWeeks(now: number, n: number): string[] {
 
 /** One verifier pass. Returns counts per outcome. */
 export async function verifyPending(deps: Deps, opt: Options): Promise<Record<string, number>> {
-  const counts: Record<string, number> = { verified: 0, rejected: 0, flagged: 0, skipped: 0 };
+  const counts: Record<string, number> = { verified: 0, rejected: 0, flagged: 0, skipped: 0, errors: 0 };
   // Bits credited earlier in this pass: the pending list carries each player's total as of the fetch.
   const credited = new Map<string, number>();
-  const skipped = new Set<number>();
+  let after = 0;
   let done = 0;
   while (done < opt.maxRuns) {
-    const runs = (await deps.pending(Math.min(50, opt.batch + skipped.size))).filter((r) => !skipped.has(r.id));
+    const runs = await deps.pending(Math.min(50, opt.batch), after);
     if (runs.length === 0) break;
-    for (const run of runs.slice(0, opt.batch)) {
+    for (const run of runs) {
+      after = Math.max(after, run.id);
       if (done >= opt.maxRuns) break;
       done++;
       let v: Verdict;
@@ -111,6 +124,7 @@ export async function verifyPending(deps: Deps, opt: Options): Promise<Record<st
           kind: run.kind,
           tier: run.tier,
           day: run.day,
+          ...(run.seed === undefined ? {} : { seed: run.seed }),
           wave: run.wave,
           ticks: run.ticks,
           hash: run.hash,
@@ -120,23 +134,32 @@ export async function verifyPending(deps: Deps, opt: Options): Promise<Record<st
         if (out === null) {
           v = { id: run.id, status: 'rejected', reason: `build ${run.commit.slice(0, 10)} has no verifier entry` };
         } else {
-          // Daily runs use a fixed loadout: their Bits do not raise the player's loadout allowance.
+          // Daily runs use a fixed loadout: their Bits do not raise the player's loadout allowance. A flagged run
+          // keeps its Bits on the server, credited only if the owner overturns it to verified.
           const earned = out.status !== 'rejected' && run.kind === 'tier' ? out.earnedBits : 0;
           v = { id: run.id, status: out.status, earnedBits: earned, loadoutBits: out.loadoutBits, ...(out.reason ? { reason: out.reason } : {}) };
-          if (earned > 0) credited.set(run.playerId, (credited.get(run.playerId) ?? 0) + earned);
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (deps.now() - run.createdAt > opt.staleMs) {
+        if (e instanceof Fault && deps.strike(run.id) >= opt.maxStrikes) {
+          v = { id: run.id, status: 'rejected', reason: `unverifiable: ${msg}`.slice(0, 300) };
+        } else if (deps.now() - run.createdAt > opt.staleMs) {
           v = { id: run.id, status: 'rejected', reason: `unverifiable: ${msg}`.slice(0, 300) };
         } else {
           deps.log(`run ${run.id}: skipped (${msg})`);
-          skipped.add(run.id);
           counts.skipped!++;
           continue;
         }
       }
-      await deps.verdict(v);
+      try {
+        await deps.verdict(v);
+      } catch (e) {
+        // The run stays pending and is retried next pass; carry on with the others.
+        deps.log(`run ${run.id}: verdict not posted (${e instanceof Error ? e.message : String(e)})`);
+        counts.errors!++;
+        continue;
+      }
+      if (v.status === 'verified' && (v.earnedBits ?? 0) > 0) credited.set(run.playerId, (credited.get(run.playerId) ?? 0) + v.earnedBits!);
       counts[v.status]!++;
       deps.log(`run ${run.id} (${run.kind} t${run.tier} wave ${run.wave}): ${v.status}${v.reason ? ` — ${v.reason}` : ''}`);
     }
@@ -195,14 +218,16 @@ function worktree(repo: string, cache: string, commit: string, keep: number, fet
   return dir;
 }
 
-function runEntry(tsx: string, cwd: string, input: object, timeoutMs: number): Promise<EntryOutput> {
+function runEntry(tsx: string, cwd: string, input: object, timeoutMs: number, memoryMb: number): Promise<EntryOutput> {
   return new Promise((res, rej) => {
-    const child = spawn(tsx, [join(cwd, ENTRY)], { cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+    // A heap cap: a hostile replay (huge log, gzip bomb) aborts the child instead of the owner's PC.
+    const env = { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=${memoryMb}`.trim() };
+    const child = spawn(tsx, [join(cwd, ENTRY)], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
     const timer = setTimeout(() => {
       child.kill('SIGKILL');
-      rej(new Transient(`timeout after ${timeoutMs} ms`));
+      rej(new Fault(`timeout after ${timeoutMs} ms`));
     }, timeoutMs);
     child.stdout.on('data', (b: Buffer) => (out += b.toString()));
     child.stderr.on('data', (b: Buffer) => (err += b.toString()));
@@ -212,14 +237,14 @@ function runEntry(tsx: string, cwd: string, input: object, timeoutMs: number): P
     });
     child.on('close', (code) => {
       clearTimeout(timer);
-      if (code !== 0) return rej(new Transient(`entry exited ${code}: ${err.trim().split('\n').slice(-3).join(' | ')}`));
+      if (code !== 0) return rej(new Fault(`entry exited ${code}: ${err.trim().split('\n').slice(-3).join(' | ')}`));
       try {
         const line = out.trim().split('\n').pop() ?? '';
         const o = JSON.parse(line) as EntryOutput;
         if (!['verified', 'rejected', 'flagged'].includes(o.status)) throw new Error(`status ${String(o.status)}`);
         res(o);
       } catch (e) {
-        rej(new Transient(`bad entry output: ${(e as Error).message}`));
+        rej(new Fault(`bad entry output: ${(e as Error).message}`));
       }
     });
     child.stdin.end(JSON.stringify(input));
@@ -260,12 +285,21 @@ async function main(): Promise<void> {
   const dry = process.argv.includes('--dry-run');
   const keep = envNum('KEEP_WORKTREES', 6);
   const timeoutMs = envNum('TIMEOUT_MS', 300_000);
+  const memoryMb = envNum('ENTRY_MEMORY_MB', 1024);
   const fetched = { done: false };
+  const strikesFile = join(cache, 'strikes.json');
+  const strikes: Record<string, number> = (() => {
+    try {
+      return JSON.parse(readFileSync(strikesFile, 'utf8')) as Record<string, number>;
+    } catch {
+      return {};
+    }
+  })();
   const log = (m: string): void => void process.stdout.write(`${new Date().toISOString()} ${m}\n`);
 
   const deps: Deps = {
     now: () => Date.now(),
-    pending: async (limit) => (await apiJson<{ runs: PendingRun[] }>(base, token, 'GET', `/v1/admin/pending?limit=${limit}`)).runs,
+    pending: async (limit, after) => (await apiJson<{ runs: PendingRun[] }>(base, token, 'GET', `/v1/admin/pending?limit=${limit}&after=${after}`)).runs,
     replay: async (id) => {
       const res = await api(base, token, 'GET', `/v1/admin/replay/${id}`);
       if (res.status === 404) return ''; // lost replay: the entry rejects an empty payload
@@ -275,7 +309,7 @@ async function main(): Promise<void> {
     check: async (commit, input) => {
       const dir = worktree(repo, cache, commit, keep, fetched);
       if (!existsSync(join(dir, ENTRY))) return null;
-      return runEntry(tsx, dir, input, timeoutMs);
+      return runEntry(tsx, dir, input, timeoutMs, memoryMb);
     },
     verdict: async (v) => {
       if (dry) return log(`dry-run verdict ${JSON.stringify(v)}`);
@@ -288,12 +322,21 @@ async function main(): Promise<void> {
       if (res.ok) return b.already ? '' : `closed, ${b.awarded ?? 0} badges`;
       throw new Error(b.error ?? `HTTP ${res.status}`);
     },
+    strike: (id) => {
+      strikes[id] = (strikes[id] ?? 0) + 1;
+      if (!dry) {
+        mkdirSync(cache, { recursive: true });
+        writeFileSync(strikesFile, JSON.stringify(strikes));
+      }
+      return strikes[id]!;
+    },
     log,
   };
   const counts = await verifyPending(deps, {
     batch: envNum('BATCH', 20),
     maxRuns: envNum('MAX_RUNS', 200),
     staleMs: envNum('STALE_HOURS', 48) * 3_600_000,
+    maxStrikes: envNum('MAX_STRIKES', 2),
   });
   log(`done: ${JSON.stringify(counts)}`);
 }

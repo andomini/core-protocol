@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { b64url } from '../src/crypto';
 import type { Env } from '../src/db';
-import { handle } from '../src/index';
+import { daySeed, handle, runCron } from '../src/index';
+import { limit, LIMITS } from '../src/rate';
 import { checkName, isProfane } from '../src/names';
 import { dailySeed, dayIndex, weekKey } from '../src/time';
 import { fakeD1 } from './d1fake';
@@ -13,9 +14,11 @@ const ADMIN = 'admin-token-for-tests';
 let env: Env;
 let now = T0;
 
-beforeEach(() => {
+beforeEach(async () => {
   env = { DB: fakeD1(), ADMIN_TOKEN: ADMIN, CORS_ORIGINS: 'https://*.crazygames.com,http://localhost:*' };
   now = T0;
+  // Only registered builds are ranked (verifier/builds.ts add).
+  await env.DB.prepare('INSERT INTO builds (commit_sha, note, added_at) VALUES (?1, ?2, ?3)').bind(SHA, 'test', T0).run();
 });
 
 interface Res<T = Record<string, unknown>> {
@@ -90,11 +93,23 @@ describe('players', () => {
     expect((await call('GET', '/v1/players/me')).status).toBe(401);
   });
 
-  it('rate-limits registration per address', async () => {
-    for (let i = 0; i < 10; i++) await newPlayer(undefined, '9.9.9.9');
+  it('rate-limits successful registrations per address; failed attempts cost nothing', async () => {
+    for (let i = 0; i < 5; i++) expect((await call('POST', '/v1/players', { body: { name: 'ab' }, ip: '9.9.9.9' })).status).toBe(400);
+    for (let i = 0; i < LIMITS.register.n; i++) await newPlayer(undefined, '9.9.9.9');
     expect((await call('POST', '/v1/players', { body: {}, ip: '9.9.9.9' })).status).toBe(429);
+    await newPlayer(undefined, '9.9.9.8');
     now += 3_600_000;
     await newPlayer(undefined, '9.9.9.9');
+  });
+
+  it('the daily cron purges expired rate rows', async () => {
+    await newPlayer();
+    const count = async () => (await env.DB.prepare('SELECT COUNT(*) AS n FROM rate').first<{ n: number }>())!.n;
+    expect(await count()).toBeGreaterThan(0);
+    await runCron(env, now);
+    expect(await count()).toBeGreaterThan(0);
+    await runCron(env, now + 2 * 3_600_000);
+    expect(await count()).toBe(0);
   });
 
   it('deletes an account with its runs, bests and follows', async () => {
@@ -137,11 +152,25 @@ describe('CrazyGames accounts', () => {
     expect(b.status).toBe(200);
     expect(b.body.id).toBe(a.body.id);
     expect(b.body.name).toBe('RustyCake2');
-    // The old device's secret is replaced.
-    expect((await call('GET', '/v1/players/me', { token: `${a.body.id}.${a.body.secret}` })).status).toBe(401);
-    const me = await call('GET', '/v1/players/me', { token: `${b.body.id}.${b.body.secret}` });
+    // The old device keeps working (its secret is not replaced), up to the newest few device secrets.
+    expect((await call('GET', '/v1/players/me', { token: `${a.body.id}.${a.body.secret}` })).status).toBe(200);
+    const older = [];
+    for (let i = 0; i < 6; i++) older.push((await call('POST', '/v1/players', { body: { portal: 'crazygames', cgToken: await k.sign({ ...payload, username: 'RustyCake2' }) } })).body);
+    expect((await call('GET', '/v1/players/me', { token: `${b.body.id}.${b.body.secret}` })).status).toBe(401);
+    expect((await call('GET', '/v1/players/me', { token: `${older[5]!.id}.${older[5]!.secret}` })).status).toBe(200);
+    // The first device's secret is the player's own (players.secret_hash): never pruned.
+    expect((await call('GET', '/v1/players/me', { token: `${a.body.id}.${a.body.secret}` })).status).toBe(200);
+    const tok = `${older[5]!.id}.${older[5]!.secret}`;
+    const me = await call('GET', '/v1/players/me', { token: tok });
     expect(me.body.canRename).toBe(false);
-    expect((await call('PATCH', '/v1/players/me', { token: `${b.body.id}.${b.body.secret}`, body: { name: 'Other' } })).status).toBe(403);
+    expect((await call('PATCH', '/v1/players/me', { token: tok, body: { name: 'Other' } })).status).toBe(403);
+  });
+
+  it('without CG_GAME_ID, account linking is off (503 cg-disabled; the client registers anonymously)', async () => {
+    const k = await keys();
+    env.CG_PUBLIC_KEY_PEM = k.pem;
+    const r = await call('POST', '/v1/players', { body: { portal: 'crazygames', cgToken: await k.sign({ userId: 'u', gameId: '1', username: 'X', exp: Math.floor(now / 1000) + 60 }) } });
+    expect(r).toMatchObject({ status: 503, body: { error: 'cg-disabled' } });
   });
 
   it('refuses forged, expired, wrong-game and non-RS256 tokens', async () => {
@@ -171,6 +200,31 @@ describe('runs and boards', () => {
     expect((await post({ replay: 'x'.repeat(1_000_001) })).status).toBe(413);
     expect((await post({ kind: 'daily', day: '2026-10-15' })).status).toBe(202); // yesterday: crossed midnight
     expect((await call('POST', '/v1/runs', { body: run() })).status).toBe(401);
+    for (const replay of ['', 'not a replay', 'gz:not base64!', '{"v":1']) expect((await post({ replay })).body.error).toBe('bad-replay');
+  });
+
+  it('ranks only registered, unretired builds', async () => {
+    const p = await newPlayer();
+    const other = 'c'.repeat(40);
+    expect((await call('POST', '/v1/runs', { token: p.token, body: run({ commit: other }) })).body.error).toBe('build-not-ranked');
+    expect((await call('POST', '/v1/admin/builds', { body: { commit: other } })).status).toBe(401);
+    expect((await admin('POST', '/v1/admin/builds', { commit: other, note: 'v1.2' })).body.builds).toContainEqual(expect.objectContaining({ commit: other, note: 'v1.2', retiredAt: null }));
+    expect((await call('POST', '/v1/runs', { token: p.token, body: run({ commit: other }) })).status).toBe(202);
+    await admin('POST', '/v1/admin/builds', { commit: other, retired: true });
+    expect((await call('POST', '/v1/runs', { token: p.token, body: run({ commit: other }) })).body.error).toBe('build-not-ranked');
+    expect((await admin('POST', '/v1/admin/builds', { commit: 'nope' })).body.error).toBe('bad-commit');
+  });
+
+  it('counts stored replay bytes per player and day', async () => {
+    const p = await newPlayer();
+    const replay = `{${'x'.repeat(5000)}}`;
+    expect((await call('POST', '/v1/runs', { token: p.token, body: run({ replay }) })).status).toBe(202);
+    const row = await env.DB.prepare("SELECT n FROM rate WHERE key = ?1").bind(`bytes:${p.id}`).first<{ n: number }>();
+    expect(row?.n).toBe(replay.length);
+    await limit(env, `bytes:${p.id}`, LIMITS.submitBytes, now, LIMITS.submitBytes.n - replay.length - 10);
+    expect((await call('POST', '/v1/runs', { token: p.token, body: run({ replay }) })).status).toBe(429);
+    now += 86_400_000;
+    expect((await call('POST', '/v1/runs', { token: p.token, body: run({ replay }) })).status).toBe(202);
   });
 
   it('a duplicate submission returns the same run', async () => {
@@ -234,6 +288,7 @@ describe('runs and boards', () => {
     expect(d.body).toMatchObject({ board: 'd:2026-10-19', seed: dailySeed('2026-10-19') });
     expect(d.body.entries[0].wave).toBe(7);
     expect((await call('GET', '/v1/boards/daily/2026-10-18')).body.entries).toEqual([]);
+    expect((await call('GET', '/v1/boards/daily/2026-10-20')).body.error).toBe('bad-day');
     const info = await call('GET', '/v1/daily');
     expect(info.body).toMatchObject({ day: '2026-10-19', dayIndex: dayIndex('2026-10-19'), seed: dailySeed('2026-10-19'), week: '2026-10-19' });
   });
@@ -283,12 +338,36 @@ describe('admin API', () => {
     expect((await admin('GET', '/v1/admin/pending')).body.runs).toEqual([]);
     expect((await admin('GET', '/v1/admin/runs?status=flagged')).body.runs[0]).toMatchObject({ id: s.body.id, reason: 'loadout' });
     expect((await call('GET', '/v1/boards/tier/1')).body.entries).toEqual([]);
+    // A flagged run's Bits do not raise the loadout allowance until the flag is overturned.
+    expect((await call('GET', '/v1/players/me', { token: p.token })).body.verifiedBits).toBe(0);
     // The owner overturns the flag: the run joins the board; Bits are not credited twice.
     expect((await admin('POST', '/v1/admin/verdict', { id: s.body.id, status: 'verified', earnedBits: 50 })).body.boards).toEqual(['t:1', 'w:2026-10-12:1']);
     expect((await admin('POST', '/v1/admin/verdict', { id: s.body.id, status: 'rejected' })).status).toBe(409);
     expect((await call('GET', '/v1/players/me', { token: p.token })).body.verifiedBits).toBe(50);
     expect((await call('GET', '/v1/boards/tier/1')).body.entries[0].wave).toBe(22);
     expect((await call('GET', '/v1/runs/mine', { token: p.token })).body.runs[0]).toMatchObject({ id: s.body.id, status: 'verified' });
+  });
+
+  it('pages pending runs with a cursor; daily runs carry the day seed (HMAC with DAILY_SECRET)', async () => {
+    const p = await newPlayer();
+    const a = await call('POST', '/v1/runs', { token: p.token, body: run() });
+    const b = await call('POST', '/v1/runs', { token: p.token, body: run({ kind: 'daily', day: '2026-10-16' }) });
+    expect((await admin('GET', '/v1/admin/pending?limit=1')).body.runs.map((r: any) => r.id)).toEqual([a.body.id]);
+    const page = (await admin('GET', `/v1/admin/pending?after=${a.body.id}`)).body.runs;
+    expect(page).toEqual([expect.objectContaining({ id: b.body.id, seed: dailySeed('2026-10-16') })]);
+    env.DAILY_SECRET = 'daily-secret-for-tests';
+    const secretSeed = await daySeed(env, '2026-10-16');
+    expect(secretSeed).not.toBe(dailySeed('2026-10-16'));
+    expect(await daySeed({ ...env, DAILY_SECRET: 'other' }, '2026-10-16')).not.toBe(secretSeed);
+    expect((await call('GET', '/v1/daily')).body.seed).toBe(secretSeed);
+    expect((await call('GET', '/v1/boards/daily')).body.seed).toBe(secretSeed);
+    expect((await admin('GET', `/v1/admin/pending?after=${a.body.id}`)).body.runs[0].seed).toBe(secretSeed);
+  });
+
+  it('deletes the replay of a rejected run', async () => {
+    const p = await newPlayer();
+    const id = await submitAndVerify(p.token, {}, 'rejected');
+    expect((await admin('GET', `/v1/admin/replay/${id}`)).status).toBe(404);
   });
 
   it('drops the replay of a verified run that holds no board place', async () => {

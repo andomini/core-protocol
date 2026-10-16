@@ -2,6 +2,9 @@
 // Fail-soft by design: every call resolves (never throws) to {ok} or {ok:false, status, error}, each request
 // is capped by a timeout, and finished runs go through an offline queue persisted in a SaveSlot, retried on
 // an interval, on the browser's `online` event and at the next start. The game never waits on the network.
+// Registration is lazy (first RANKS open or first queued run), so players who never touch leaderboards cost
+// the server nothing.
+import { dailySeed, dayIndex, dayKey } from '../meta/leaderboardRules';
 import type { PortalName, PortalUser } from './Portal';
 import { type KeyValue, SaveSlot } from './storage';
 
@@ -9,6 +12,15 @@ export const LB_KEY = 'core-protocol.leaderboard';
 export const LB_TIMEOUT_MS = 8000;
 export const LB_QUEUE_MAX = 20;
 export const LB_RETRY_MS = 60_000;
+/** A queued run is given up after this many failed uploads (offline attempts do not count) or this age. */
+export const LB_MAX_TRIES = 30;
+export const LB_MAX_AGE_MS = 7 * 86_400_000;
+/** After this many failed uploads in a row a run goes to the back of the queue, so it cannot block the others. */
+export const LB_ROTATE_AFTER = 3;
+/** Replay characters the persisted queue may hold (localStorage is ~5 MB per origin, shared with the saves). */
+export const LB_QUEUE_CHARS = 1_500_000;
+/** Upload timeout: the base timeout plus 1 s per 50 KB of replay (slow mobile uplinks). */
+export const uploadTimeoutMs = (base: number, chars: number): number => base + 1000 * Math.ceil(chars / 50_000);
 /** The server's replay cap (characters of the JSON or `gz:` string). */
 export const LB_MAX_REPLAY = 1_000_000;
 const RECENT_MAX = 30;
@@ -72,6 +84,16 @@ export interface Friend {
 }
 
 export type LbResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
+
+/** A daily challenge to play: by the server's day and seed when online, else the device's (then unranked). */
+export interface DailyChallenge {
+  day: string;
+  seed: number;
+  /** Epoch ms (server clock) when the day ends. */
+  endsAt: number;
+  /** From the server: only these can be ranked (the seed may be secret, the device clock may be off). */
+  online: boolean;
+}
 
 /** What happened to one submitted run, keyed by `hash:ticks`. */
 export interface RunOutcome {
@@ -171,8 +193,16 @@ export class Leaderboard {
   private readonly now: () => number;
   private readonly timeoutMs: number;
   private registering: Promise<LbIdentity | null> | null = null;
+  /** Registration back-off after a refused attempt (rate limit, server error). */
+  private regFails = 0;
+  private regRetryAt = 0;
+  /** Server clock − device clock (ms), from the last GET /daily. */
+  private clockOffset = 0;
+  private dailyCache: DailyChallenge | null = null;
   private flushing: Promise<void> | null = null;
   private portalChecked = false;
+  /** Set by deleteMe: no portal (re-)linking for the rest of the session. */
+  private portalOff = false;
   private loaded = false;
   private listeners: (() => void)[] = [];
 
@@ -192,11 +222,11 @@ export class Leaderboard {
     this.state = this.slot.load().data;
   }
 
-  /** Loads, registers in the background, flushes the queue, and retries it on a timer / when back online. */
+  /** Loads, flushes a queue left from earlier sessions, and retries it on a timer / when back online. */
   start(): void {
     this.load();
     if (!this.enabled) return;
-    void this.ensurePlayer().then(() => this.flush());
+    if (this.state.queue.length > 0) void this.flush();
     setInterval(() => {
       if (this.state.queue.length > 0) void this.flush();
     }, LB_RETRY_MS);
@@ -231,7 +261,7 @@ export class Leaderboard {
 
   // ------------------------------------------------------------------ transport
 
-  private async request<T>(method: string, path: string, body?: unknown, auth = false): Promise<LbResult<T>> {
+  private async request<T>(method: string, path: string, body?: unknown, auth = false, timeoutMs = this.timeoutMs): Promise<LbResult<T>> {
     if (!this.enabled) return { ok: false, status: 0, error: 'disabled' };
     const headers: Record<string, string> = {};
     if (body !== undefined) headers['content-type'] = 'application/json';
@@ -242,12 +272,14 @@ export class Leaderboard {
     }
     const ac = typeof AbortController === 'function' ? new AbortController() : null;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let timedOut = false;
     try {
       const timeout = new Promise<never>((_, rej) => {
         timer = setTimeout(() => {
+          timedOut = true;
           ac?.abort();
           rej(new Error('timeout'));
-        }, this.timeoutMs);
+        }, timeoutMs);
       });
       const res = await Promise.race([
         this.fetchFn(`${this.base}/v1${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: ac?.signal }),
@@ -259,44 +291,73 @@ export class Leaderboard {
       } catch {
         data = null;
       }
+      const code = data && typeof data === 'object' && typeof (data as { error?: unknown }).error === 'string' ? (data as { error: string }).error : null;
       if (res.status >= 500) {
         this.health = 'unavailable';
-        return { ok: false, status: res.status, error: 'unavailable' };
+        return { ok: false, status: res.status, error: res.status === 503 && code ? code : 'unavailable' };
       }
       this.health = 'ok';
-      if (!res.ok) {
-        const err = data && typeof data === 'object' && typeof (data as { error?: unknown }).error === 'string' ? (data as { error: string }).error : `http-${res.status}`;
-        return { ok: false, status: res.status, error: err };
-      }
+      if (!res.ok) return { ok: false, status: res.status, error: code ?? `http-${res.status}` };
       return { ok: true, data: data as T };
     } catch {
+      // A timeout is not "offline": a large upload on a slow link is retried, counted, and eventually rotated.
       this.health = 'offline';
-      return { ok: false, status: 0, error: 'offline' };
+      return { ok: false, status: 0, error: timedOut ? 'timeout' : 'offline' };
     } finally {
       if (timer !== undefined) clearTimeout(timer);
     }
   }
 
-  /** An authenticated call; a rejected credential (deleted player, lost secret) re-registers once. */
-  private async authed<T>(method: string, path: string, body?: unknown): Promise<LbResult<T>> {
+  /**
+   * An authenticated call; a rejected credential (deleted player, lost secret) re-registers once. The old
+   * identity is kept (and stays saved) until a new one exists, so an outage never logs the player out.
+   */
+  private async authed<T>(method: string, path: string, body?: unknown, timeoutMs?: number): Promise<LbResult<T>> {
     if (!this.enabled) return { ok: false, status: 0, error: 'disabled' };
     if (!(await this.ensurePlayer())) return { ok: false, status: this.health === 'ok' ? 401 : 0, error: this.health === 'ok' ? 'auth' : 'offline' };
-    const r = await this.request<T>(method, path, body, true);
+    const r = await this.request<T>(method, path, body, true, timeoutMs);
     if (r.ok || r.status !== 401) return r;
-    this.state.identity = null;
-    this.persist();
-    if (!(await this.ensurePlayer())) return r;
-    return this.request<T>(method, path, body, true);
+    if (!(await this.register('replace'))) return r;
+    return this.request<T>(method, path, body, true, timeoutMs);
   }
 
+  /**
+   * Saves identity + queue + outcomes. When storage is full, queued runs are dropped (oldest first) until the
+   * save fits: losing an upload beats losing the identity, and the queue must never crowd out the game save.
+   */
   private persist(): void {
-    this.slot.save(this.state);
+    while (!this.slot.save(this.state) && !this.slot.isReadOnly && this.state.queue.length > 0) {
+      const q = this.state.queue.shift()!;
+      this.record({ ...this.baseOutcome(q.sub), state: 'dropped', error: 'storage' });
+    }
     for (const l of this.listeners) l();
   }
 
+  /** Storage is full (the game save failed): drops the offline queue. Returns whether anything was freed. */
+  freeSpace(): boolean {
+    if (this.state.queue.length === 0) return false;
+    for (const q of this.state.queue.splice(0)) this.record({ ...this.baseOutcome(q.sub), state: 'dropped', error: 'storage' });
+    this.persist();
+    return true;
+  }
+
+  private baseOutcome(sub: RunSubmission): RunOutcome {
+    return this.outcome(runKey(sub)) ?? { key: runKey(sub), kind: sub.kind, tier: sub.tier, day: sub.day, wave: sub.wave, state: 'queued' };
+  }
+
+  /** Drops the oldest queued runs beyond LB_QUEUE_MAX runs or LB_QUEUE_CHARS characters (the newest is kept). */
+  private trimQueue(): void {
+    const q = this.state.queue;
+    let chars = q.reduce((n, x) => n + x.sub.replay.length, 0);
+    while (q.length > 1 && (q.length > LB_QUEUE_MAX || chars > LB_QUEUE_CHARS)) {
+      const old = q.shift()!;
+      chars -= old.sub.replay.length;
+      this.record({ ...this.baseOutcome(old.sub), state: 'dropped', error: 'queue-full' });
+    }
+  }
+
   private async portalAccount(): Promise<PortalUser | null> {
-    if (this.portalChecked || !this.opts.portalUser) return null;
-    this.portalChecked = true;
+    if (!this.opts.portalUser) return null;
     try {
       return await Promise.race([this.opts.portalUser(), new Promise<null>((r) => setTimeout(() => r(null), this.timeoutMs))]);
     } catch {
@@ -313,13 +374,42 @@ export class Leaderboard {
     if (this.registering) return this.registering;
     const cur = this.state.identity;
     if (cur && (cur.linked || this.portalChecked || !this.opts.portalUser)) return Promise.resolve(cur);
+    return this.register(cur ? 'link' : 'new');
+  }
+
+  /**
+   * POST /players. 'new': no identity yet. 'link': try to link the anonymous identity to the signed-in portal
+   * account (once per session). 'replace': the saved credential was refused; the identity is swapped only
+   * when the new one exists. A refused CrazyGames link (linking off, stale token) falls back to an anonymous
+   * player. After a rate limit / server error, attempts back off (5 s doubling, up to 30 min).
+   */
+  private register(mode: 'new' | 'link' | 'replace'): Promise<LbIdentity | null> {
+    if (this.registering) return this.registering;
+    const cur = this.state.identity;
+    const fallback = mode === 'link' ? cur : null;
+    if (this.now() < this.regRetryAt) return Promise.resolve(fallback);
     this.registering = (async () => {
-      const user = cur?.linked ? null : await this.portalAccount();
-      if (cur && !user) return cur;
-      const body: Record<string, unknown> = { portal: this.opts.portal };
-      if (user) body.cgToken = user.token;
-      const r = await this.request<LbIdentity>('POST', '/players', body);
-      if (!r.ok) return this.state.identity;
+      let user: PortalUser | null = null;
+      if (mode === 'replace') user = cur?.linked && !this.portalOff ? await this.portalAccount() : null;
+      else if (!this.portalChecked && !this.portalOff) {
+        this.portalChecked = true;
+        user = await this.portalAccount();
+      }
+      if (mode === 'link' && !user) return cur;
+      const portal = { portal: this.opts.portal };
+      let r = await this.request<LbIdentity>('POST', '/players', user ? { ...portal, cgToken: user.token } : portal);
+      if (!r.ok && user && mode !== 'link' && (r.error === 'cg-disabled' || (r.status >= 400 && r.status < 500 && r.status !== 429))) {
+        r = await this.request<LbIdentity>('POST', '/players', portal);
+      }
+      if (!r.ok) {
+        if (r.status === 429 || r.status >= 500) {
+          this.regFails += 1;
+          this.regRetryAt = this.now() + Math.min(30 * 60_000, 5000 * 2 ** Math.min(this.regFails - 1, 10));
+        }
+        return fallback;
+      }
+      this.regFails = 0;
+      this.regRetryAt = 0;
       const d = r.data;
       this.state.identity = { id: d.id, secret: d.secret, name: d.name, friendCode: d.friendCode, portal: d.portal, linked: !!d.linked };
       this.persist();
@@ -351,6 +441,7 @@ export class Leaderboard {
     if (r.ok || r.status === 401) {
       this.state = { identity: null, queue: [], recent: [] };
       this.portalChecked = true; // no silent re-link in this session
+      this.portalOff = true;
       this.persist();
       return { ok: true, data: { deleted: true } };
     }
@@ -384,8 +475,30 @@ export class Leaderboard {
     return this.state.identity ? this.authed<Board>('GET', path + q) : this.request<Board>('GET', path + q);
   }
 
-  daily(): Promise<LbResult<{ day: string; dayIndex: number; seed: number; endsAt: number; week: string; weekEndsAt: number }>> {
+  daily(): Promise<LbResult<{ day: string; dayIndex: number; seed: number; endsAt: number; week: string; weekEndsAt: number; now?: number }>> {
     return this.request('GET', '/daily');
+  }
+
+  /** Device time corrected by the server clock (known after a GET /daily). */
+  serverNow(): number {
+    return this.now() + this.clockOffset;
+  }
+
+  /**
+   * Today's challenge by the server's day and seed (cached until the day ends). Offline or disabled: the
+   * device's day with the public seed, marked offline (such a run is not ranked).
+   */
+  async dailyChallenge(): Promise<DailyChallenge> {
+    const c = this.dailyCache;
+    if (c && this.serverNow() < c.endsAt) return c;
+    const r = await this.daily();
+    if (r.ok && typeof r.data.day === 'string' && Number.isInteger(r.data.seed)) {
+      if (typeof r.data.now === 'number') this.clockOffset = r.data.now - this.now();
+      this.dailyCache = { day: r.data.day, seed: r.data.seed, endsAt: r.data.endsAt, online: true };
+      return this.dailyCache;
+    }
+    const day = dayKey(this.now());
+    return { day, seed: dailySeed(day), endsAt: (dayIndex(day) + 1) * 86_400_000, online: false };
   }
 
   // ------------------------------------------------------------------ runs
@@ -399,19 +512,14 @@ export class Leaderboard {
     const key = runKey(sub);
     const base: RunOutcome = { key, kind: sub.kind, tier: sub.tier, day: sub.day, wave: sub.wave, state: 'queued' };
     if (!this.enabled) return { ...base, state: 'dropped', error: 'disabled' };
+    // Compressed before it is first persisted: an uncompressed log could overflow localStorage.
+    const replay = await compressReplay(sub.replay);
     if (!this.state.queue.some((q) => runKey(q.sub) === key)) {
-      this.state.queue.push({ sub, queuedAt: this.now(), tries: 0 });
-      while (this.state.queue.length > LB_QUEUE_MAX) this.state.queue.shift();
+      this.state.queue.push({ sub: { ...sub, replay }, queuedAt: this.now(), tries: 0 });
     }
     this.record(base);
+    this.trimQueue();
     this.persist();
-    // Compress before upload (and so the persisted queue stays small).
-    const z = await compressReplay(sub.replay);
-    const q = this.state.queue.find((x) => runKey(x.sub) === key);
-    if (q && z !== q.sub.replay) {
-      q.sub = { ...q.sub, replay: z };
-      this.persist();
-    }
     await this.flush();
     return this.outcome(key) ?? base;
   }
@@ -433,7 +541,7 @@ export class Leaderboard {
           this.persist();
           continue;
         }
-        const r = await this.authed<{ id: number; status: string }>('POST', '/runs', q.sub);
+        const r = await this.authed<{ id: number; status: string }>('POST', '/runs', q.sub, uploadTimeoutMs(this.timeoutMs, q.sub.replay.length));
         if (r.ok) {
           this.state.queue.shift();
           const st = r.data.status === 'verified' || r.data.status === 'rejected' || r.data.status === 'flagged' ? r.data.status : 'pending';
@@ -442,7 +550,16 @@ export class Leaderboard {
           continue;
         }
         if (r.status === 0 || r.status >= 500 || r.status === 429 || r.status === 401) {
-          q.tries += 1;
+          // Offline is nobody's fault; a timeout or a server refusal counts against this run.
+          if (r.error !== 'offline') q.tries += 1;
+          if (q.tries >= LB_MAX_TRIES || this.now() - q.queuedAt > LB_MAX_AGE_MS) {
+            this.state.queue.shift();
+            this.record({ ...base, state: 'dropped', error: `gave up: ${r.error}` });
+            this.persist();
+            continue;
+          }
+          // A run that keeps failing (too big for this link…) goes to the back: the others still upload.
+          if (q.tries > 0 && q.tries % LB_ROTATE_AFTER === 0 && this.state.queue.length > 1) this.state.queue.push(this.state.queue.shift()!);
           this.persist();
           return;
         }

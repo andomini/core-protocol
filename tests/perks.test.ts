@@ -258,6 +258,16 @@ describe('rerolls and boost', () => {
     expect(f.tick).toBe(0);
   });
 
+  it('rerolls per pick are capped by perks.json offer.maxRerolls (free + ad), so a replay cannot farm offers', () => {
+    const w = createWorld(data, { seed: 5, tier: 1 });
+    const cap = data.perks.offer.maxRerolls;
+    for (let i = 0; i < cap; i++) expect(ofType(apply(w, data, { type: 'reroll', via: 'ad' }), 'commandRejected')).toEqual([]);
+    expect(w.rerolls).toBe(cap);
+    const offer = w.offer.slice();
+    expect(ofType(apply(w, data, { type: 'reroll', via: 'ad' }), 'commandRejected')[0]!.reason).toBe('noReroll');
+    expect(w.offer).toEqual(offer);
+  });
+
   it('pick commands outside a pick, bad indexes and unknown commands are rejected without changes', () => {
     const w = createWorld(data, { seed: 5, tier: 1 });
     const before = JSON.stringify(w);

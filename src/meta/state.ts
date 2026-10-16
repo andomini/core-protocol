@@ -55,6 +55,8 @@ export interface MetaState {
   economy: number;
   /** Fusion Codex: best tier index reached per pair (1 = I … 4 = Apex); missing = not discovered. */
   codex: Record<string, number>;
+  /** Daily challenge attempts settled on `day` (UTC "YYYY-MM-DD"): only the first few pay. */
+  dailyPaid: { day: string; n: number };
 }
 
 export function defaultMeta(): MetaState {
@@ -81,6 +83,7 @@ export function defaultMeta(): MetaState {
     settings: { sound: true, music: true, reduceMotion: false, autoPlace: false, editorSeen: false, autoStats: [] },
     economy: 0,
     codex: {},
+    dailyPaid: { day: '', n: 0 },
   };
 }
 
@@ -130,6 +133,7 @@ export function validateMeta(raw: unknown, data: GameData, md: MetaData): MetaSt
       if (keys.includes(k) && t > 0) m.codex[k] = t;
     }
   }
+  if (isObj(raw.dailyPaid) && typeof raw.dailyPaid.day === 'string') m.dailyPaid = { day: raw.dailyPaid.day.slice(0, 10), n: int(raw.dailyPaid.n, 0) };
   if (isObj(raw.settings)) {
     m.settings.sound = raw.settings.sound !== false;
     m.settings.music = raw.settings.music !== false;

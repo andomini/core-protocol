@@ -419,6 +419,7 @@ export function rerollOffer(w: World, data: GameData, via: unknown, events: SimE
   if (w.dead) return 'dead';
   if (w.phase !== 'pick') return 'phase';
   if (via !== 'free' && via !== 'ad') return 'index';
+  if (w.rerolls >= data.perks.offer.maxRerolls) return 'noReroll';
   if (via === 'free') {
     if (w.freeRerolls <= 0) return 'noReroll';
     w.freeRerolls -= 1;

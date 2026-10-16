@@ -31,6 +31,8 @@ export interface RunReplayInfo {
   log: LoggedCommand[] | null;
   claim: LoadoutClaim | null;
   board: RunBoard | null;
+  /** Build commit the run was started on: a run resumed on another build is unranked (its replay would mix sims). */
+  commit: string | null;
 }
 
 interface RunSave extends RunReplayInfo {
@@ -49,7 +51,7 @@ export interface SavedRun extends RunReplayInfo {
 
 /** Run slot v1 → v2: saves from before leaderboards carry no log, so they resume unranked. */
 export const RUN_MIGRATIONS = {
-  1: (d: unknown) => (d === null || typeof d !== 'object' ? d : { ...(d as object), log: null, claim: null, board: null }),
+  1: (d: unknown) => (d === null || typeof d !== 'object' ? d : { ...(d as object), log: null, claim: null, board: null, commit: null }),
 };
 
 function validBoard(x: unknown): RunBoard | null {
@@ -65,6 +67,11 @@ export class MetaStore {
   readonly status: LoadStatus;
   /** Bits refunded on load for workshop levels bought at older, higher prices (Home announces it once). */
   refunded = 0;
+  /**
+   * Called when a save did not reach durable storage (quota full). Returns true if it freed space (main.ts:
+   * the leaderboard's offline queue), and the save is retried once.
+   */
+  onSaveFailed: (() => boolean) | null = null;
   private readonly slot: SaveSlot<MetaState>;
   private readonly runSlot: SaveSlot<RunSave | null>;
 
@@ -96,6 +103,7 @@ export class MetaStore {
           log: Array.isArray(o.log) ? (o.log as LoggedCommand[]) : null,
           claim: o.claim && typeof o.claim === 'object' ? (o.claim as LoadoutClaim) : null,
           board: validBoard(o.board),
+          commit: typeof o.commit === 'string' ? o.commit : null,
         };
       },
     });
@@ -104,16 +112,24 @@ export class MetaStore {
   /** Persists the meta state, stamping `lastSeen` (offline income counts from here). */
   save(): void {
     this.meta.lastSeen = this.now();
-    this.slot.save(this.meta);
+    this.write(this.slot, this.meta);
+  }
+
+  /** A save that failed for lack of space is retried once after `onSaveFailed` freed some. */
+  private write<T>(slot: SaveSlot<T>, data: T): boolean {
+    if (slot.save(data)) return true;
+    if (slot.isReadOnly || !this.onSaveFailed?.()) return false;
+    return slot.save(data);
   }
 
   /** Saves the run in progress (never a dead one). Failures are silent: a lost snapshot only costs a Continue. */
-  saveRun(w: World, opts: RunOptions, stats?: RunStats, replay: RunReplayInfo = { log: null, claim: null, board: null }): void {
+  saveRun(w: World, opts: RunOptions, stats?: RunStats, replay: RunReplayInfo = { log: null, claim: null, board: null, commit: null }): void {
     if (w.dead) return;
     try {
       // A log too big for the store would make every later save fail (stale Continue): drop it (→ unranked).
       const log = replay.log && JSON.stringify(replay.log).length <= MAX_SAVED_LOG_CHARS ? replay.log : null;
-      this.runSlot.save({ snapshot: snapshot(w), opts, savedAt: this.now(), stats, log, claim: replay.claim, board: replay.board });
+      const save: RunSave = { snapshot: snapshot(w), opts, savedAt: this.now(), stats, log, claim: replay.claim, board: replay.board, commit: replay.commit };
+      this.write<RunSave | null>(this.runSlot, save);
     } catch {
       /* a non-finite value: keep the previous snapshot */
     }
@@ -132,7 +148,7 @@ export class MetaStore {
     }
     try {
       const d = r.data;
-      return { world: restore(d.snapshot, this.data), opts: d.opts, savedAt: d.savedAt, stats: validateRunStats(d.stats), log: d.log, claim: d.claim, board: d.board };
+      return { world: restore(d.snapshot, this.data), opts: d.opts, savedAt: d.savedAt, stats: validateRunStats(d.stats), log: d.log, claim: d.claim, board: d.board, commit: d.commit };
     } catch {
       this.clearRun();
       return null;

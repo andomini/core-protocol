@@ -4,6 +4,7 @@
   "maxLogEntries": 200000,
   "daily": {
     "tier": 1,
+    "paidAttemptsPerDay": 1,
     "loadouts": [
       { "id": "balanced", "workshop": { "damage": 12, "attackSpeed": 8, "health": 12, "regen": 8, "defense": 4 }, "labs": ["freeReroll", "perkChoice"], "cards": {} },
       { "id": "glass", "workshop": { "damage": 20, "attackSpeed": 12, "critChance": 8, "critFactor": 6, "health": 4 }, "labs": ["multishot", "freeReroll"], "cards": {} },

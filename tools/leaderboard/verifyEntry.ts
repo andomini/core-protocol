@@ -2,6 +2,8 @@
 // server/verifier/verify.ts runs THIS FILE FROM THE BUILD'S COMMIT (a git worktree), so the sim and data are
 // the ones the player ran. Contract (keep it stable; bump ENTRY_VERSION on a breaking change):
 //   stdin  = JSON VerifyInput      stdout = JSON VerifyOutput (one line)      exit 0 even for "rejected".
+// Whatever the replay holds, this entry answers "rejected" rather than throwing: a crash would leave the run
+// pending (and retried) on the verifier side.
 import { gunzipSync } from 'node:zlib';
 import { loadoutBonus } from '../../src/meta/cards';
 import {
@@ -9,6 +11,7 @@ import {
   claimError,
   dailyClaim,
   dailyRunOptions,
+  dailySeed,
   dayIndex,
   earnedBits,
   LEADERBOARD,
@@ -46,6 +49,8 @@ export interface VerifyInput {
   replay: string;
   /** Bits credited to the player from earlier verified runs (tier-board allowance). */
   verifiedBits: number;
+  /** Daily: the day's seed as issued by the server (may be secret); absent = the public dailySeed(day). */
+  seed?: number;
 }
 
 export interface VerifyOutput {
@@ -59,10 +64,16 @@ export interface VerifyOutput {
   allowanceBits: number;
 }
 
+/** Largest decompressed replay (a gzip bomb stops here instead of exhausting memory). */
+export const MAX_REPLAY_TEXT = 16_000_000;
+
 export function decodeReplay(s: string): unknown {
-  const text = s.startsWith('gz:') ? gunzipSync(Buffer.from(s.slice(3), 'base64')).toString('utf8') : s;
+  const text = s.startsWith('gz:') ? gunzipSync(Buffer.from(s.slice(3), 'base64'), { maxOutputLength: MAX_REPLAY_TEXT }).toString('utf8') : s;
+  if (text.length > MAX_REPLAY_TEXT) throw new Error('replay too large');
   return JSON.parse(text);
 }
+
+const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
 const isInt = (x: unknown): x is number => typeof x === 'number' && Number.isInteger(x) && x >= 0;
 
@@ -71,6 +82,8 @@ function payloadError(p: unknown, maxLog: number): string | null {
   const o = p as Partial<ReplayPayload>;
   if (o.v !== 1) return `payload: unsupported version ${String(o.v)}`;
   if (!isInt(o.seed) || !isInt(o.tier)) return 'payload: bad seed/tier';
+  const c = o.claim as unknown;
+  if (!isObj(c) || !isObj(c.workshop) || !Array.isArray(c.labs) || !isObj(c.cards)) return 'payload: bad claim';
   if (!Array.isArray(o.log) || o.log.length > maxLog) return 'payload: bad log';
   for (const l of o.log) {
     if (typeof l !== 'object' || l === null || !isInt(l.tick) || typeof l.cmd !== 'object' || l.cmd === null || typeof l.cmd.type !== 'string') return 'payload: bad log entry';
@@ -78,16 +91,26 @@ function payloadError(p: unknown, maxLog: number): string | null {
   return null;
 }
 
+const out = (status: VerifyOutput['status'], reason?: string, extra: Partial<VerifyOutput> = {}): VerifyOutput => ({
+  entry: ENTRY_VERSION,
+  status,
+  ...(reason === undefined ? {} : { reason }),
+  earnedBits: 0,
+  loadoutBits: 0,
+  allowanceBits: 0,
+  ...extra,
+});
+
+/** Checks one submission; never throws (anything unexpected in the payload is a rejection). */
 export function verifySubmission(input: VerifyInput, data: GameData = DEFAULT_DATA, md: MetaData = DEFAULT_META_DATA): VerifyOutput {
-  const out = (status: VerifyOutput['status'], reason?: string, extra: Partial<VerifyOutput> = {}): VerifyOutput => ({
-    entry: ENTRY_VERSION,
-    status,
-    ...(reason === undefined ? {} : { reason }),
-    earnedBits: 0,
-    loadoutBits: 0,
-    allowanceBits: 0,
-    ...extra,
-  });
+  try {
+    return check(input, data, md);
+  } catch (e) {
+    return out('rejected', `payload: ${e instanceof Error ? e.message : String(e)}`.slice(0, 300));
+  }
+}
+
+function check(input: VerifyInput, data: GameData, md: MetaData): VerifyOutput {
   let p: ReplayPayload;
   try {
     const raw = decodeReplay(input.replay);
@@ -103,7 +126,7 @@ export function verifySubmission(input: VerifyInput, data: GameData = DEFAULT_DA
   let claim: LoadoutClaim;
   if (input.kind === 'daily') {
     if (input.day === null || !Number.isFinite(dayIndex(input.day))) return out('rejected', 'daily: bad day');
-    opts = dailyRunOptions(input.day, data, md);
+    opts = dailyRunOptions(input.day, data, md, LEADERBOARD, input.seed ?? dailySeed(input.day));
     if (p.seed !== opts.seed || p.tier !== opts.tier) return out('rejected', 'daily: seed or tier is not the day’s');
     claim = dailyClaim(input.day);
     if (!sameClaim(p.claim, claim)) return out('rejected', 'daily: loadout is not the day’s');
@@ -138,8 +161,15 @@ export function verifySubmission(input: VerifyInput, data: GameData = DEFAULT_DA
 async function main(): Promise<void> {
   const chunks: Buffer[] = [];
   for await (const c of process.stdin) chunks.push(c as Buffer);
-  const input = JSON.parse(Buffer.concat(chunks).toString('utf8')) as VerifyInput;
-  process.stdout.write(`${JSON.stringify(verifySubmission(input))}\n`);
+  let res: VerifyOutput;
+  try {
+    const input = JSON.parse(Buffer.concat(chunks).toString('utf8')) as VerifyInput;
+    if (!isObj(input) || typeof input.replay !== 'string') throw new Error('bad input');
+    res = verifySubmission(input);
+  } catch (e) {
+    res = out('rejected', `input: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  process.stdout.write(`${JSON.stringify(res)}\n`);
 }
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {

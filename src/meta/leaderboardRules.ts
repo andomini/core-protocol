@@ -23,7 +23,8 @@ export interface LeaderboardData {
   minWave: number;
   /** A longer command log is not accepted (client: the run is not ranked). */
   maxLogEntries: number;
-  daily: { tier: number; loadouts: DailyLoadout[] };
+  /** paidAttemptsPerDay: daily attempts per UTC day that pay Bits/Keys (later ones only rank). */
+  daily: { tier: number; paidAttemptsPerDay: number; loadouts: DailyLoadout[] };
   /** Tier boards: a loadout may cost up to freeBits + earnedMul × Bits earned in the player's verified runs. */
   allowance: { freeBits: number; earnedMul: number };
 }
@@ -146,8 +147,9 @@ export function dailyClaim(day: string, lb: LeaderboardData = LEADERBOARD): Load
 }
 
 /** The daily challenge run: the day's seed, the data's tier and the day's fixed loadout (the player's meta is not used). */
-export function dailyRunOptions(day: string, data: GameData, md: MetaData, lb: LeaderboardData = LEADERBOARD): RunOptions {
-  return runOptionsFromClaim(dailyClaim(day, lb), data, md, lb.daily.tier, dailySeed(day));
+/** The day's run; `seed` is the server-issued one (secret daily seeds), else the public dailySeed(day). */
+export function dailyRunOptions(day: string, data: GameData, md: MetaData, lb: LeaderboardData = LEADERBOARD, seed: number = dailySeed(day)): RunOptions {
+  return runOptionsFromClaim(dailyClaim(day, lb), data, md, lb.daily.tier, seed);
 }
 
 /** Same loadout (key order ignored). */

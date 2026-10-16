@@ -11,7 +11,10 @@ How it works: `verify.ts` → `GET /v1/admin/pending` → `GET /v1/admin/replay/
 (idempotent; refused while a week still has pending runs).
 
 - A commit that is not in the repo yet triggers one `git fetch origin`. If it is still missing, the run
-  stays pending and is rejected after `STALE_HOURS` (48). This also applies to entry crashes and timeouts.
+  stays pending and is rejected after `STALE_HOURS` (48).
+- An entry crash, timeout (`TIMEOUT_MS`) or out-of-memory (`ENTRY_MEMORY_MB`, default 1024) is a strike
+  (kept in `<CACHE>/strikes.json`); a run is rejected at `MAX_STRIKES` (2). Runs that are skipped are paged
+  past with a cursor, so a few stuck runs never block the rest of the queue.
 - A commit without `tools/leaderboard/verifyEntry.ts` predates ranked play, so its runs are rejected.
 - Only the newest `KEEP_WORKTREES` (6) worktrees are kept in the cache.
 
@@ -28,14 +31,24 @@ All commands are run from the repo root unless a step says otherwise.
    npm run db:migrate:remote
    openssl rand -base64 32                      # → the admin token; keep it
    npx wrangler secret put ADMIN_TOKEN          # paste the token
-   # optional: set CG_GAME_ID in wrangler.toml [vars] (CrazyGames game id, checked against user tokens)
+   openssl rand -base64 32 | npx wrangler secret put DAILY_SECRET   # optional: unpredictable daily seeds
+   # CG_GAME_ID in wrangler.toml [vars] (CrazyGames game id): REQUIRED for CrazyGames account linking;
+   # without it the Worker answers 503 cg-disabled and the game registers anonymous players instead.
    npx wrangler deploy                          # prints https://core-protocol-lb.<sub>.workers.dev
+   # The Worker's daily cron (wrangler.toml [triggers]) purges expired rate-limit rows.
    curl https://core-protocol-lb.<sub>.workers.dev/v1/health
    ```
 2. Game builds: set `VITE_LEADERBOARD_URL=https://core-protocol-lb.<sub>.workers.dev` (for example in
    `.env.production.local`) before `npm run build:all`. Builds must come from a **clean, pushed commit**.
    Dirty builds get a `-dirty` `__COMMIT__`, and the Worker answers `400 build-not-ranked`. Push the commit
-   before players can submit runs from it, or the verifier cannot fetch it.
+   before players can submit runs from it, or the verifier cannot fetch it, and **register it as ranked**
+   (only registered commits are accepted; a retired one is refused again):
+   ```sh
+   set -a; . server/verifier/verifier.env; set +a
+   npx tsx server/verifier/builds.ts add HEAD "crazygames 1.3"   # or a full sha
+   npx tsx server/verifier/builds.ts list
+   npx tsx server/verifier/builds.ts retire <sha>                 # an old build players should update from
+   ```
    If a portal serves the game from a new origin, add it to `CORS_ORIGINS` in `wrangler.toml` and redeploy.
 3. Verifier (this PC; needs `npm install` in the repo root for `tsx`):
    ```sh
@@ -59,6 +72,11 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: applicati
 curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" -H 'content-type: application/json' \
      -d '{"playerId":"...","banned":true}' "$LB_URL/v1/admin/ban"
 ```
+
+Daily challenge seeds: without `DAILY_SECRET` the seed is a public hash of the day (anyone can practise
+tomorrow's map). With it, the seed is an HMAC known only to the Worker; the game fetches it from
+`/v1/daily` (an offline daily run is practice, unranked) and the verifier gets it with each pending run.
+Changing the secret changes the seeds of days not yet verified: set it once, before launch.
 
 ## Updating the server
 

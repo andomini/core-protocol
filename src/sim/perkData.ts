@@ -146,7 +146,8 @@ export interface PerkDef {
 export interface PerksData {
   /** Picks at these waves, then every `every` waves after the last one. */
   schedule: { waves: number[]; every: number };
-  offer: { size: number; sizeLab: number; rarityWeights: Record<Rarity, number>; pityAfter: number };
+  /** maxRerolls: rerolls (free + ad) per pick; one more is refused, so a ranked run cannot fish for an offer. */
+  offer: { size: number; sizeLab: number; rarityWeights: Record<Rarity, number>; pityAfter: number; maxRerolls: number };
   /** Free rerolls per run with the lab node (RunOptions.freeReroll). */
   freeRerolls: number;
   /** Rewarded boost: × Energy for `waves` waves, at most once every `cooldownWaves`. */
@@ -347,6 +348,7 @@ export function validatePerks(p: PerksData): void {
   check(p.offer.rarityWeights.common + p.offer.rarityWeights.rare + p.offer.rarityWeights.epic > 0, 'perks.offer.rarityWeights must not all be 0');
   check(p.offer.rarityWeights.rare + p.offer.rarityWeights.epic > 0, 'perks.offer.rarityWeights: pity needs Rare or Epic weight');
   wholePos(p.offer.pityAfter, 'perks.offer.pityAfter');
+  wholePos(p.offer.maxRerolls, 'perks.offer.maxRerolls');
   check(Number.isInteger(p.freeRerolls) && p.freeRerolls >= 0, 'perks.freeRerolls must be a whole number ≥ 0');
   pos(p.boost?.energyMul, 'perks.boost.energyMul');
   wholePos(p.boost.waves, 'perks.boost.waves');

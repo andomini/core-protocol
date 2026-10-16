@@ -13,7 +13,15 @@ migrations_dir = "migrations"
 [vars]
 # Origins allowed by CORS (comma list; "*." = any subdomain, ":*" = any port).
 CORS_ORIGINS = "https://*.crazygames.com,https://crazygames.com,https://*.poki-gdn.com,https://*.poki.com,https://*.trycloudflare.com,http://localhost:*,http://127.0.0.1:*"
-# CrazyGames game id; when set, a user token for another game is refused (empty = any).
+# CrazyGames game id (from the CrazyGames developer portal). MUST be set before CrazyGames account linking
+# works: while empty, a register with a CrazyGames user token is refused (503 cg-disabled), because any other
+# CrazyGames game's token would otherwise be accepted. The game then falls back to an anonymous player.
 CG_GAME_ID = ""
 
-# Secret (never in this file): `npx wrangler secret put ADMIN_TOKEN` (the verifier's bearer token).
+# Daily cron: deletes expired rate-limit rows.
+[triggers]
+crons = ["17 3 * * *"]
+
+# Secrets (never in this file):
+#   npx wrangler secret put ADMIN_TOKEN    the verifier's bearer token
+#   npx wrangler secret put DAILY_SECRET   optional: unpredictable daily seeds (HMAC of the day)

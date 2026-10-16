@@ -31,6 +31,8 @@ export interface Settlement {
   codexBits: number;
   /** Pairs newly entered in the Codex this run. */
   codexNew: string[];
+  /** A daily attempt beyond the day's paid ones: ranked, but no Bits or Keys. */
+  unpaid?: boolean;
 }
 
 export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResult): Settlement {
@@ -79,13 +81,18 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
  * multipliers) and dropped Keys only — no best wave, milestones, tier unlock or Codex, which belong to the
  * player's own loadout on their tier.
  */
-export function settleDaily(m: MetaState, md: MetaData, r: Pick<RunResult, 'bits' | 'keys' | 'doubled'>): Settlement {
+export function settleDaily(m: MetaState, md: MetaData, r: Pick<RunResult, 'bits' | 'keys' | 'doubled'>, day: string, paidPerDay: number): Settlement {
+  // Only the first `paidPerDay` attempts of a challenge day pay (leaderboard.json daily.paidAttemptsPerDay): the
+  // daily is a short, strong fixed loadout, and unlimited restarts would make it the best Bits farm in the game.
+  if (m.dailyPaid.day !== day) m.dailyPaid = { day, n: 0 };
+  const paid = m.dailyPaid.n < paidPerDay;
+  m.dailyPaid.n += 1;
   const e = labEffects(m, md);
-  const bits = Math.floor(r.bits * e.bitsMul * (r.doubled ? md.ads.doubleBits : 1));
-  const keys = Math.floor(r.keys);
+  const bits = paid ? Math.floor(r.bits * e.bitsMul * (r.doubled ? md.ads.doubleBits : 1)) : 0;
+  const keys = paid ? Math.floor(r.keys) : 0;
   m.bits += bits;
   m.keys += keys;
   m.runs += 1;
   m.firstRunDone = true;
-  return { bits, keys, milestones: [], newBest: false, tierUnlocked: 0, codexBits: 0, codexNew: [] };
+  return { bits, keys, milestones: [], newBest: false, tierUnlocked: 0, codexBits: 0, codexNew: [], ...(paid ? {} : { unpaid: true }) };
 }

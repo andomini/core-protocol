@@ -24,8 +24,10 @@ export interface Env {
   ADMIN_TOKEN?: string;
   /** Comma list of allowed CORS origins ("https://*.crazygames.com", "http://localhost:*"). */
   CORS_ORIGINS?: string;
-  /** CrazyGames game id; a user token for another game is refused when set. */
+  /** CrazyGames game id. Required for account linking: unset, a register with a cgToken answers 503. */
   CG_GAME_ID?: string;
+  /** Secret behind the daily seeds (`wrangler secret put DAILY_SECRET`); unset = the public FNV seed. */
+  DAILY_SECRET?: string;
   /** Tests only: the CrazyGames public key (PEM) instead of fetching https://sdk.crazygames.com/publicKey.json. */
   CG_PUBLIC_KEY_PEM?: string;
 }

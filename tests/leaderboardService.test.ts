@@ -5,7 +5,7 @@ import { MetaStore, RUN_KEY } from '../src/meta/MetaStore';
 import { DEFAULT_META_DATA as MD } from '../src/meta/metaData';
 import { settleDaily } from '../src/meta/runEnd';
 import { defaultMeta } from '../src/meta/state';
-import { LB_KEY, Leaderboard, nameError, normalizeFriendCode, rankedBuild, type RunSubmission } from '../src/portal/leaderboard';
+import { LB_KEY, LB_MAX_AGE_MS, LB_MAX_TRIES, LB_QUEUE_MAX, LB_ROTATE_AFTER, Leaderboard, nameError, normalizeFriendCode, rankedBuild, type RunSubmission } from '../src/portal/leaderboard';
 import { memoryKV } from '../src/portal/storage';
 import { RunSession } from '../src/render/RunSession';
 import { DEFAULT_DATA, type GameData, STAT_IDS } from '../src/sim/data';
@@ -67,10 +67,11 @@ describe('Leaderboard service', () => {
     expect(await off.daily()).toEqual({ ok: false, status: 0, error: 'offline' });
     expect(off.health).toBe('offline');
     const down = lbWith(memoryKV(), api(() => ({ status: 503, body: { error: 'x' } })).fetchFn);
-    expect(await down.daily()).toMatchObject({ ok: false, status: 503, error: 'unavailable' });
+    // The server's error code is kept (e.g. 'cg-disabled' decides the CrazyGames fallback).
+    expect(await down.daily()).toMatchObject({ ok: false, status: 503, error: 'x' });
     const hung = lbWith(memoryKV(), api(() => 'hang').fetchFn);
     const t0 = Date.now();
-    expect(await hung.daily()).toMatchObject({ ok: false, status: 0, error: 'offline' });
+    expect(await hung.daily()).toMatchObject({ ok: false, status: 0, error: 'timeout' });
     expect(Date.now() - t0).toBeLessThan(1000);
     // No server URL → disabled, nothing is fetched.
     const { calls, fetchFn } = api(() => ({ status: 200, body: {} }));
@@ -137,6 +138,68 @@ describe('Leaderboard service', () => {
     expect(r.ok).toBe(true);
     expect(lb.identity?.id).toBe('p_2');
     expect(calls.map((c) => c.path)).toEqual(['/players', '/friends', '/players', '/friends']);
+  });
+
+  it('a failed re-register keeps the saved identity (it is retried later, never wiped)', async () => {
+    const kv = memoryKV();
+    let reg = 0;
+    const { fetchFn } = api((c) => {
+      if (c.path === '/players') return ++reg === 1 ? { status: 201, body: PLAYER } : { status: 503, body: { error: 'down' } };
+      return { status: 401, body: { error: 'auth' } };
+    });
+    const lb = lbWith(kv, fetchFn);
+    expect((await lb.friends()).ok).toBe(false);
+    expect(lb.identity?.id).toBe('p_1');
+    const lb2 = lbWith(kv, fetchFn);
+    lb2.load();
+    expect(lb2.identity?.id).toBe('p_1');
+  });
+
+  it('compresses a replay before it is first saved and trims the queue to its cap', async () => {
+    const kv = memoryKV();
+    const lb = lbWith(kv, api(() => 'offline').fetchFn);
+    await lb.submit(SUB);
+    expect(lb.queued[0]!.replay.startsWith('gz:')).toBe(true);
+    expect(kv.getItem(LB_KEY)).not.toContain('"log":[]');
+    for (let i = 1; i <= LB_QUEUE_MAX; i++) await lb.submit({ ...SUB, hash: `h${i}` });
+    expect(lb.queued).toHaveLength(LB_QUEUE_MAX);
+    expect(lb.queued.some((q) => q.hash === 'deadbeef')).toBe(false);
+    expect(lb.outcome('deadbeef:3456')).toMatchObject({ state: 'dropped', error: 'queue-full' });
+  });
+
+  it('offline does not count as a try; failures do, rotate a stuck run to the back and finally give up', async () => {
+    const kv = memoryKV();
+    let online = false;
+    let t = 1000;
+    const { calls, fetchFn } = api((c) => {
+      if (!online) return 'offline';
+      if (c.path === '/players') return { status: 201, body: PLAYER };
+      return c.body!.hash === 'deadbeef' ? { status: 503, body: { error: 'down' } } : { status: 202, body: { id: 9, status: 'pending' } };
+    });
+    const lb = lbWith(kv, fetchFn, { now: () => t });
+    const tries = () => (lb as unknown as { state: { queue: { tries: number }[] } }).state.queue.map((q) => q.tries);
+    await lb.submit(SUB);
+    await lb.submit({ ...SUB, hash: 'second' });
+    for (let i = 0; i < 5; i++) await lb.flush();
+    expect(tries()).toEqual([0, 0]);
+    online = true;
+    for (let i = 0; i < LB_ROTATE_AFTER; i++) await lb.flush();
+    // The stuck run went to the back after LB_ROTATE_AFTER tries; the next flush uploads the other one.
+    expect(lb.queued.map((q) => q.hash)).toEqual(['second', 'deadbeef']);
+    await lb.flush();
+    expect(lb.outcome('second:3456')).toMatchObject({ state: 'pending', id: 9 });
+    expect(lb.queued.map((q) => q.hash)).toEqual(['deadbeef']);
+    while (lb.queued.length > 0 && calls.length < 200) await lb.flush();
+    expect(tries()).toEqual([]);
+    expect(lb.outcome('deadbeef:3456')).toMatchObject({ state: 'dropped', error: 'gave up: down' });
+    expect(calls.filter((c) => c.path === '/runs' && c.body!.hash === 'deadbeef')).toHaveLength(LB_MAX_TRIES);
+    // A run older than LB_MAX_AGE_MS is given up on at its next failure.
+    await lb.submit({ ...SUB, hash: 'deadbeef', ticks: 1 });
+    expect(lb.queued).toHaveLength(1);
+    t += LB_MAX_AGE_MS + 1;
+    await lb.flush();
+    expect(lb.queued).toHaveLength(0);
+    expect(lb.outcome('deadbeef:1')).toMatchObject({ state: 'dropped', error: 'gave up: down' });
   });
 
   it('links a signed-in CrazyGames account with its token', async () => {
@@ -219,11 +282,25 @@ describe('daily challenge', () => {
   it('a daily run pays Bits (× labs) and Keys only', () => {
     const m = defaultMeta();
     const before = structuredClone(m);
-    const s = settleDaily(m, MD, { bits: 1000, keys: 2.7, doubled: false });
+    const s = settleDaily(m, MD, { bits: 1000, keys: 2.7, doubled: false }, '2026-10-16', 1);
     expect(s).toMatchObject({ keys: 2, milestones: [], newBest: false, tierUnlocked: 0 });
+    expect(s.unpaid).toBeUndefined();
     expect(m.bits).toBe(before.bits + s.bits);
     expect(m.best).toEqual(before.best);
     expect(m.milestones).toEqual(before.milestones);
+  });
+
+  it('only the first paid attempts of a day pay; a new day pays again', () => {
+    const m = defaultMeta();
+    const r = { bits: 1000, keys: 3, doubled: false };
+    expect(settleDaily(m, MD, r, '2026-10-16', 1).bits).toBeGreaterThan(0);
+    const bits = m.bits;
+    const keys = m.keys;
+    const again = settleDaily(m, MD, r, '2026-10-16', 1);
+    expect(again).toMatchObject({ bits: 0, keys: 0, unpaid: true });
+    expect([m.bits, m.keys]).toEqual([bits, keys]);
+    expect(settleDaily(m, MD, r, '2026-10-17', 1).unpaid).toBeUndefined();
+    expect(m.bits).toBeGreaterThan(bits);
   });
 });
 
@@ -237,10 +314,11 @@ describe('resumed runs keep a complete replay', () => {
     const s = new RunSession(data, opts);
     drive(s, 600);
     expect(s.world.dead).toBe(false);
-    store.saveRun(s.world, s.opts, undefined, { log: s.log, claim: dailyClaim(day), board: { kind: 'daily', day } });
+    store.saveRun(s.world, s.opts, undefined, { log: s.log, claim: dailyClaim(day), board: { kind: 'daily', day }, commit: 'abc1234' });
     const saved = new MetaStore(kv, data, MD, () => 0).loadRun()!;
     expect(saved.board).toEqual({ kind: 'daily', day });
     expect(saved.claim).toEqual(dailyClaim(day));
+    expect(saved.commit).toBe('abc1234');
     const r = new RunSession(data, saved.opts);
     r.adopt(saved.world, saved.opts);
     r.log = saved.log!;

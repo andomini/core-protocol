@@ -72,12 +72,12 @@ export class CrazyGamesPortal implements Portal {
       if (this.source.get(k) === 'sdk' && this.sdk) {
         try {
           this.sdk.data.setItem(k, v);
-          return;
+          return true;
         } catch {
           /* fall through to localStorage */
         }
       }
-      this.local.setItem(k, v);
+      return this.local.setItem(k, v);
     },
     removeItem: (k) => {
       if (this.source.get(k) === 'sdk' && this.sdk) {

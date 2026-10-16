@@ -335,6 +335,21 @@ function lbMock() {
         m.friends.push(b.code);
         return b.code === 'ABCDEF' ? json(route, 200, { friend: { name: 'Pal', friendCode: b.code, badges: 1 } }) : json(route, 404, { error: 'code-not-found' });
       }
+      if (req.method() === 'GET' && path === '/friends') {
+        return json(route, 200, { code: me.friendCode, following: m.friends.filter((c) => c === 'ABCDEF').map((c) => ({ name: 'Pal', friendCode: c, badges: 1 })) });
+      }
+      if (req.method() === 'DELETE' && path.startsWith('/friends/')) {
+        const code = path.slice('/friends/'.length);
+        m.friends = m.friends.filter((c) => c !== code);
+        return json(route, 200, { removed: true });
+      }
+      if (req.method() === 'GET' && path === '/daily') {
+        // A server-issued seed (DAILY_SECRET) that differs from the public day hash: the run must use it.
+        const now = Date.now();
+        const day = new Date(now).toISOString().slice(0, 10);
+        const endsAt = (Math.floor(now / 86400e3) + 1) * 86400e3;
+        return json(route, 200, { day, dayIndex: Math.floor(now / 86400e3), seed: 424242, endsAt, week: '2026-10-12', weekEndsAt: endsAt, now });
+      }
       if (req.method() === 'GET' && path.startsWith('/boards/')) {
         m.boards.push(path + url.search);
         const friends = url.searchParams.get('scope') === 'friends';
@@ -367,7 +382,7 @@ const homeBtn = (h, label) =>
 const lbPanel = (h) =>
   h.p.evaluate(() => {
     const p = window.__cp.game.scene.getScene('Home').lbPanel;
-    return p && { visible: p.visible, kind: p.kind, scope: p.scope, status: p.status, rows: p.board?.entries.length ?? -1, board: p.board?.board ?? null, me: p.board?.me ?? null, rects: p.rects };
+    return p && { visible: p.visible, view: p.view, friends: p.friends?.length ?? -1, kind: p.kind, scope: p.scope, status: p.status, rows: p.board?.entries.length ?? -1, board: p.board?.board ?? null, me: p.board?.me ?? null, rects: p.rects };
   });
 
 const scenarios = {
@@ -1040,18 +1055,20 @@ const scenarios = {
       const m = lbMock();
       const q = '?home=1&weak=1&lb=http://lb.test&lbforce=1';
       const h = await open(browser, srv.base, device, q, { routes: m.routes });
-      await h.p.waitForFunction(() => window.__cp.lb().identity !== null, null, { timeout: 10000 }).catch(() => {});
-      const id = await h.p.evaluate(() => window.__cp.lb().identity);
-      check(results, `${label}: registers once with the mocked API`, id?.friendCode === 'K7M2QX' && m.players === 1, { id, players: m.players });
+      await h.p.waitForTimeout(500);
+      // Lazy: nothing registers until the player uses a leaderboard feature (or has a run to upload).
+      check(results, `${label}: no registration on load`, m.players === 0, { players: m.players });
       // Home: RANKS opens the panel with the tier board.
       const ranks = await homeBtn(h, 'RANKS');
       const daily = await homeBtn(h, 'DAILY');
       check(results, `${label}: Home shows DAILY and RANKS`, ranks && daily, { ranks, daily });
       await h.tapLogical(...centre(ranks));
       await h.p.waitForFunction(() => window.__cp.game.scene.getScene('Home').lbPanel?.board, null, { timeout: 5000 }).catch(() => {});
+      await h.p.waitForFunction(() => window.__cp.lb().identity !== null, null, { timeout: 10000 }).catch(() => {});
+      const id = await h.p.evaluate(() => window.__cp.lb().identity);
+      check(results, `${label}: opening RANKS registers once with the mocked API`, id?.friendCode === 'K7M2QX' && m.players === 1, { id, players: m.players });
       let p = await lbPanel(h);
       check(results, `${label}: panel loads the tier board with my row pinned`, p.visible && p.board === 't:1' && p.rows >= 8 && !p.status, p);
-      check(results, `${label}: board calls are authenticated`, m.auth.length > 0 && m.auth.every((a) => a === 'Bearer p_smoke.sekret'), m.auth);
       await minTextCheck(h, `${label} ranks panel`);
       await h.shot(`ranks-${device}`);
       // Fits the card: every button inside the layout.
@@ -1068,6 +1085,8 @@ const scenarios = {
       await h.p.waitForTimeout(400);
       p = await lbPanel(h);
       check(results, `${label}: WEEKLY tab`, p.kind === 'weekly' && m.boards.some((b) => b.startsWith('/boards/weekly/1?')), m.boards);
+      // The first board call races the registration (a public read); once registered, every call is signed.
+      check(results, `${label}: board calls are authenticated`, m.auth.slice(1).length > 0 && m.auth.slice(1).every((a) => a === 'Bearer p_smoke.sekret'), m.auth);
       await h.shot(`ranks-weekly-${device}`);
       // Rename and add-friend go through the DOM prompt.
       await h.tapLogical(...centre(p.rects.rename));
@@ -1086,6 +1105,21 @@ const scenarios = {
       await h.p.click('.cp-prompt-ok');
       await h.p.waitForTimeout(400);
       check(results, `${label}: friend code is normalised before POST /friends`, m.friends.join() === 'ABCDEF', m.friends);
+      // FOLLOWING: the list of followed players replaces the board; UNFOLLOW removes one.
+      await h.tapLogical(...centre((await lbPanel(h)).rects.following));
+      await h.p.waitForFunction(() => window.__cp.game.scene.getScene('Home').lbPanel?.friends, null, { timeout: 5000 }).catch(() => {});
+      p = await lbPanel(h);
+      const unf = p.rects['unfollow:ABCDEF'];
+      const outF = Object.entries(p.rects).filter(([, r]) => r.x < 0 || r.y < 0 || r.x + r.w > L.w || r.y + r.h > L.h);
+      check(results, `${label}: FOLLOWING lists followed players with UNFOLLOW, inside the screen`, p.view === 'friends' && p.friends === 1 && !!unf && outF.length === 0, { p, outF });
+      await h.shot(`ranks-following-${device}`);
+      await h.tapLogical(...centre(unf));
+      await h.p.waitForTimeout(500);
+      p = await lbPanel(h);
+      check(results, `${label}: UNFOLLOW sends DELETE and reloads the list`, m.friends.length === 0 && p.friends === 0, { friends: m.friends, p });
+      await h.tapLogical(...centre(p.rects.following));
+      await h.p.waitForTimeout(400);
+      check(results, `${label}: BACK returns to the board`, (await lbPanel(h)).view === 'board', null);
       await h.tapLogical(...centre((await lbPanel(h)).rects.close));
       await h.p.waitForTimeout(200);
       check(results, `${label}: CLOSE hides the panel`, !(await lbPanel(h)).visible, null);
@@ -1105,7 +1139,7 @@ const scenarios = {
       check(
         results,
         `${label}: the daily run is submitted with seed, claim, full log, wave, ticks, hash, commit`,
-        sub && sub.kind === 'daily' && sub.day === board.day && sub.wave === st.wave && sub.ticks === st.tick && /^[0-9a-f]{8}$/.test(sub.hash) && typeof sub.commit === 'string' && rp.v === 1 && rp.seed === st.seed && rp.claim && Array.isArray(rp.log) && rp.log.length === st.commands,
+        sub && sub.kind === 'daily' && sub.day === board.day && st.seed === 424242 && sub.wave === st.wave && sub.ticks === st.tick && /^[0-9a-f]{8}$/.test(sub.hash) && typeof sub.commit === 'string' && rp.v === 1 && rp.seed === st.seed && rp.claim && Array.isArray(rp.log) && rp.log.length === st.commands,
         { sub: sub && { ...sub, replay: sub.replay.slice(0, 20) }, rp: rp && { ...rp, log: rp.log.length }, st: { wave: st.wave, tick: st.tick, seed: st.seed, commands: st.commands } },
       );
       await minTextCheck(h, `${label} death + rank`);

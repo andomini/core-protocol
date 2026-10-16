@@ -6,7 +6,7 @@ import { verifyCgToken } from './crazygames';
 import { CODE_ALPHABET, newSecret, randomInt, randomString, safeEqual, sha256Hex } from './crypto';
 import { corsHeaders, errorResponse, HttpError, json, MAX_REPLAY, MAX_RUN_BODY, readJson } from './http';
 import { autoName, checkName, nameFromPortal } from './names';
-import { limit, LIMITS } from './rate';
+import { limit, LIMITS, peek, purgeRate } from './rate';
 import { DAY_MS, dailySeed, dayIndex, dayKey, isMonday, weekKey } from './time';
 
 export type { Env } from './db';
@@ -16,6 +16,27 @@ const MAX_TIER = 50;
 const MAX_PENDING = 20;
 const MAX_FOLLOWS = 100;
 const BADGE_TOP = 10;
+/** Device secrets kept per player in `secrets` (besides players.secret_hash). */
+const MAX_SECRETS = 5;
+
+/**
+ * The seed of a day's challenge. With DAILY_SECRET set it is an HMAC of the day, so nobody can compute (and
+ * pre-play) tomorrow's run; the client gets it from GET /v1/daily, the verifier from /v1/admin/pending.
+ * Without the secret it is the public FNV seed the game can also compute offline.
+ */
+export async function daySeed(env: Env, day: string): Promise<number> {
+  if (!env.DAILY_SECRET) return dailySeed(day);
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(env.DAILY_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(`core-protocol:daily:${day}`)));
+  return ((mac[0]! << 24) | (mac[1]! << 16) | (mac[2]! << 8) | mac[3]!) >>> 0 || 1;
+}
+
+/** A replay string worth storing: JSON text, or "gz:" + base64. Anything else is refused before it costs D1 space. */
+function replayShapeOk(s: string): boolean {
+  if (s.startsWith('gz:')) return s.length > 3 && /^[A-Za-z0-9+/]+={0,2}$/.test(s.slice(3));
+  return s.startsWith('{') && s.endsWith('}');
+}
 
 interface Player {
   id: string;
@@ -55,7 +76,13 @@ async function auth(c: Ctx, required: boolean): Promise<Player | null> {
     throw new HttpError(401, 'auth');
   }
   const row = await c.env.DB.prepare('SELECT * FROM players WHERE id = ?1').bind(m[1]).first<Player & { secret_hash: string }>();
-  if (!row || row.secret_hash !== (await sha256Hex(m[2]!))) throw new HttpError(401, 'auth');
+  if (!row) throw new HttpError(401, 'auth');
+  const hash = await sha256Hex(m[2]!);
+  if (row.secret_hash !== hash) {
+    // Another device of the same CrazyGames account (each re-register adds a secret instead of replacing it).
+    const other = row.cg_user_id !== null ? await c.env.DB.prepare('SELECT 1 AS ok FROM secrets WHERE player_id = ?1 AND hash = ?2').bind(row.id, hash).first() : null;
+    if (!other) throw new HttpError(401, 'auth');
+  }
   if (row.banned) throw new HttpError(403, 'banned');
   return row;
 }
@@ -80,20 +107,35 @@ function publicPlayer(p: Player) {
 
 async function register(c: Ctx): Promise<Response> {
   const b = await readJson(c.req);
-  await limit(c.env, `reg:${await ipKey(c)}`, LIMITS.register, c.now);
+  // Many players can share one address (school, mobile carrier NAT): only successful registrations count.
+  const regKey = `reg:${await ipKey(c)}`;
+  await peek(c.env, regKey, LIMITS.register, c.now);
   const portal = PORTALS.find((p) => p === b.portal) ?? 'local';
   const secret = newSecret();
   const secretHash = await sha256Hex(secret);
   let name: string;
   let cgUserId: string | null = null;
   if (b.cgToken !== undefined) {
+    // Without the game id any CrazyGames game's user token would be accepted: account linking stays off.
+    if (!c.env.CG_GAME_ID) throw new HttpError(503, 'cg-disabled');
     const u = await verifyCgToken(b.cgToken, c.env, c.now);
     cgUserId = u.userId;
+    await limit(c.env, `cg:${u.userId}`, LIMITS.cgRegister, c.now);
     const existing = await c.env.DB.prepare('SELECT * FROM players WHERE cg_user_id = ?1').bind(u.userId).first<Player>();
     name = nameFromPortal(u.username) ?? existing?.name ?? autoName(randomInt);
     if (existing) {
-      // Same CrazyGames account (new device or lost save): same player, new secret (older devices re-register).
-      await c.env.DB.prepare('UPDATE players SET secret_hash = ?1, name = ?2 WHERE id = ?3').bind(secretHash, name, existing.id).run();
+      // Same CrazyGames account on another device (or a lost save): same player, one more device secret.
+      // Older devices keep working; only the newest MAX_SECRETS extra secrets are kept.
+      const DB = c.env.DB;
+      await DB.batch([
+        DB.prepare('INSERT OR IGNORE INTO secrets (player_id, hash, created_at) VALUES (?1, ?2, ?3)').bind(existing.id, secretHash, c.now),
+        DB.prepare('DELETE FROM secrets WHERE player_id = ?1 AND hash NOT IN (SELECT hash FROM secrets WHERE player_id = ?1 ORDER BY created_at DESC, rowid DESC LIMIT ?2)').bind(
+          existing.id,
+          MAX_SECRETS,
+        ),
+        DB.prepare('UPDATE players SET name = ?1 WHERE id = ?2').bind(name, existing.id),
+      ]);
+      await limit(c.env, regKey, LIMITS.register, c.now).catch(() => undefined); // counted, never fails a done registration
       return json({ ...publicPlayer({ ...existing, name }), secret });
     }
   } else if (b.name !== undefined) {
@@ -121,6 +163,7 @@ async function register(c: Ctx): Promise<Response> {
       await c.env.DB.prepare('INSERT INTO players (id, secret_hash, name, friend_code, portal, cg_user_id, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
         .bind(p.id, secretHash, p.name, p.friend_code, p.portal, p.cg_user_id, c.now)
         .run();
+      await limit(c.env, regKey, LIMITS.register, c.now).catch(() => undefined); // counted, never fails a done registration
       return json({ ...publicPlayer(p), secret }, 201);
     } catch (e) {
       if (!/UNIQUE/i.test(String(e))) throw e;
@@ -176,10 +219,14 @@ async function submitRun(c: Ctx): Promise<Response> {
   if (!int(b.tier, 1, MAX_TIER)) throw new HttpError(400, 'bad-tier');
   if (!int(b.wave, 1, 10_000_000) || !int(b.ticks, 1, 2_000_000_000)) throw new HttpError(400, 'bad-result');
   if (typeof b.hash !== 'string' || !/^[0-9a-f]{8}$/.test(b.hash)) throw new HttpError(400, 'bad-hash');
-  // Only clean builds of a commit can be replayed (dev "-dirty" / "unknown" builds are not ranked).
+  // Only builds the owner registered (deployed commits, `verifier/builds.ts add`) are ranked: a fork's or a dev
+  // build's commit cannot be replayed by the verifier and would only fill the queue.
   if (typeof b.commit !== 'string' || !/^[0-9a-f]{40}$/.test(b.commit)) throw new HttpError(400, 'build-not-ranked');
+  const build = await c.env.DB.prepare('SELECT retired_at FROM builds WHERE commit_sha = ?1').bind(b.commit).first<{ retired_at: number | null }>();
+  if (!build || build.retired_at !== null) throw new HttpError(400, 'build-not-ranked');
   if (typeof b.replay !== 'string' || b.replay.length === 0) throw new HttpError(400, 'bad-replay');
   if (b.replay.length > MAX_REPLAY) throw new HttpError(413, 'too-large');
+  if (!replayShapeOk(b.replay)) throw new HttpError(400, 'bad-replay');
   let day: string | null = null;
   if (kind === 'daily') {
     // Today's challenge, or yesterday's for a run that crossed midnight.
@@ -188,12 +235,17 @@ async function submitRun(c: Ctx): Promise<Response> {
     if (b.day !== today && b.day !== yesterday) throw new HttpError(400, 'bad-day');
     day = b.day;
   }
+  const ip = await ipKey(c);
   await limit(c.env, `submit:${p.id}`, LIMITS.submit, c.now);
+  await limit(c.env, `submit:${ip}`, LIMITS.submitIp, c.now);
   const DB = c.env.DB;
   const dup = await DB.prepare('SELECT id, status FROM runs WHERE player_id = ?1 AND hash = ?2 AND ticks = ?3').bind(p.id, b.hash, b.ticks).first<{ id: number; status: string }>();
   if (dup) return json({ id: dup.id, status: dup.status });
   const pending = await DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE player_id = ?1 AND status = 'pending'").bind(p.id).first<{ n: number }>();
   if ((pending?.n ?? 0) >= MAX_PENDING) throw new HttpError(429, 'too-many-pending');
+  // Stored bytes per player and per address and day: free accounts cannot fill the 500 MB database.
+  await limit(c.env, `bytes:${p.id}`, LIMITS.submitBytes, c.now, b.replay.length);
+  await limit(c.env, `bytes:${ip}`, LIMITS.submitBytesIp, c.now, b.replay.length);
   try {
     await DB.batch([
       DB.prepare('INSERT INTO runs (player_id, kind, tier, day, week, wave, ticks, hash, commit_sha, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)').bind(
@@ -252,7 +304,9 @@ function boardSpec(c: Ctx, kind: string, arg: string | undefined): BoardSpec {
   if (kind === 'daily') {
     const day = arg ?? dayKey(c.now);
     if (!Number.isFinite(dayIndex(day))) throw new HttpError(400, 'bad-day');
-    return { key: `d:${day}`, runWhere: "kind = 'daily' AND day = ?", runParams: [day], extra: { day, seed: dailySeed(day), endsAt: (dayIndex(day) + 1) * DAY_MS } };
+    // A future day's board (and seed) is not public yet.
+    if (dayIndex(day) > dayIndex(dayKey(c.now))) throw new HttpError(400, 'bad-day');
+    return { key: `d:${day}`, runWhere: "kind = 'daily' AND day = ?", runParams: [day], extra: { day, endsAt: (dayIndex(day) + 1) * DAY_MS } };
   }
   const tier = Number(arg);
   if (!int(tier, 1, MAX_TIER)) throw new HttpError(400, 'bad-tier');
@@ -267,6 +321,7 @@ function boardSpec(c: Ctx, kind: string, arg: string | undefined): BoardSpec {
 
 async function board(c: Ctx, kind: string, arg: string | undefined): Promise<Response> {
   const spec = boardSpec(c, kind, arg);
+  if (kind === 'daily') spec.extra.seed = await daySeed(c.env, spec.extra.day as string);
   const me = await auth(c, false);
   const scope = c.url.searchParams.get('scope') === 'friends' ? 'friends' : 'global';
   if (scope === 'friends' && !me) throw new HttpError(401, 'auth');
@@ -329,10 +384,11 @@ async function board(c: Ctx, kind: string, arg: string | undefined): Promise<Res
   return json({ board: spec.key, scope, ...spec.extra, total: total?.n ?? 0, entries, me: mine });
 }
 
-function daily(c: Ctx): Response {
+/** Today's challenge by the server clock (the game uses it, not the device clock) and the server time. */
+async function daily(c: Ctx): Promise<Response> {
   const day = dayKey(c.now);
   const week = weekKey(c.now);
-  return json({ day, dayIndex: dayIndex(day), seed: dailySeed(day), endsAt: (dayIndex(day) + 1) * DAY_MS, week, weekEndsAt: (dayIndex(week) + 7) * DAY_MS });
+  return json({ day, dayIndex: dayIndex(day), seed: await daySeed(c.env, day), endsAt: (dayIndex(day) + 1) * DAY_MS, week, weekEndsAt: (dayIndex(week) + 7) * DAY_MS, now: c.now });
 }
 
 // ---------------------------------------------------------------- friends
@@ -377,14 +433,18 @@ async function removeFriend(c: Ctx, raw: string): Promise<Response> {
 async function adminPending(c: Ctx): Promise<Response> {
   await admin(c);
   const lim = Math.max(1, Math.min(50, Number(c.url.searchParams.get('limit') ?? '20') || 20));
+  // Cursor: the verifier pages past runs it had to skip, so a few stuck runs never starve the queue.
+  const after = Math.max(0, Math.floor(Number(c.url.searchParams.get('after') ?? '0')) || 0);
   const r = await c.env.DB.prepare(
     `SELECT r.id, r.player_id AS playerId, r.kind, r.tier, r.day, r.week, r.wave, r.ticks, r.hash, r.commit_sha AS "commit", r.created_at AS createdAt,
             p.verified_bits AS verifiedBits
-     FROM runs r JOIN players p ON p.id = r.player_id WHERE r.status = 'pending' ORDER BY r.id LIMIT ?1`,
+     FROM runs r JOIN players p ON p.id = r.player_id WHERE r.status = 'pending' AND r.id > ?2 ORDER BY r.id LIMIT ?1`,
   )
-    .bind(lim)
-    .all();
-  return json({ runs: r.results });
+    .bind(lim, after)
+    .all<{ kind: string; day: string | null }>();
+  const runs = [];
+  for (const run of r.results) runs.push(run.kind === 'daily' && run.day ? { ...run, seed: await daySeed(c.env, run.day) } : run);
+  return json({ runs });
 }
 
 /** The stored replay string as text/plain (no JSON round trip: replays can be ~1 MB). */
@@ -412,6 +472,7 @@ async function adminVerdict(c: Ctx): Promise<Response> {
     week: string;
     wave: number;
     status: string;
+    earned_bits: number | null;
     created_at: number;
   }>();
   if (!run) throw new HttpError(404, 'not-found');
@@ -433,9 +494,12 @@ async function adminVerdict(c: Ctx): Promise<Response> {
       run.id,
     ),
   ];
-  // The replay was real (verified or flagged): its Bits count toward the player's loadout allowance once.
-  if (run.status === 'pending' && status !== 'rejected' && earned > 0) {
-    stmts.push(DB.prepare('UPDATE players SET verified_bits = verified_bits + ?1 WHERE id = ?2').bind(earned, run.player_id));
+  // Only a verified run raises the player's loadout allowance (once). A flagged run keeps its earned_bits and is
+  // credited if the owner overturns it to verified; otherwise flagged runs could build the very allowance that
+  // decides whether later runs are flagged.
+  const credit = status !== 'verified' ? 0 : run.status === 'pending' ? earned : run.status === 'flagged' ? (run.earned_bits ?? 0) : 0;
+  if (credit > 0) {
+    stmts.push(DB.prepare('UPDATE players SET verified_bits = verified_bits + ?1 WHERE id = ?2').bind(credit, run.player_id));
   }
   let boards: string[] = [];
   if (status === 'verified') {
@@ -450,9 +514,10 @@ async function adminVerdict(c: Ctx): Promise<Response> {
     }
   }
   await DB.batch(stmts);
-  // Keep the replay of a run that holds a board place (audit) or was rejected/flagged (review); drop the rest.
+  // Keep the replay of a run that holds a board place (audit) or was flagged (owner review); drop the rest,
+  // rejected ones included (the reason stays on the run), so junk submissions do not pile up in D1.
   const held = await DB.prepare('SELECT COUNT(*) AS n FROM bests WHERE run_id = ?1').bind(run.id).first<{ n: number }>();
-  if (status === 'verified' && (held?.n ?? 0) === 0) await DB.prepare('DELETE FROM replays WHERE run_id = ?1').bind(run.id).run();
+  if (status === 'rejected' || (status === 'verified' && (held?.n ?? 0) === 0)) await DB.prepare('DELETE FROM replays WHERE run_id = ?1').bind(run.id).run();
   return json({ id: run.id, status, boards: (held?.n ?? 0) > 0 ? boards : [] });
 }
 
@@ -508,6 +573,26 @@ async function adminBan(c: Ctx): Promise<Response> {
   return json({ changed: (r.meta.changes ?? 0) > 0 });
 }
 
+/** GET: the ranked builds. POST {commit, note?, retired?}: add a build, or retire / reinstate one. */
+async function adminBuilds(c: Ctx): Promise<Response> {
+  await admin(c);
+  const DB = c.env.DB;
+  if (c.req.method === 'POST') {
+    const b = await readJson(c.req);
+    if (typeof b.commit !== 'string' || !/^[0-9a-f]{40}$/.test(b.commit)) throw new HttpError(400, 'bad-commit');
+    const note = typeof b.note === 'string' ? b.note.slice(0, 200) : null;
+    const retired = b.retired === true ? c.now : null;
+    await DB.prepare(
+      `INSERT INTO builds (commit_sha, note, added_at, retired_at) VALUES (?1, ?2, ?3, ?4)
+       ON CONFLICT(commit_sha) DO UPDATE SET note = COALESCE(excluded.note, builds.note), retired_at = excluded.retired_at`,
+    )
+      .bind(b.commit, note, c.now, retired)
+      .run();
+  }
+  const r = await DB.prepare('SELECT commit_sha AS "commit", note, added_at AS addedAt, retired_at AS retiredAt FROM builds ORDER BY added_at DESC LIMIT 200').all();
+  return json({ builds: r.results });
+}
+
 // ---------------------------------------------------------------- router
 
 async function route(c: Ctx): Promise<Response> {
@@ -539,6 +624,7 @@ async function route(c: Ctx): Promise<Response> {
     if (b2 === 'close-week' && m === 'POST') return adminCloseWeek(c);
     if (b2 === 'runs' && m === 'GET') return adminRuns(c);
     if (b2 === 'ban' && m === 'POST') return adminBan(c);
+    if (b2 === 'builds' && !c3 && (m === 'GET' || m === 'POST')) return adminBuilds(c);
   }
   throw new HttpError(404, 'not-found');
 }
@@ -556,8 +642,16 @@ export async function handle(req: Request, env: Env, now: number = Date.now()): 
   return res;
 }
 
+/** Daily cron (wrangler.toml [triggers]): drops expired rate-limit rows. */
+export async function runCron(env: Env, now: number = Date.now()): Promise<void> {
+  await purgeRate(env, now);
+}
+
 export default {
   fetch(req: Request, env: Env): Promise<Response> {
     return handle(req, env);
+  },
+  async scheduled(_event: unknown, env: Env): Promise<void> {
+    await runCron(env);
   },
 };

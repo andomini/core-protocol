@@ -24,9 +24,9 @@ import { worldStats } from '../../sim/state';
 import { sectorOf } from '../../sim/hex';
 import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleDaily, settleRun } from '../../meta/runEnd';
-import { claimFromMeta, dailyClaim, dailyRunOptions, dayKey, LEADERBOARD, type LoadoutClaim } from '../../meta/leaderboardRules';
+import { claimFromMeta, dailyClaim, dailyRunOptions, dailySeed, dayIndex, dayKey, LEADERBOARD, type LoadoutClaim } from '../../meta/leaderboardRules';
 import type { RunBoard } from '../../meta/MetaStore';
-import { rankedBuild, type RunOutcome } from '../../portal/leaderboard';
+import { type DailyChallenge, rankedBuild, type RunOutcome } from '../../portal/leaderboard';
 import { hashWorld } from '../../sim/hash';
 import { Button } from '../../ui/kit';
 import { PickOverlay } from '../../ui/PickOverlay';
@@ -132,6 +132,8 @@ export class BattleScene extends Phaser.Scene {
   /** Leaderboard: where this run goes, the loadout it claims, and whether its log is complete and clean. */
   board: RunBoard = { kind: 'tier', day: null };
   private claim: LoadoutClaim | null = null;
+  /** The daily challenge being played (Home fetched it from the server). */
+  private daily: DailyChallenge | null = null;
   private ranked = false;
   /** Why a run is not ranked (shown on the death screen when leaderboards are on). */
   private unrankedWhy = '';
@@ -165,8 +167,9 @@ export class BattleScene extends Phaser.Scene {
    * `mode: 'continue'` resumes the saved run; `'daily'` starts today's challenge (shared seed, fixed loadout);
    * otherwise a new run on `tier`. Resets per-run scene state.
    */
-  init(data: { mode?: 'new' | 'continue' | 'daily'; tier?: number } = {}): void {
+  init(data: { mode?: 'new' | 'continue' | 'daily'; tier?: number; daily?: DailyChallenge } = {}): void {
     this.mode = data.mode === 'continue' || data.mode === 'daily' ? data.mode : 'new';
+    this.daily = data.daily ?? null;
     this.lbOutcome = null;
     this.tier = data.tier ?? services.meta?.meta.tier ?? 1;
     this.speed = 1;
@@ -213,7 +216,12 @@ export class BattleScene extends Phaser.Scene {
       this.claim = saved.claim;
       const complete = saved.log !== null && saved.claim !== null;
       if (complete) this.session.log = saved.log!;
-      this.setRanked(complete ? '' : 'resumed from an older save');
+      // The server takes a daily run for today or yesterday only (its clock).
+      const today = dayIndex(dayKey(services.leaderboard?.serverNow() ?? Date.now()));
+      const expired = this.board.kind === 'daily' && !(dayIndex(this.board.day ?? '') >= today - 1);
+      this.setRanked(
+        !complete ? 'resumed from an older save' : saved.commit !== __COMMIT__ ? 'resumed on a different build' : expired ? 'daily challenge is over' : '',
+      );
     } else if (this.mode === 'daily') {
       this.session = new RunSession(this.gd, this.dailyOptions());
     } else {
@@ -360,14 +368,20 @@ export class BattleScene extends Phaser.Scene {
     return o;
   }
 
-  /** Today's daily challenge (UTC day): its seed, tier and fixed loadout, whatever the meta save holds. */
+  /**
+   * The daily challenge Home fetched (server day and seed): its seed, tier and fixed loadout, whatever the meta
+   * save holds. Without one (offline) the device's UTC day with the public seed, unranked.
+   */
   private dailyOptions(): RunOptions {
-    const day = dayKey(Date.now());
-    const o = dailyRunOptions(day, this.gd, DEFAULT_META_DATA);
+    const now = services.leaderboard?.serverNow() ?? Date.now();
+    const local = dayKey(now);
+    const ch = this.daily ?? { day: local, seed: dailySeed(local), endsAt: (dayIndex(local) + 1) * 86_400_000, online: false };
+    const o = dailyRunOptions(ch.day, this.gd, DEFAULT_META_DATA, LEADERBOARD, ch.seed);
     this.tier = o.tier;
-    this.board = { kind: 'daily', day };
-    this.claim = dailyClaim(day);
-    this.setRanked('');
+    this.board = { kind: 'daily', day: ch.day };
+    this.claim = dailyClaim(ch.day);
+    // A RETRY long after the day ended (the server takes yesterday's runs, not older) is practice only.
+    this.setRanked(!ch.online ? 'daily offline' : now >= ch.endsAt + 86_400_000 ? 'daily challenge is over' : '');
     return o;
   }
 
@@ -384,7 +398,7 @@ export class BattleScene extends Phaser.Scene {
   /** The command log a save carries (null = unranked, or too long to keep — the run then resumes unranked). */
   private replayInfo() {
     const log = this.ranked && this.session.log.length <= LEADERBOARD.maxLogEntries ? this.session.log : null;
-    return { log, claim: this.claim, board: this.board };
+    return { log, claim: this.claim, board: this.board, commit: __COMMIT__ };
   }
 
   /** Death: upload the run (queued offline) and put its rank on the death screen. */
@@ -465,7 +479,7 @@ export class BattleScene extends Phaser.Scene {
     const codexBefore = { ...m.codex };
     const s =
       this.board.kind === 'daily'
-        ? settleDaily(m, DEFAULT_META_DATA, { bits: w.bits, keys: w.keys, doubled: false })
+        ? settleDaily(m, DEFAULT_META_DATA, { bits: w.bits, keys: w.keys, doubled: false }, this.board.day ?? '', LEADERBOARD.daily.paidAttemptsPerDay)
         : settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest });
     this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore, codexBefore };
     addRunToLifetime(m.lifetime, this.runStats, {
@@ -485,6 +499,7 @@ export class BattleScene extends Phaser.Scene {
   private deathNote(s: Settlement): string {
     const parts: string[] = [];
     if (this.board.kind === 'daily') parts.push(`DAILY ${this.board.day}`);
+    if (s.unpaid) parts.push('PRACTICE · REWARDS ONCE A DAY');
     if (s.newBest) parts.push('NEW BEST');
     if (s.milestones.length) parts.push(`MILESTONE ${s.milestones.map((m) => `W${m}`).join(' ')}`);
     if (s.tierUnlocked) parts.push(`TIER ${s.tierUnlocked} UNLOCKED`);
@@ -1404,7 +1419,7 @@ export class BattleScene extends Phaser.Scene {
           keys: p ? p.s.keys : dw.keys,
           note: [latticeLine(this.gd, dw, true), p ? this.deathNote(p.s) : ''].filter((x) => x).join(' · '),
           canRevive: !dw.revived && !this.flags.stress,
-          canDouble: p !== null && !p.doubled,
+          canDouble: p !== null && !p.doubled && !p.s.unpaid,
         },
         time,
       );

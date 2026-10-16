@@ -5,7 +5,8 @@
 /** The localStorage API subset that CrazyGames' data module mirrors. */
 export interface KeyValue {
   getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
+  /** May return false when the value could not be stored durably (quota, blocked): it then lives in memory only. */
+  setItem(key: string, value: string): void | boolean;
   removeItem(key: string): void;
 }
 
@@ -49,8 +50,10 @@ export function localKV(): KeyValue {
         if (!s) throw new Error('no localStorage');
         s.setItem(k, v);
         mem.removeItem(k);
+        return true;
       } catch {
         mem.setItem(k, v);
+        return false;
       }
     },
     removeItem(k) {
@@ -164,7 +167,10 @@ export class SaveSlot<T> {
     }
   }
 
-  /** Writes `{v, data}`. Returns false if the slot is read-only (newer stored version) or serialisation failed. */
+  /**
+   * Writes `{v, data}`. Returns false if the slot is read-only (newer stored version), serialisation failed, or
+   * the store could not keep it durably (quota full: the value then survives this session only).
+   */
   save(data: T): boolean {
     if (this.readOnly) return false;
     let json: string;
@@ -173,8 +179,7 @@ export class SaveSlot<T> {
     } catch {
       return false;
     }
-    this.kv.setItem(this.opts.key, json);
-    return true;
+    return this.kv.setItem(this.opts.key, json) !== false;
   }
 
   clear(): void {

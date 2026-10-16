@@ -29,6 +29,8 @@ export class BootScene extends Phaser.Scene {
       services.guard.loadingFinished();
       // The meta save is read after the portal init (CrazyGames data module) where possible.
       services.meta = new MetaStore(services.storage, DEFAULT_DATA, DEFAULT_META_DATA);
+      // Storage full: the leaderboard's offline queue gives way to the game save.
+      services.meta.onSaveFailed = () => services.leaderboard?.freeSpace() ?? false;
       const m = services.meta.meta;
       // The very first session drops straight into a run (instant play); later ones open on Home.
       const forceHome = import.meta.env.DEV && new URLSearchParams(location.search).get('home') === '1';

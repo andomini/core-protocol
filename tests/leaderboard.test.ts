@@ -143,5 +143,25 @@ describe('verifySubmission (tools/leaderboard/verifyEntry.ts)', () => {
     const s3 = play(data, dailyRunOptions(day, data, MD), dailyClaim(day), 'daily', day);
     expect(verifySubmission(s3, data, MD).status).toBe('verified');
     expect(verifySubmission({ ...s3, day: '2026-10-17' }, data, MD).status).toBe('rejected');
+    // A server-issued (secret HMAC) seed: the run verifies only with that seed passed in.
+    const s4 = play(data, dailyRunOptions(day, data, MD, undefined, 777), dailyClaim(day), 'daily', day);
+    expect(verifySubmission({ ...s4, seed: 777 }, data, MD).status).toBe('verified');
+    expect(verifySubmission(s4, data, MD).status).toBe('rejected');
+  });
+
+  it('never throws on a malformed payload: missing claim, bad gzip, a gzip bomb', () => {
+    const p = JSON.parse(sub.replay) as Record<string, unknown>;
+    for (const replay of [
+      JSON.stringify({ ...p, claim: undefined }),
+      JSON.stringify({ ...p, claim: { workshop: 5 } }),
+      JSON.stringify({ ...p, log: null }),
+      'gz:!!not-base64!!',
+      'gz:' + gzipSync(Buffer.from('not json')).toString('base64'),
+      'gz:' + gzipSync(Buffer.alloc(17_000_000, 32)).toString('base64'),
+    ]) {
+      const r = verifySubmission({ ...sub, replay }, data, MD);
+      expect(r.status).toBe('rejected');
+      expect(r.reason).toBeTruthy();
+    }
   });
 });
