@@ -27,7 +27,7 @@ const RED = '#ff3b5c';
 const SECTOR_NAMES = ['east', 'north-east', 'north-west', 'west', 'south-west', 'south-east'];
 const FLASH_MS = 1500;
 const RULES = [
-  'Touching same-tag modules form a set',
+  'Touching same-tag modules form a set; only the largest cluster counts (dashed modules add nothing)',
   'Links between the largest clusters: 1 / 3 / 5 → fusion I / II / III (rises weld in 5 s)',
   'Tap a pair chip: glowing hexes add a link to it',
   'Wedges: most modules in a 60° sector colour its ground',
@@ -237,11 +237,13 @@ export class CrystalEditor {
     f();
   }
 
-  /** The zoom that fits the ring limit into ~78 % of the arena's short side. */
+  /** The zoom that fits the ring limit into ~78 % of the arena's short side (and the next, locked ring into ~92 %). */
   private scale(w: World): number {
     const a = this.L.arena;
+    const c = this.data.crystal;
     const ring = crystalRing(this.data, w.wave);
-    return (0.39 * Math.min(a.w, a.h)) / ((ring * Math.sqrt(3) + 1) * this.data.crystal.cellSize);
+    const fit = (share: number, k: number): number => (share * Math.min(a.w, a.h)) / ((k * Math.sqrt(3) + 1) * c.cellSize);
+    return ring < c.maxRingCap ? Math.min(fit(0.39, ring), fit(0.46, ring + 1)) : fit(0.39, ring);
   }
 
   /** Opens in Place mode for offer card `index` (perk `perk` adds a new module). */

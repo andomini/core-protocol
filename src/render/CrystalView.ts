@@ -7,17 +7,20 @@
 // the shared edge (faint until the pair fuses, then pulsing, with a I / II / III diamond on its first link).
 // When the hexes get small (LOD) a cluster shows one glyph instead of one per module. Placement mode blinks
 // colours the free slots by what they would add and pulses the auto slot; hovering a module outlines its
-// cluster. The editor (src/ui/CrystalEditor.ts) zooms the container above a scrim, adds the sector wedges and
-// the core under the modules, and shows the selected module and its move targets. This view only reads the
+// cluster; a module outside its tag's counted cluster is dim with a dashed rim. The editor
+// (src/ui/CrystalEditor.ts) zooms the container above a scrim, adds the slot grid tinted by sector (borders
+// along hex edges), the next locked ring and the core under the modules, and shows the selected module and its
+// move targets. This view only reads the
 // World.
 
 import Phaser from 'phaser';
-import { crystalSlots, type FusionLink, fusionLinks, moduleCluster, type Module, sectorTags } from '../sim/crystal';
+import { clusterMembers, crystalSlots, type FusionLink, fusionLinks, moduleCluster, type Module, moduleSector, sectorTags } from '../sim/crystal';
 import type { GameData } from '../sim/data';
-import { HEX_DIRS, hexDist, hexToPixel, pixelToHex, SECTOR_DIRS } from '../sim/hex';
+import { HEX_DIRS, hexDist, hexToPixel, pixelToHex, ring as hexRing } from '../sim/hex';
 import type { Tag } from '../sim/perkData';
 import type { World } from '../sim/state';
 import { arenaRadius, cellId, crystalRing, terrainFor } from '../sim/territory';
+import { textStyle } from '../ui/kit';
 import { drawTagIcon } from '../ui/tagIcon';
 import type { Layout } from '../ui/layout';
 import { CRIMSON, CYAN, ENERGY, TAG_COLOR } from './palette';
@@ -95,6 +98,8 @@ export class CrystalView {
   private readonly shade: Phaser.GameObjects.Graphics;
   private readonly slots: Phaser.GameObjects.Graphics;
   private readonly hl: Phaser.GameObjects.Graphics;
+  /** Zoomed only: when the next (locked) ring of hexes opens. */
+  private readonly lockLabel: Phaser.GameObjects.Text;
   private seams: FusionLink[] = [];
   /** Pairs that just reached a fusion tier: sparks run along every link of the pair for a moment. */
   private readonly bursts: { key: string; at: number }[] = [];
@@ -130,8 +135,13 @@ export class CrystalView {
     this.shade = scene.make.graphics({}, false);
     this.slots = scene.make.graphics({}, false).setBlendMode(add);
     this.hl = scene.make.graphics({}, false).setBlendMode(add);
+    this.lockLabel = scene.make
+      .text({ style: textStyle(L.minFont, { color: '#7fdfff', weight: '700', stroke: true }) }, false)
+      .setOrigin(0.5)
+      .setAlpha(0.75)
+      .setVisible(false);
     this.root = scene.add
-      .container(L.cx, L.cy, [this.under, this.plates, this.glow, this.mods, this.weldGlow, this.welds, this.badges, this.shade, this.slots, this.hl])
+      .container(L.cx, L.cy, [this.under, this.lockLabel, this.plates, this.glow, this.mods, this.weldGlow, this.welds, this.badges, this.shade, this.slots, this.hl])
       .setDepth(DEPTH.core - 0.5);
   }
 
@@ -222,6 +232,18 @@ export class CrystalView {
     for (let i = 0; i < 6; i++) pts.push({ x: cx + R * Math.cos((60 * i - 30) * DEG), y: cy + R * Math.sin((60 * i - 30) * DEG) });
     if (fill) g.fillPoints(pts, true);
     else g.strokePoints(pts, true);
+  }
+
+  /** A hex outline in dashes: two per side, around the side's middle. */
+  private dashedHex(g: Phaser.GameObjects.Graphics, cx: number, cy: number, R: number, lw: number, color: number, alpha: number): void {
+    g.lineStyle(lw, color, alpha);
+    for (let i = 0; i < 6; i++) {
+      const x0 = cx + R * Math.cos((60 * i - 30) * DEG);
+      const y0 = cy + R * Math.sin((60 * i - 30) * DEG);
+      const x1 = cx + R * Math.cos((60 * i + 30) * DEG);
+      const y1 = cy + R * Math.sin((60 * i + 30) * DEG);
+      for (const [t0, t1] of [[0.08, 0.38], [0.62, 0.92]] as const) g.lineBetween(x0 + (x1 - x0) * t0, y0 + (y1 - y0) * t0, x0 + (x1 - x0) * t1, y0 + (y1 - y0) * t1);
+    }
   }
 
   private drawLand(w: World, sectors: readonly (Tag | null)[]): void {
@@ -337,27 +359,35 @@ export class CrystalView {
         }
       }
     }
-    for (const m of mods) {
+    // A module outside its tag's counted cluster adds no set stacks and no links: drawn dim, with a dashed rim.
+    const counted = clusterMembers(w);
+    mods.forEach((m, i) => {
       const [cx, cy] = this.local(m.q, m.r);
       const c = TAG_COLOR[m.tag];
+      const stray = !counted[i];
       g.fillStyle(DARK, 0.92);
       this.hex(g, cx, cy, R * 0.82, true);
-      g.fillStyle(c, 0.22);
+      g.fillStyle(c, stray ? 0.08 : 0.22);
       this.hex(g, cx, cy, R * 0.82, true);
-      g.lineStyle(Math.max(1.5, R * 0.07), c, 0.9);
-      this.hex(g, cx, cy, R * 0.78, false);
-      if (Rf < LOD_R) continue;
+      if (stray) this.dashedHex(g, cx, cy, R * 0.78, Math.max(1.5, R * 0.07), c, 0.7);
+      else {
+        g.lineStyle(Math.max(1.5, R * 0.07), c, 0.9);
+        this.hex(g, cx, cy, R * 0.78, false);
+      }
+      if (Rf < LOD_R) return;
       const n = w.perks[m.perk] ?? 0;
+      const a = stray ? 0.45 : 0.95;
+      const ia = stray ? 0.45 : 1;
       if (Rf >= DIGIT_R) {
-        drawTagIcon(g, m.tag, cx, cy - R * 0.14, R * 0.6, c);
-        drawNumber(g, n, cx, cy + R * 0.42, R * 0.3, 0xffffff, 0.95);
+        drawTagIcon(g, m.tag, cx, cy - R * 0.14, R * 0.6, c, ia);
+        drawNumber(g, n, cx, cy + R * 0.42, R * 0.3, 0xffffff, a);
       } else {
-        drawTagIcon(g, m.tag, cx, cy - R * 0.1, R * 0.72, c);
+        drawTagIcon(g, m.tag, cx, cy - R * 0.1, R * 0.72, c, ia);
         const k = Math.min(6, n);
         const step = R * 0.24;
-        for (let j = 0; j < k; j++) g.fillStyle(0xffffff, 0.95).fillCircle(cx + (j - (k - 1) / 2) * step, cy + R * 0.5, Math.max(1.5, R * 0.07));
+        for (let j = 0; j < k; j++) g.fillStyle(0xffffff, a).fillCircle(cx + (j - (k - 1) / 2) * step, cy + R * 0.5, Math.max(1.5, R * 0.07));
       }
-    }
+    });
     for (const cl of clusters) {
       // Centroid of the cluster; the badge (and the LOD glyph) goes on the member closest to it.
       let sx = 0;
@@ -369,7 +399,7 @@ export class CrystalView {
       }
       sx /= cl.members.length;
       sy /= cl.members.length;
-      if (Rf < LOD_R) drawTagIcon(g, cl.tag, sx, sy, R * 1.1, TAG_COLOR[cl.tag]);
+      if (Rf < LOD_R) drawTagIcon(g, cl.tag, sx, sy, R * 1.1, TAG_COLOR[cl.tag], counted[cl.members[0]!] ? 1 : 0.45);
       if (!cl.on) continue;
       let near = cl.members[0]!;
       let nd = Infinity;
@@ -485,25 +515,52 @@ export class CrystalView {
     }
   }
 
-  /** Zoomed only: the six sector wedges (faint tints of their tags), the free grid up to the ring limit, the core. */
+  /**
+   * Zoomed only: the slot hexes up to the ring limit tinted by their sector's tag (so a wedge is exactly the
+   * hexes that count for it), sector borders and the outer rim along hex edges, the next locked ring faintly
+   * with the wave that opens it, and the core.
+   */
   private drawUnder(w: World): void {
     const g = this.under.clear();
+    this.lockLabel.setVisible(false);
     if (this.zoom === null) return;
     const R = this.R;
+    const c0 = this.data.crystal;
     const ring = crystalRing(this.data, w.wave);
-    const outer = (ring * Math.sqrt(3) + 1) * R;
     const sectors = sectorTags(w, this.data);
-    for (let s = 0; s < 6; s++) {
-      const a = Math.atan2(SECTOR_DIRS[s]![1], SECTOR_DIRS[s]![0]);
-      const tag = sectors[s] ?? null;
-      const c = tag === null ? CYAN : TAG_COLOR[tag];
-      g.fillStyle(c, tag === null ? 0.03 : 0.1).slice(0, 0, outer, a - 30 * DEG, a + 30 * DEG, false).fillPath();
-      g.lineStyle(1.5, CYAN, 0.18).lineBetween(0, 0, outer * Math.cos(a + 30 * DEG), outer * Math.sin(a + 30 * DEG));
-    }
-    g.lineStyle(1, CYAN, 0.16);
-    for (const [q, r] of crystalSlots(this.data, ring)) {
+    const slots = crystalSlots(this.data, ring);
+    const inGrid = (q: number, r: number): boolean => {
+      const d = hexDist(q, r);
+      return d > c0.coreRing && d <= ring;
+    };
+    for (const [q, r] of slots) {
+      const tag = sectors[moduleSector(this.data, q, r)] ?? null;
       const [cx, cy] = this.local(q, r);
+      g.fillStyle(tag === null ? CYAN : TAG_COLOR[tag], tag === null ? 0.03 : 0.1);
+      this.hex(g, cx, cy, R, true);
+      g.lineStyle(1, CYAN, 0.16);
       this.hex(g, cx, cy, R * 0.94, false);
+    }
+    // Borders on the shared edges: between two sectors (each edge once), and the rim where the grid ends.
+    for (const [q, r] of slots) {
+      const s = moduleSector(this.data, q, r);
+      const [cx, cy] = this.local(q, r);
+      for (let d = 0; d < 6; d++) {
+        const nq = q + HEX_DIRS[d]![0];
+        const nr = r + HEX_DIRS[d]![1];
+        if (hexDist(nq, nr) > ring) g.lineStyle(2, CYAN, 0.35).lineBetween(...this.edge(cx, cy, d, R));
+        else if (d < 3 && inGrid(nq, nr) && moduleSector(this.data, nq, nr) !== s) g.lineStyle(1.5, CYAN, 0.3).lineBetween(...this.edge(cx, cy, d, R));
+      }
+    }
+    if (ring < c0.maxRingCap) {
+      const next = ring + 1;
+      g.lineStyle(1, CYAN, 0.07);
+      for (const [q, r] of hexRing(next)) {
+        const [cx, cy] = this.local(q, r);
+        this.hex(g, cx, cy, R * 0.94, false);
+      }
+      const [, y] = this.local(0, -next);
+      this.lockLabel.setText(`RING ${next} · WAVE ${(next - c0.maxRing) * c0.ringEvery}`).setPosition(0, y).setVisible(true);
     }
     const [main, second] = coreColors(w.crystal, w.perks);
     const cr = this.data.crystal.coreRing;
