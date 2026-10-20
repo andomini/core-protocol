@@ -7,7 +7,7 @@ import { DEFAULT_DATA as D, validateData } from '../src/sim/data';
 import type { SimEvent } from '../src/sim/events';
 import { hashWorld } from '../src/sim/hash';
 import { geneKeep, geneWeight, nextMutationWave } from '../src/sim/mutations';
-import { bootOpen, bootSector } from '../src/sim/perks';
+import { bootOpen, bootSector, isPickWave, pickDue } from '../src/sim/perks';
 import { replay } from '../src/sim/replay';
 import { restore, snapshot } from '../src/sim/snapshot';
 import { createWorld, type World } from '../src/sim/state';
@@ -51,7 +51,7 @@ describe('boot sectors', () => {
   });
 
   for (const s of D.boot.sectors) {
-    it(`${s.id}: its 3 modules land on their slots as one ${s.tag} cluster, set 2 on, then the wave-1 pick`, () => {
+    it(`${s.id}: its 3 modules land on their slots as one ${s.tag} cluster, set 2 on; it stands in for the wave 1–3 picks`, () => {
       const w = createWorld(D, { seed: 3, tier: 1 });
       w.bootOffer = [s.id, ...w.bootOffer.filter((id) => id !== s.id)].slice(0, D.boot.offerSize);
       const ev = apply(w, { type: 'pickBoot', index: 0 });
@@ -64,9 +64,10 @@ describe('boot sectors', () => {
       expect(clusterCounts(w, D)[s.tag]).toBe(s.modules.length);
       expect(w.setTiers[s.tag]).toBe(D.sets.tiers[0]);
       expect(w.picks).toBe(0);
-      // The normal wave-1 protocol pick follows.
-      expect(w.phase).toBe('pick');
-      expect(w.offer).toHaveLength(D.perks.offer.size);
+      // No wave-1 protocol pick (boot.skipPicks); the run starts.
+      expect(D.boot.skipPicks).toContain(1);
+      expect(w.phase).toBe('pause');
+      expect(w.offer).toEqual([]);
       expect(bootOpen(w)).toBe(false);
     });
   }
@@ -116,8 +117,20 @@ describe('boot sectors', () => {
     expect(hashWorld(b)).toBe(hashWorld(a));
   });
 
+  it('a taken boot sector stands in for the scheduled picks at boot.skipPicks; no boot keeps the full schedule', () => {
+    const noBoot = createWorld(D, { seed: 3, tier: 1, boot: false });
+    const booted = createWorld(D, { seed: 3, tier: 1 });
+    apply(booted, { type: 'pickBoot', index: 0 });
+    expect(booted.boot).not.toBe('');
+    for (let wave = 1; wave <= 12; wave++) {
+      expect(pickDue(noBoot, D, wave)).toBe(isPickWave(D, wave));
+      expect(pickDue(booted, D, wave)).toBe(isPickWave(D, wave) && !D.boot.skipPicks.includes(wave));
+    }
+    expect(D.perks.schedule.waves.some((v) => v > Math.max(...D.boot.skipPicks))).toBe(true);
+  });
+
   it('a v7 snapshot (before boot sectors) migrates: no boot pick open, none taken', () => {
-    const w = createWorld(D, { seed: 1, tier: 1, protocols: false }) as Partial<World> & { v: number };
+    const w = createWorld(D, { seed: 1, tier: 1, protocols: false }) as Omit<Partial<World>, 'v'> & { v: number };
     delete w.bootOffer;
     delete w.boot;
     w.v = 7;

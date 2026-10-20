@@ -33,7 +33,8 @@ describe('determinism', () => {
     expect(a.w.dead).toBe(false);
     expect(a.w.wave).toBeGreaterThanOrEqual(20);
     expect(a.w.kills).toBeGreaterThan(0);
-    expect(a.w.picks).toBeGreaterThanOrEqual(7);
+    expect(a.w.boot).not.toBe('');
+    expect(a.w.picks).toBeGreaterThanOrEqual(4); // the boot sector stands in for the wave 1–3 picks
   });
 
   it('a different seed gives a different run', () => {

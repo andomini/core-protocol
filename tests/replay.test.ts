@@ -80,6 +80,7 @@ describe('a live session log replays exactly', () => {
     expect(s.world.dead).toBe(true);
     expect(hashWorld(r.world)).toBe(hashWorld(s.world));
     expect(s.log.length).toBeGreaterThan(50);
-    expect(s.world.picks).toBeGreaterThanOrEqual(3);
+    expect(s.world.boot).not.toBe(''); // boot pick (stands in for the wave 1–3 picks), then protocol picks
+    expect(s.world.picks).toBeGreaterThanOrEqual(1);
   });
 });

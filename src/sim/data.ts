@@ -250,6 +250,8 @@ export interface BootSector {
 /** Boot sectors: before wave 1 the run offers `offerSize` of them (drawn from the seed). */
 export interface BootData {
   offerSize: number;
+  /** Schedule waves whose protocol pick a taken boot sector stands in for (its modules are those picks). */
+  skipPicks: number[];
   sectors: BootSector[];
 }
 
@@ -328,6 +330,7 @@ function validateBoot(d: GameData): void {
   const b = d.boot;
   check(b !== undefined && Array.isArray(b.sectors) && b.sectors.length > 0, 'boot.sectors must not be empty');
   check(Number.isInteger(b.offerSize) && b.offerSize >= 1 && b.offerSize <= b.sectors.length, 'boot.offerSize must be a whole number in 1..sectors');
+  check(Array.isArray(b.skipPicks) && b.skipPicks.every((v) => Number.isInteger(v) && v >= 1), 'boot.skipPicks must be whole wave numbers ≥ 1');
   const ids = new Set<string>();
   const inner = d.crystal.coreRing + 1;
   for (const s of b.sectors) {

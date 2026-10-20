@@ -29,6 +29,13 @@ export function perkIds(data: GameData): string[] {
  * True when a pick opens for wave `wave` (1, 3, 5, 8, 10, then every 5 after the last listed wave).
  * `every` > 0 overrides the cadence after the listed waves (lab node).
  */
+// boot
+/** isPickWave for this run: a taken boot sector stands in for the picks at `boot.skipPicks`. */
+export function pickDue(w: World, data: GameData, wave: number, everyOverride = 0): boolean {
+  if (w.boot !== '' && data.boot.skipPicks.includes(wave)) return false;
+  return isPickWave(data, wave, everyOverride);
+}
+
 export function isPickWave(data: GameData, wave: number, everyOverride = 0): boolean {
   const { waves } = data.perks.schedule;
   const every = everyOverride > 0 ? everyOverride : data.perks.schedule.every;
@@ -400,7 +407,7 @@ export function pickBoot(w: World, data: GameData, index: unknown, events: SimEv
   refreshCrystal(w, data, events);
   const modules = w.crystal.filter((c) => sector.modules.some((m) => m.perk === c.perk)).map((c): [number, number] => [c.q, c.r]);
   events.push({ type: 'bootPicked', id: sector.id, tag: sector.tag, modules });
-  if (w.protocols && isPickWave(data, 1)) enterPick(w, data, events);
+  if (w.protocols && pickDue(w, data, 1)) enterPick(w, data, events);
   return null;
 }
 

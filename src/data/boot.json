@@ -1,5 +1,6 @@
 {
   "offerSize": 3,
+  "skipPicks": [1, 2, 3],
   "sectors": [
     {
       "id": "hotStart",
@@ -17,12 +18,12 @@
       "id": "coldBoot",
       "tag": "cryo",
       "name": "Cold Boot",
-      "blurb": "Slows the swarm, then shatters what it slowed.",
+      "blurb": "Slows the swarm and freezes what comes close.",
       "partner": "chain",
       "modules": [
         { "perk": "frostShot", "slot": [2, -2] },
         { "perk": "coldAura", "slot": [1, -2] },
-        { "perk": "shatter", "slot": [2, -3] }
+        { "perk": "permafrost", "slot": [2, -3] }
       ]
     },
     {
