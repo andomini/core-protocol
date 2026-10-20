@@ -54,6 +54,8 @@ import { battleData, type DevFlags, leaderboardForce, readFlags, stressTuning } 
 import { pulseSfx } from '../audio';
 import { Effects } from '../effects';
 import { Vfx } from '../vfx';
+import { BEACON_COLOR, BeaconView } from '../BeaconView'; // c2
+import { BeaconHud } from '../../ui/BeaconHud'; // c2
 import { FixedLoop } from '../loop';
 import { BG, BITS, CRIMSON, CYAN, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
 import { SetTooltip } from '../../ui/SetTooltip';
@@ -97,6 +99,8 @@ export class BattleScene extends Phaser.Scene {
   vfx!: Vfx;
   private dockN = 0;
   hud!: Hud;
+  beaconView!: BeaconView; // c2
+  beaconHud!: BeaconHud; // c2
   upgrades!: UpgradePanel;
   death!: DeathOverlay;
   pick!: PickOverlay;
@@ -284,6 +288,8 @@ export class BattleScene extends Phaser.Scene {
     this.numbers = new DamageNumbers(this, this.L);
     this.hints = new Hints(this, this.L, !services.meta.meta.firstRunDone && !this.flags.stress);
     this.hud = new Hud(this, this.L, this.gd, { onSpeed: () => this.cycleSpeed(), onPause: () => this.setPaused(!this.paused), onPulse: () => this.pulse() });
+    this.beaconView = new BeaconView(this, this.L, this.gd); // c2
+    this.beaconHud = new BeaconHud(this, this.L, this.gd, this.hud.pulseBtn.r, () => this.beacon()); // c2
     this.upgrades = new UpgradePanel(this, this.L, this.gd, {
       world: () => this.session.world,
       stats: () => this.session.stats,
@@ -415,6 +421,7 @@ export class BattleScene extends Phaser.Scene {
     });
     // Space fires the Pulse (uniqueness plan item 4); pause moved to P.
     this.input.keyboard?.on('keydown-SPACE', () => this.pulse());
+    this.input.keyboard?.on('keydown-B', () => this.beacon()); // c2
     this.input.keyboard?.on('keydown-P', () => this.setPaused(!this.paused));
     this.input.keyboard?.on('keydown-S', () => this.cycleSpeed());
     if (WIDGET) {
@@ -725,6 +732,13 @@ export class BattleScene extends Phaser.Scene {
     const w = this.session.world;
     if (this.paused || !pulseReady(w) || this.session.hasQueued('pulse') || this.editor.visible || this.protocols.visible || this.statsPanel.visible) return;
     this.command({ type: 'pulse' });
+  }
+
+  /** c2: plant a Territory Beacon at the infection front (HUD button, B); the sim picks the cell and checks the cost. */
+  private beacon(): void {
+    const w = this.session.world; // c2
+    if (this.paused || w.dead || w.phase === 'pick' || this.session.hasQueued('beacon') || this.editor.visible || this.protocols.visible || this.statsPanel.visible) return; // c2
+    this.command({ type: 'beacon' }); // c2
   }
 
   /** A tap on the core itself (no module under it) fires the Pulse. */
@@ -1128,6 +1142,8 @@ export class BattleScene extends Phaser.Scene {
     this.structures.reset();
     this.fx.reset();
     this.vfx.reset(); // vfx/audio
+    this.beaconView.reset(); // c2
+    this.beaconHud.reset(); // c2
     services.audio.runStart(0);
     this.numbers.reset();
     this.hud.reset();
@@ -1344,7 +1360,8 @@ export class BattleScene extends Phaser.Scene {
         break;
       }
       case 'structHit': {
-        if (e.kind === 'station') this.structures.hitStation(e.sid, now);
+        if (e.kind === 'beacon') this.beaconView.hit(now); // c2
+        else if (e.kind === 'station') this.structures.hitStation(e.sid, now);
         else this.structures.hit(this.session.world.structs.find((x) => x.id === e.sid)?.slot ?? -1, now);
         const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
         this.fx.hit(sx, sy);
@@ -1501,6 +1518,33 @@ export class BattleScene extends Phaser.Scene {
         this.showBanner(e.ringGrew ? 'BREACH WIDENED · CRYSTAL GREW A RING' : e.nests > 0 ? 'BREACH WIDENED · NESTS IN THE NEW GROUND' : 'BREACH WIDENED', '#ff6b8b', now);
         this.fx.pulse(L.cx, L.cy, Math.max(L.arena.w, L.arena.h) * 0.6, CRIMSON);
         break;
+      // c2: the Territory Beacon
+      case 'beaconPlaced': {
+        const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale]; // c2
+        this.vfx.beaconDrop(sx, sy, this.beaconView.discRadius(), BEACON_COLOR); // c2
+        sfx.play('beacon'); // c2
+        break; // c2
+      }
+      case 'beaconCleanse': {
+        const t = this.gd.territory; // c2
+        this.vfx.beaconRipple(L.cx + e.x * L.scale, L.cy + e.y * L.scale, (e.ring + 0.5) * t.cellSize * 1.7320508 * L.scale, BEACON_COLOR); // c2
+        break; // c2
+      }
+      case 'beaconHold': {
+        const b = this.session.world.structs.find((x) => x.id === e.sid); // c2
+        if (b) this.fx.pulse(L.cx + b.x * L.scale, L.cy + b.y * L.scale, this.beaconView.discRadius(), BEACON_COLOR); // c2
+        break; // c2
+      }
+      case 'beaconClaimed':
+        this.fx.waveRing(L.cx + e.x * L.scale, L.cy + e.y * L.scale, this.beaconView.discRadius() * 1.3, BEACON_COLOR); // c2
+        this.showBanner(`BEACON HELD +${formatPrice(e.bits)} BITS`, '#2bffb0', now, `${e.cells} CELLS CLAIMED`); // c2
+        sfx.play('beaconHold'); // c2
+        break; // c2
+      case 'beaconLost':
+        this.fx.pulse(L.cx + e.x * L.scale, L.cy + e.y * L.scale, this.beaconView.discRadius(), CRIMSON); // c2
+        this.showBanner('BEACON LOST', '#ff6b8b', now); // c2
+        sfx.play('wallHit'); // c2
+        break; // c2
       case 'nestDestroyed': {
         const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
         this.fx.pulse(sx, sy, this.gd.territory.cellSize * L.scale * 4, ENERGY);
@@ -1671,12 +1715,14 @@ export class BattleScene extends Phaser.Scene {
     const alpha = w.dead ? 1 : this.loop.alpha();
     this.view.draw(alpha, time);
     this.structures.draw(this.session.world, time);
+    this.beaconView.draw(this.session.world, time); // c2
     this.crystal.draw(this.session.world, sectorTags(this.session.world, this.gd), time);
     this.genome.update(this.session.world.genome, this.session.world.wave, this.gd);
     this.fx.update();
     this.vfx.update(); // vfx/audio
     this.dockN = 0;
     this.hud.update(this.session.world, this.session.stats, this.speed, this.paused && !this.editor.visible && !this.fieldDrag?.moved, time, delta);
+    this.beaconHud.update(this.session.world); // c2
     this.upgrades.update(time);
     if (this.bannerUntil > 0) {
       const left = this.bannerUntil - time;

@@ -1,5 +1,6 @@
 import type { EnemyKind, StatId } from './data';
 import type { StructureKind, Tag } from './perkData';
+import type { BeaconReject } from './beacon'; // c2
 import type { ProtocolReject } from './perks';
 import type { HitSource } from './projectiles';
 
@@ -58,7 +59,7 @@ export type SimEvent =
   /** A fusion's tier changed; `a`, `b`: the module hexes of the pair's first link (null when none is left). */
   | { type: 'fusion'; key: string; tier: number; prev: number; a: [number, number] | null; b: [number, number] | null }
   | { type: 'boost'; from: number; until: number }
-  | { type: 'commandRejected'; cmd: string; reason: ProtocolReject | 'unknown' }
+  | { type: 'commandRejected'; cmd: string; reason: ProtocolReject | BeaconReject | 'unknown' }
   | { type: 'freeze'; enemyId: number }
   | { type: 'freezeAll'; count: number; untilTick: number }
   | { type: 'lightning'; fromId: number; targets: number[] }
@@ -73,5 +74,13 @@ export type SimEvent =
   | { type: 'buyRejected'; stat: string; reason: BuyRejectReason }
   /** pulse: the core fired its Pulse (tag null: the plain ring); `energy`/`bits` paid by a mining harvest, `shield` added by firewall. */
   | { type: 'pulse'; tag: Tag | null; x: number; y: number; radius: number; targets: number; energy: number; bits: number; shield: number }
+  // c2: the Territory Beacon (src/sim/beacon.ts).
+  | { type: 'beaconPlaced'; sid: number; x: number; y: number; cost: number }
+  /** It cleansed its disc out to `ring` hex rings. */
+  | { type: 'beaconCleanse'; sid: number; x: number; y: number; ring: number }
+  | { type: 'beaconHold'; sid: number; held: number; need: number }
+  /** Held to the goal: `bits` paid, `cells` newly claimed for the run; the beacon retires. */
+  | { type: 'beaconClaimed'; sid: number; x: number; y: number; bits: number; cells: number }
+  | { type: 'beaconLost'; sid: number; x: number; y: number; held: number }
   /** `bonusBits`: the run-end Bits bonus (💰 4-set) added at death. */
   | { type: 'death'; wave: number; tick: number; bonusBits: number };

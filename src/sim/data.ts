@@ -243,6 +243,48 @@ export interface TerritoryDef {
   nestKind: EnemyKind;
   nestEnergy: number;
   nestBits: number;
+  /** c2: the Territory Beacon (src/sim/beacon.ts). */
+  beacon: BeaconDef;
+}
+
+/** c2: a buildable beacon planted at the infection front (Command 'beacon'). */
+export interface BeaconDef {
+  /** Energy: cost × costGrowth^(beacons built this run) × config.energyGrowth^(wave − 1). */
+  cost: number;
+  costGrowth: number;
+  /** At most this many standing at once (≤ 6). */
+  max: number;
+  /** Hex rings around its cell that infection cannot enter. */
+  radius: number;
+  /** Every N ticks it cleanses one more ring (up to radius, then keeps the whole disc clean). */
+  cleanseEvery: number;
+  /** Max HP as a share of the core's max HP (× Structure Health), like walls. */
+  hp: number;
+  /** Standing through this many wave ends pays holdReward Bits (× tier bitsMul × bitsGrowth^(wave − 1)) and claims its disc for the run. */
+  holdWaves: number;
+  holdReward: number;
+  /** Viruses passing within this distance (px) turn on it; phages hunt it anywhere. */
+  aggro: number;
+  bodyRadius: number;
+  /** Placement band: at least minDist from the core, at most rangeShare × Range (and inside the arena). */
+  minDist: number;
+  rangeShare: number;
+}
+
+/** c2: the beacon block of territory.json. */
+export function validateBeacon(b: BeaconDef | undefined): void {
+  check(b !== null && typeof b === 'object', 'territory.beacon must be an object');
+  const v = b!;
+  positive(v.cost, 'territory.beacon.cost');
+  check(Number.isFinite(v.costGrowth) && v.costGrowth >= 1, 'territory.beacon.costGrowth must be ≥ 1');
+  check(Number.isInteger(v.max) && v.max >= 1 && v.max <= 6, 'territory.beacon.max must be a whole number in [1, 6]');
+  check(Number.isInteger(v.radius) && v.radius >= 1, 'territory.beacon.radius must be a positive integer');
+  check(Number.isInteger(v.cleanseEvery) && v.cleanseEvery > 0, 'territory.beacon.cleanseEvery must be a positive integer');
+  check(Number.isFinite(v.hp) && v.hp > 0 && v.hp <= 1, 'territory.beacon.hp must be in (0, 1]');
+  check(Number.isInteger(v.holdWaves) && v.holdWaves >= 1, 'territory.beacon.holdWaves must be a positive integer');
+  nonNeg(v.holdReward, 'territory.beacon.holdReward');
+  for (const k of ['aggro', 'bodyRadius', 'minDist'] as const) nonNeg(v[k], `territory.beacon.${k}`);
+  check(Number.isFinite(v.rangeShare) && v.rangeShare > 0 && v.rangeShare <= 1, 'territory.beacon.rangeShare must be in (0, 1]');
 }
 
 /** Virus mutations: the genome learns the build's dominant tag. */
@@ -511,6 +553,7 @@ export function validateData(d: GameData): GameData {
   check(Number.isInteger(tr.nestEvery) && tr.nestEvery > 0, 'territory.nestEvery must be a positive integer');
   check(tr.nestKind in d.enemies && tr.nestKind !== 'boss', 'territory.nestKind must be a non-boss enemy kind');
   check(Number.isFinite(tr.cryoSlow) && tr.cryoSlow >= 0 && tr.cryoSlow < 1, 'territory.cryoSlow must be in [0, 1)');
+  validateBeacon(tr.beacon); // c2
   const sw = d.structures?.wall;
   positive(sw?.minRadius, 'structures.wall.minRadius');
   nonNeg(sw.ringStep, 'structures.wall.ringStep');

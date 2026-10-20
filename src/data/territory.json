@@ -21,5 +21,19 @@
   "nestEvery": 120,
   "nestKind": "fast",
   "nestEnergy": 30,
-  "nestBits": 12
+  "nestBits": 12,
+  "beacon": {
+    "cost": 80,
+    "costGrowth": 1.5,
+    "max": 1,
+    "radius": 3,
+    "cleanseEvery": 45,
+    "hp": 0.5,
+    "holdWaves": 3,
+    "holdReward": 40,
+    "aggro": 56,
+    "bodyRadius": 16,
+    "minDist": 110,
+    "rangeShare": 0.9
+  }
 }

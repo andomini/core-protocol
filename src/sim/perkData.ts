@@ -25,7 +25,10 @@ export type EffectType = (typeof EFFECT_TYPES)[number];
 
 /** Battlefield structures a firewall fusion builds (spec 2026-10-15). The wall, turret, mine and station are simulated. */
 export const STRUCTURE_KINDS = ['wall', 'turret', 'mine', 'station'] as const;
-export type StructureKind = (typeof STRUCTURE_KINDS)[number];
+/** The kinds a fusion ladder can build. */
+export type FusionStructureKind = (typeof STRUCTURE_KINDS)[number];
+/** c2: plus the player-built Territory Beacon (src/sim/beacon.ts; never from a fusion). */
+export type StructureKind = FusionStructureKind | 'beacon';
 
 /** Every number a `structure` effect can carry (the union over the kinds; STRUCTURE_FIELDS says which kind takes which). */
 export type StructureField =
@@ -37,7 +40,7 @@ export type StructureField =
 /** How a structure field is checked: `pos` > 0, `frac` in (0, 1], `nonNeg` ≥ 0, else a whole number in [min, max]. */
 type FieldRule = { pos: true } | { frac: true } | { min: number; max: number } | { nonNeg: true };
 /** Per kind: every field a `structure` effect may set; `req` fields must all be set once the kind first appears in a ladder. */
-export const STRUCTURE_FIELDS: Record<StructureKind, Record<string, { rule: FieldRule; req: boolean }>> = {
+export const STRUCTURE_FIELDS: Record<FusionStructureKind, Record<string, { rule: FieldRule; req: boolean }>> = {
   wall: {
     hpFrac: { rule: { frac: true }, req: true },
     regrowSec: { rule: { pos: true }, req: false },
@@ -117,7 +120,7 @@ export type Effect =
   /** A Thorns hit slows its attacker by `strength` for `seconds`. */
   | { type: 'thornsSlow'; strength: number; seconds: number }
   /** A fusion's battlefield structure; the fields are per kind (STRUCTURE_FIELDS), a tier lists only what it raises. */
-  | ({ type: 'structure'; kind: StructureKind } & { [F in StructureField]?: number })
+  | ({ type: 'structure'; kind: FusionStructureKind } & { [F in StructureField]?: number })
   /**
    * Bounty Marks (spec 2026-10-16, phase 2): `count` viruses per wave are Marked and pay × energy/bits; a crit kill
    * on a Mark × critMul more; the boss is Marked at × bossBitsMul Bits; every `jackpotEvery` Marks killed pay a

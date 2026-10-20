@@ -5,6 +5,7 @@ import { type GameData, STAT_IDS, type StatId } from './data';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
 import { fusionStructure, moveCrystalModule, pickBoot, pickPerk, type ProtocolReject, rerollOffer, structureBuilt, structureFusionNames, takeBoost } from './perks';
+import { type BeaconReject, placeBeacon } from './beacon'; // c2
 import { pulseCommand } from './pulse'; // pulse
 import { chance } from './rng';
 import { quoteBuy, type BuyQuote } from './stats';
@@ -28,7 +29,9 @@ export type Command =
   /** Rewarded revive after death: once per run, part of the HP back, nearby viruses purged. */
   | { type: 'revive'; hp?: number }
   /** pulse: the core's Pulse ring (src/sim/pulse.ts); rejected with `cooldown` while it recharges. */
-  | { type: 'pulse' };
+  | { type: 'pulse' }
+  /** c2: plants a Territory Beacon at the infection front (src/sim/beacon.ts); rejected with funds/max/front. */
+  | { type: 'beacon' };
 
 export interface LoggedCommand {
   /** World tick before the step that applies it (applied first thing in that step). */
@@ -129,7 +132,7 @@ function revive(w: World, data: GameData, hp: unknown, events: SimEvent[]): Prot
   return null;
 }
 
-function protocol(events: SimEvent[], cmd: string, r: ProtocolReject | null): void {
+function protocol(events: SimEvent[], cmd: string, r: ProtocolReject | BeaconReject | null): void {
   if (r !== null) events.push({ type: 'commandRejected', cmd, reason: r });
 }
 
@@ -146,6 +149,7 @@ export function applyCommands(w: World, data: GameData, cmds: readonly Command[]
     } else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
     else if (c.type === 'boost') protocol(events, 'boost', takeBoost(w, data, events));
     else if (c.type === 'pulse') protocol(events, 'pulse', pulseCommand(w, data, events)); // pulse
+    else if (c.type === 'beacon') protocol(events, 'beacon', placeBeacon(w, data, events)); // c2
     else if (c.type === 'revive') protocol(events, 'revive', revive(w, data, (cmd as { hp?: unknown }).hp, events));
     else if (typeof c.stat === 'string') reject(events, c.stat, 'unknown');
     else events.push({ type: 'commandRejected', cmd: String(c.type), reason: 'unknown' });

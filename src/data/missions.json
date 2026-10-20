@@ -9,6 +9,7 @@
     { "id": "levels", "kind": "levels", "mode": "sum", "text": "Buy {n} stat levels today", "targets": [80, 150, 250, 350, 450, 550], "scale": { "by": "avgLevels", "frac": 2 }, "step": 10, "reward": [3, 3, 4, 4, 5, 5] },
     { "id": "bits", "kind": "bits", "mode": "best", "text": "Earn {n} Bits in one run", "targets": [100, 500, 2000, 8000, 30000, 100000], "scale": { "by": "avgBits", "frac": 1.1 }, "step": 0, "reward": [4, 4, 5, 5, 6, 6] },
     { "id": "tagWave", "kind": "tagWave", "mode": "best", "text": "Wave {n} with {tag} as top set", "targets": [8, 8, 8, 8, 8, 8], "scale": { "by": "bestWave", "frac": 0.5 }, "step": 5, "reward": [5, 5, 6, 6, 7, 8] },
-    { "id": "waves", "kind": "waves", "mode": "sum", "text": "Clear {n} waves today", "targets": [30, 60, 100, 150, 200, 250], "scale": { "by": "avgWaves", "frac": 2 }, "step": 10, "reward": [3, 3, 4, 4, 5, 5] }
+    { "id": "waves", "kind": "waves", "mode": "sum", "text": "Clear {n} waves today", "targets": [30, 60, 100, 150, 200, 250], "scale": { "by": "avgWaves", "frac": 2 }, "step": 10, "reward": [3, 3, 4, 4, 5, 5] },
+    { "id": "beacon", "kind": "beacon", "mode": "best", "text": "Hold beacons for {n} waves in one run", "targets": [3, 4, 5, 6, 8, 10], "step": 1, "reward": [4, 4, 5, 5, 6, 6] }
   ]
 }

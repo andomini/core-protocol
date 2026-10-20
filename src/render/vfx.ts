@@ -17,6 +17,9 @@ const enum K {
   Firewall,
   Dock,
   Link,
+  // c2: the Territory Beacon
+  BeaconRipple,
+  BeaconDrop,
 }
 
 interface Item {
@@ -37,7 +40,7 @@ interface Item {
 /** Live verb effects at most (a Pulse is 1–2, a boot pick 3 docks, a fusion 1 link). */
 export const MAX_VFX = 40;
 /** Durations (ms). */
-export const VFX_MS = { pulse: 900, firewall: 1100, dock: 520, dockStagger: 130, link: 650, button: 450 } as const;
+export const VFX_MS = { pulse: 900, firewall: 1100, dock: 520, dockStagger: 130, link: 650, button: 450, beaconRipple: 700, beaconDrop: 650 } as const;
 
 const PULSE_KIND: Readonly<Record<Tag, K>> = { overload: K.Overload, cryo: K.Cryo, chain: K.Chain, mining: K.Mining, firewall: K.Firewall };
 
@@ -105,6 +108,16 @@ export class Vfx {
   /** A fusion link lights up: two heads race along a→b and b→a in their tags' colours and meet. */
   link(ax: number, ay: number, bx: number, by: number, ca: number, cb: number): void {
     this.push(K.Link, ax, ay, bx, by, 0, ca, cb, VFX_MS.link);
+  }
+
+  /** c2: a beacon's cleanse ripple: a hex front running out to radius r (its cleansed ring). */
+  beaconRipple(x: number, y: number, r: number, color: number): void {
+    this.push(K.BeaconRipple, x, y, 0, 0, r, color, WHITE, VFX_MS.beaconRipple);
+  }
+
+  /** c2: a beacon lands at (x, y): a light column drops onto it, then a ring spreads to radius r. */
+  beaconDrop(x: number, y: number, r: number, color: number): void {
+    this.push(K.BeaconDrop, x, y, 0, 0, r, color, WHITE, VFX_MS.beaconDrop);
   }
 
   reset(): void {
@@ -239,6 +252,26 @@ export class Vfx {
         if (h >= 1) {
           const m = (t - 0.45) / 0.55;
           g.lineStyle(3, WHITE, 0.9 * (1 - m)).strokeCircle(it.x + dx / 2, it.y + dy / 2, 6 + 30 * easeOut(m));
+        }
+        break;
+      }
+      case K.BeaconRipple:
+        // c2: a hex front with a white crest.
+        g.lineStyle(2 + 5 * f, it.c1, 0.6 * f);
+        hexPath(g, it.x, it.y, R, 0, false);
+        g.lineStyle(1.5, it.c2, 0.7 * f);
+        hexPath(g, it.x, it.y, R * 0.94, 0, false);
+        break;
+      case K.BeaconDrop: {
+        // c2: a column of light falls in the first 40 %, then a ring and a flash where it lands.
+        const h = Math.min(1, t / 0.4);
+        const top = it.y - 220 * (1 - h) - 40;
+        g.lineStyle(10 * f + 2, it.c1, 0.3 * f).lineBetween(it.x, top, it.x, it.y);
+        g.lineStyle(3, it.c2, 0.9 * f).lineBetween(it.x, top, it.x, it.y);
+        if (h >= 1) {
+          const m = (t - 0.4) / 0.6;
+          g.fillStyle(it.c2, 0.6 * (1 - m)).fillCircle(it.x, it.y, 8 + 10 * m);
+          g.lineStyle(3, it.c1, 0.85 * (1 - m)).strokeCircle(it.x, it.y, 10 + it.r * easeOut(m));
         }
         break;
       }

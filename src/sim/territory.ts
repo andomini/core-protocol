@@ -81,10 +81,10 @@ export function initialTerrain(data: GameData): number[] {
   return g.x.map((x, i) => (x * x + g.y[i]! * g.y[i]! <= r2 ? 1 : 0));
 }
 
-/** Sets cell `id` and every cell within `rings` of it to `v`. */
-function paint(w: World, g: TerrainGrid, id: number, rings: number, v: number): void {
+/** Sets cell `id` and every cell within `rings` of it to `v`; with `data` (infection), guarded cells stay ours. */
+function paint(w: World, g: TerrainGrid, id: number, rings: number, v: number, data?: GameData): void {
   if (id < 0) return;
-  w.terrain[id] = v;
+  if (data === undefined || !guarded(w, data, id)) w.terrain[id] = v;
   if (rings <= 0) return;
   const q0 = g.q[id]!;
   const r0 = g.r[id]!;
@@ -92,9 +92,42 @@ function paint(w: World, g: TerrainGrid, id: number, rings: number, v: number): 
     for (let dq = -rings; dq <= rings; dq++) {
       if (hexDist(dq, dr) > rings) continue;
       const j = cellId(g, q0 + dq, r0 + dr);
-      if (j >= 0) w.terrain[j] = v;
+      if (j >= 0 && (data === undefined || !guarded(w, data, j))) w.terrain[j] = v;
     }
   }
+}
+
+/** c2: makes cell `id` and the cells within `rings` of it ours (a beacon's cleanse). */
+export function ownCells(w: World, data: GameData, id: number, rings: number): void {
+  paint(w, terrainFor(data), id, rings, 1);
+}
+
+/** Binary search in a sorted id list. */
+function sortedHas(a: readonly number[], x: number): boolean {
+  let lo = 0;
+  let hi = a.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const v = a[mid]!;
+    if (v === x) return true;
+    if (v < x) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  return false;
+}
+
+/** c2: a cell infection cannot enter: within `beacon.radius` rings of a standing beacon, or claimed by a held one. */
+export function guarded(w: World, data: GameData, id: number): boolean {
+  if (w.claimed !== undefined && w.claimed.length > 0 && sortedHas(w.claimed, id)) return true;
+  if (w.structs.length === 0) return false;
+  const g = terrainFor(data);
+  const rad = data.territory.beacon.radius;
+  for (const s of w.structs) {
+    if (s.kind !== 'beacon' || s.share <= 0) continue;
+    const c = cellAt(data, s.x, s.y);
+    if (c >= 0 && hexDist(g.q[id]! - g.q[c]!, g.r[id]! - g.r[c]!) <= rad) return true;
+  }
+  return false;
 }
 
 /** Infection pass: every infectEvery ticks each living, non-frozen virus infects its cell (a boss, a ring).
@@ -106,7 +139,7 @@ export function updateTerritory(w: World, data: GameData): void {
   const g = terrainFor(data);
   for (const e of w.enemies) {
     if (e.hp <= 0 || w.tick <= e.frozenUntil) continue;
-    paint(w, g, cellAt(data, e.x, e.y), e.kind === 'boss' ? t.bossInfectRing : 0, 0);
+    paint(w, g, cellAt(data, e.x, e.y), e.kind === 'boss' ? t.bossInfectRing : 0, 0, data); // c2: beacons guard their disc
   }
 }
 

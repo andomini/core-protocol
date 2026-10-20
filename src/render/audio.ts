@@ -17,7 +17,9 @@ export type Sfx =
   | 'death' | 'click' | 'heartbeat' | 'wave' | 'zap' | 'freeze' | 'set' | 'pack'
   // verbs (uniqueness plan item 14)
   | 'boot' | 'fusion' | 'mutation' | 'mission'
-  | 'pulse' | 'pulseOverload' | 'pulseCryo' | 'pulseChain' | 'pulseMining' | 'pulseFirewall';
+  | 'pulse' | 'pulseOverload' | 'pulseCryo' | 'pulseChain' | 'pulseMining' | 'pulseFirewall'
+  // c2: the Territory Beacon (placed; held to its goal)
+  | 'beacon' | 'beaconHold';
 
 export type Family = 'player' | 'virus' | 'ui';
 
@@ -223,6 +225,22 @@ export const VOICES: Readonly<Record<Sfx, VoiceDef>> = {
     { wave: 'sawtooth', f0: 111.6, f1: 111.6, dur: 0.75, vol: 0.05, attack: 0.08, filter: LP(300, 2200, 5) },
     { wave: 'sine', f0: 220, f1: 220, dur: 0.7, vol: 0.06, attack: 0.1 },
     { wave: 'triangle', f0: N.E5, f1: N.E5, dur: 0.4, vol: 0.02, delay: 0.25 },
+  ] },
+  // c2: placement: a low thunk as it lands, a rising sine ping and a short radio chirp.
+  beacon: { family: 'player', prio: 2, gap: 300, layers: [
+    { wave: 'sine', f0: 160, f1: 60, dur: 0.22, vol: 0.14 },
+    { wave: 'sine', f0: N.E5, f1: N.B5, dur: 0.3, vol: 0.06, delay: 0.08 },
+    { wave: 'square', f0: N.B6, f1: N.B6, dur: 0.06, vol: 0.015, delay: 0.34, filter: LP(5000, 2000) },
+    { wave: 'square', f0: N.E7, f1: N.E7, dur: 0.06, vol: 0.012, delay: 0.42, filter: LP(5000, 2000) },
+    { wave: 'noise', f0: 0, f1: 0, dur: 0.18, vol: 0.03, filter: LP(1200, 200) },
+  ] },
+  // c2: the hold goal reached: a two-chord rise (E5+B5, then A5+E6) over a soft air swell.
+  beaconHold: { family: 'player', prio: 2, gap: 400, layers: [
+    { wave: 'triangle', f0: N.E5, f1: N.E5, dur: 0.3, vol: 0.05 },
+    { wave: 'triangle', f0: N.B5, f1: N.B5, dur: 0.3, vol: 0.045 },
+    { wave: 'triangle', f0: N.A5, f1: N.A5, dur: 0.55, vol: 0.05, delay: 0.16 },
+    { wave: 'triangle', f0: N.E6, f1: N.E6, dur: 0.55, vol: 0.045, delay: 0.16 },
+    { wave: 'noise', f0: 0, f1: 0, dur: 0.5, vol: 0.02, attack: 0.2, filter: BP(2000, 7000, 1.5) },
   ] },
 };
 

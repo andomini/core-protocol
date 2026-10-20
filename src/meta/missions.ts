@@ -16,7 +16,7 @@ import type { RunStats } from './runStats';
 import type { MetaState } from './state';
 import { workshopCost, workshopMax, workshopUnlocked } from './workshop';
 
-export const MISSION_KINDS = ['wave', 'kills', 'fusion', 'nests', 'levels', 'bits', 'tagWave', 'waves'] as const;
+export const MISSION_KINDS = ['wave', 'kills', 'fusion', 'nests', 'levels', 'bits', 'tagWave', 'waves', 'beacon'] as const; // c2: beacon
 export type MissionKind = (typeof MISSION_KINDS)[number];
 export const SCALE_REFS = ['bestWave', 'avgKills', 'avgLevels', 'avgBits', 'avgWaves'] as const;
 export type ScaleRef = (typeof SCALE_REFS)[number];
@@ -78,6 +78,8 @@ export interface MissionRun {
   dominant: Tag | null;
   /** Run identity (seed): with MetaState.runs it recognises a revived run settling a second time. */
   seed: number;
+  /** c2: wave ends survived by standing beacons this run (World.beaconWaves); absent = 0. */
+  beacons?: number;
 }
 
 export interface MissionDelta {
@@ -260,6 +262,8 @@ export function runValue(kind: MissionKind, dm: DailyMission, r: MissionRun, bit
       return r.dominant !== null && r.dominant === dm.tag ? r.wave : 0;
     case 'waves':
       return Math.max(0, r.wave - 1);
+    case 'beacon': // c2
+      return r.beacons ?? 0;
   }
 }
 
@@ -313,7 +317,7 @@ export function missionRun(w: World, data: GameData, stats: Pick<RunStats, 'leve
   const c = tagCounts(w, data);
   let dominant: Tag | null = null;
   for (const t of TAGS) if (c[t] > 0 && (dominant === null || c[t] > c[dominant])) dominant = t;
-  return { tier: w.tier, wave: w.wave, kills: w.kills, nests: stats.nests, levels: stats.levelsBought, fusion, dominant, seed: w.seed };
+  return { tier: w.tier, wave: w.wave, kills: w.kills, nests: stats.nests, levels: stats.levelsBought, fusion, dominant, seed: w.seed, beacons: w.beaconWaves ?? 0 }; // c2: beacons
 }
 
 export function validateMissionsState(raw: unknown, md: MissionsData = MISSIONS): MissionsState {
