@@ -4,6 +4,7 @@
 //   greedy       buys the cheapest affordable useful upgrade (×1), as a sensible first-time player would; fires the Pulse when
 //                ready and the autoPulse crowd (pulse.json) is in its ring (so do atk-first and def-first)
 //                (BUILD rows count once their structure stands: turret/mine as ATK, structure HP/regen as DEF, station income as UTIL)
+//                and a structure upgrade (structures.json upgrades) when its Energy / tab weight is the cheapest (bot.json structUpgrades)
 //   atk-first    greedy, but ATK prices count 4× cheaper (tools/sim/bot.json)
 //   def-first    the same for DEF
 //   round-robin  cycles through the useful stats in panel order, saving up for the next one
@@ -11,8 +12,9 @@ import botJson from './bot.json';
 import { type Command, isUnlocked, quoteFor } from '../../src/sim/commands';
 import { type GameData, STAT_IDS, type StatId, type TabId } from '../../src/sim/data';
 import type { World } from '../../src/sim/state';
-import { TAGS, type Tag } from '../../src/sim/perkData';
-import { bootSector, tagCounts } from '../../src/sim/perks';
+import { type StructureKind, TAGS, type Tag } from '../../src/sim/perkData';
+import { bootSector, structureBuilt, tagCounts } from '../../src/sim/perks';
+import { structLevel, structUpgradeCost, upgradableKinds } from '../../src/sim/structLevels';
 import { pulseWorth } from '../../src/sim/pulse';
 import { type CrystalDiff, crystalDiff, crystalSlots, freeSlots, fusionSteps, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
 import { crystalRing } from '../../src/sim/territory';
@@ -25,6 +27,15 @@ export const USEFUL: readonly StatId[] = STAT_IDS.filter((id) => (botJson.useful
 /** BUILD stat → the tab whose weight it takes. */
 const BUILD_AS = botJson.build as Partial<Record<StatId, TabId>>;
 const BUILD: readonly StatId[] = STAT_IDS.filter((id) => BUILD_AS[id] !== undefined);
+/** Structure kind → the tab whose weight its upgrade takes. */
+const STRUCT_AS = botJson.structUpgrades as Partial<Record<StructureKind, TabId>>;
+
+/** Energy for the next upgrade level of `kind`, or null when it cannot be bought (not built, maxed, no ladder). */
+function structCost(w: World, data: GameData, kind: StructureKind): number | null {
+  if (STRUCT_AS[kind] === undefined || !structureBuilt(w, data, kind)) return null;
+  const c = structUpgradeCost(data, kind, structLevel(w, data, kind));
+  return Number.isFinite(c) ? c : null;
+}
 /** What an in-run bot may buy: the useful stats, then the BUILD rows (isUnlocked leaves them out until the structure stands). */
 export const RUN_STATS: readonly StatId[] = [...USEFUL, ...BUILD];
 
@@ -53,9 +64,24 @@ function weighted(name: 'greedy' | 'atk-first' | 'def-first'): Bot {
           best = id;
         }
       }
+      // Structure upgrades compete on the same footing: Energy / the weight of the tab they count as.
+      let kindBest: StructureKind | null = null;
+      for (const kind of upgradableKinds(data)) {
+        const c = structCost(w, data, kind);
+        if (c === null) continue;
+        const score = c / weight[STRUCT_AS[kind]!];
+        if (score < bestScore) {
+          bestScore = score;
+          kindBest = kind;
+        }
+      }
       // Pulse (uniqueness plan item 4): fired whenever ready with the autoPulse rule's crowd in the ring.
       const out: Command[] = pulseWorth(w, data) ? [{ type: 'pulse' }] : [];
       // Save up for the best-value option rather than buying a worse one now.
+      if (kindBest !== null) {
+        if (w.energy >= structCost(w, data, kindBest)!) out.push({ type: 'upgradeStruct', kind: kindBest });
+        return out;
+      }
       if (best === null || !quoteFor(w, data, best, 1).affordable) return out;
       out.push({ type: 'buy', stat: best, count: 1 });
       return out;
@@ -202,6 +228,25 @@ export function diffScore(data: GameData, d: CrystalDiff): number {
   return score;
 }
 
+/** The crystal gain of taking perk `id` and, for a new module, the free hex that gains most (undefined: autoSlot / a stack). */
+export function bestSlot(w: World, data: GameData, id: string): { gain: number; slot?: [number, number] } {
+  if (!needsPlacement(w, id)) {
+    const d = slotGains(w, data, id);
+    return { gain: d === null ? 0 : diffScore(data, d) };
+  }
+  let gain = -Infinity;
+  let slot: [number, number] | undefined;
+  for (const s of freeSlots(w, data)) {
+    const d = slotGains(w, data, id, s);
+    const g = d === null ? -Infinity : diffScore(data, d);
+    if (g > gain) {
+      gain = g;
+      slot = s;
+    }
+  }
+  return slot === undefined ? { gain: 0 } : { gain, slot };
+}
+
 /** The offered card with the best crystal gain (+ rarity, + a held tag) and, for a new module, the free hex that gains most. */
 export function fusionPick(w: World, data: GameData): { index: number; slot?: [number, number] } {
   const counts = tagCounts(w, data);
@@ -209,23 +254,7 @@ export function fusionPick(w: World, data: GameData): { index: number; slot?: [n
   let bestScore = -Infinity;
   w.offer.forEach((id, i) => {
     const p = data.perks.perks[id]!;
-    let gain = 0;
-    let slot: [number, number] | undefined;
-    if (needsPlacement(w, id)) {
-      gain = -Infinity;
-      for (const s of freeSlots(w, data)) {
-        const d = slotGains(w, data, id, s);
-        const g = d === null ? -Infinity : diffScore(data, d);
-        if (g > gain) {
-          gain = g;
-          slot = s;
-        }
-      }
-      if (slot === undefined) gain = 0;
-    } else {
-      const d = slotGains(w, data, id);
-      gain = d === null ? 0 : diffScore(data, d);
-    }
+    const { gain, slot } = bestSlot(w, data, id);
     const score = gain + CW.rarity * RANK[p.rarity] + CW.held * counts[p.tag];
     if (score > bestScore) {
       bestScore = score;

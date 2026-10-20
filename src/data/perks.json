@@ -5,10 +5,10 @@
   "boost": {"energyMul": 2, "waves": 5, "cooldownWaves": 10},
   "rules": {"bounces": 0, "bounceDamage": 0.15, "bounceRange": 160, "lightningTargets": 2, "lightningDamage": 0.25, "lightningRange": 170, "freezeSeconds": 2, "slowBonus": 0, "slowCap": 0.7, "enemyHp": 1, "thornsRanged": 0, "runEndBits": 1, "bossLightning": 0, "enemySpeed": 1},
   "perks": {
-    "overclockRounds": {"name": "Overclock Rounds", "tag": "overload", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statMul", "stat": "damage", "value": 1.12}]},
-    "burstFire": {"name": "Burst Fire", "tag": "overload", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statMul", "stat": "attackSpeed", "value": 1.1}]},
+    "overclockRounds": {"name": "Overclock Rounds", "tag": "overload", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statMul", "stat": "damage", "value": 1.09}]},
+    "burstFire": {"name": "Burst Fire", "tag": "overload", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statMul", "stat": "attackSpeed", "value": 1.07}]},
     "hotBarrel": {"name": "Hot Barrel", "tag": "overload", "rarity": "rare", "maxStacks": 3, "effects": [{"type": "conditional", "when": "nthShot", "every": 10, "damageMul": 3}]},
-    "critSpike": {"name": "Crit Spike", "tag": "overload", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "critChance", "value": 0.05}]},
+    "critSpike": {"name": "Crit Spike", "tag": "overload", "rarity": "common", "maxStacks": 5, "effects": [{"type": "statAdd", "stat": "critChance", "value": 0.04}]},
     "glassCannon": {"name": "Glass Cannon", "tag": "overload", "rarity": "epic", "maxStacks": 1, "tradeoff": true, "effects": [{"type": "statMul", "stat": "damage", "value": 1.5}, {"type": "statMul", "stat": "health", "value": 0.75}]},
     "frostShot": {"name": "Frost Shot", "tag": "cryo", "rarity": "common", "maxStacks": 3, "effects": [{"type": "onHit", "action": "slow", "strength": 0.35, "seconds": 3}]},
     "coldAura": {"name": "Cold Aura", "tag": "cryo", "rarity": "common", "maxStacks": 3, "effects": [{"type": "conditional", "when": "innerRange", "frac": 0.6, "slow": 0.25}]},

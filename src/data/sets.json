@@ -24,7 +24,7 @@
   "sets": {
     "overload": {
       "2": [
-        { "type": "statMul", "stat": "damage", "value": 1.1 }
+        { "type": "statMul", "stat": "damage", "value": 1.06 }
       ],
       "4": [
         { "type": "statMul", "stat": "critFactor", "value": 1.5 }
