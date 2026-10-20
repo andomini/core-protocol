@@ -51,7 +51,9 @@ import battleJson from '../../data/battle.json';
 import { RunLifecycle } from '../../portal/lifecycle';
 import { services } from '../../services';
 import { battleData, type DevFlags, leaderboardForce, readFlags, stressTuning } from '../devFlags';
+import { pulseSfx } from '../audio';
 import { Effects } from '../effects';
+import { Vfx } from '../vfx';
 import { FixedLoop } from '../loop';
 import { BG, CRIMSON, CYAN, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
 import { SetTooltip } from '../../ui/SetTooltip';
@@ -91,6 +93,9 @@ export class BattleScene extends Phaser.Scene {
   session!: RunSession;
   view!: WorldView;
   fx!: Effects;
+  /** vfx/audio: verb effects (Pulse, docking, fusion link) and this frame's dock count (boot docks stagger). */
+  vfx!: Vfx;
+  private dockN = 0;
   hud!: Hud;
   upgrades!: UpgradePanel;
   death!: DeathOverlay;
@@ -274,6 +279,8 @@ export class BattleScene extends Phaser.Scene {
     this.view = new WorldView(this, this.L, () => this.session);
     this.structures = new StructureView(this, this.L, this.gd);
     this.fx = new Effects(this);
+    this.vfx = new Vfx(this);
+    services.audio.runStart(this.session.world.wave); // vfx/audio
     this.numbers = new DamageNumbers(this, this.L);
     this.hints = new Hints(this, this.L, !services.meta.meta.firstRunDone && !this.flags.stress);
     this.hud = new Hud(this, this.L, this.gd, { onSpeed: () => this.cycleSpeed(), onPause: () => this.setPaused(!this.paused), onPulse: () => this.pulse() });
@@ -1120,6 +1127,8 @@ export class BattleScene extends Phaser.Scene {
     this.view.reset();
     this.structures.reset();
     this.fx.reset();
+    this.vfx.reset(); // vfx/audio
+    services.audio.runStart(0);
     this.numbers.reset();
     this.hud.reset();
     this.upgrades.reset();
@@ -1203,10 +1212,11 @@ export class BattleScene extends Phaser.Scene {
     this.fx.pulse(mx, my, coreR * 2, TAG_COLOR[tb]);
     this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, TAG_COLOR[ta]);
     this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale * 0.7, TAG_COLOR[tb]);
+    this.vfx.link(ax, ay, bx, by, TAG_COLOR[ta], TAG_COLOR[tb]); // vfx/audio
     this.shake(260, 0.005);
     this.showBanner(`FUSION ${fusionLevel(this.gd, tier)} · ${f.name.toUpperCase()}`, TAG_CSS[ta], now, `${this.gd.sets.tags[ta].name} + ${this.gd.sets.tags[tb].name}: ${fusionLines(this.gd, key, tier).join(' · ')}`);
     this.bannerSub.setColor(TAG_CSS[tb]);
-    services.audio.play('set');
+    services.audio.play('fusion'); // vfx/audio
   }
 
   private setOffline(tag: Tag, prev: number): string {
@@ -1372,14 +1382,20 @@ export class BattleScene extends Phaser.Scene {
         this.showBanner(`BOUNTY JACKPOT +${formatPrice(e.bits)} BITS`, MARK_CSS, now);
         break;
       }
-      case 'pulse':
-        sfx.play(e.tag === 'cryo' ? 'freeze' : 'zap');
-        this.fx.pulse(L.cx, L.cy, e.radius * L.scale, e.tag ? TAG_COLOR[e.tag] : CYAN);
+      // vfx/audio: the Pulse's tag voice, its tag ring from the core and a ring off the HUD button.
+      case 'pulse': {
+        const pc = e.tag ? TAG_COLOR[e.tag] : CYAN;
+        sfx.play(pulseSfx(e.tag));
+        this.vfx.pulse(e.tag, L.cx, L.cy, e.radius * L.scale, pc);
+        const pb = this.hud.pulseBtn.r;
+        this.vfx.button(pb.x + pb.w / 2, pb.y + pb.w * 0.46, pb.w * 0.75, pc);
         break;
+      }
       case 'waveStart':
         this.saveRun();
         if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? battleJson.fastBootSpeed : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
         sfx.play(e.boss ? 'boss' : 'wave');
+        sfx.setWave(e.wave, e.boss); // vfx/audio: music layer 2 by wave band
         if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now);
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);
         this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, e.boss ? CRIMSON : undefined);
@@ -1440,12 +1456,14 @@ export class BattleScene extends Phaser.Scene {
         if (e.module) {
           const [mx, my] = this.crystal.hexScreen(e.module[0], e.module[1]);
           this.fx.pulse(mx, my, this.gd.crystal.cellSize * L.scale * 2.5, TAG_COLOR[this.gd.perks.perks[e.id]!.tag]);
+          this.vfx.dock(mx, my, this.crystal.R, TAG_COLOR[this.gd.perks.perks[e.id]!.tag], this.dockN++); // vfx/audio
         }
         break;
       case 'bootPicked': {
         // boot: the sector's modules light up in the crystal.
         const s = this.gd.boot.sectors.find((b) => b.id === e.id);
         this.showBanner(`BOOT: ${(s?.name ?? e.id).toUpperCase()}`, TAG_CSS[e.tag], now);
+        sfx.play('boot'); // vfx/audio
         for (const [q, r] of e.modules) {
           const [mx, my] = this.crystal.hexScreen(q, r);
           this.fx.pulse(mx, my, this.gd.crystal.cellSize * L.scale * 2.5, TAG_COLOR[e.tag]);
@@ -1454,10 +1472,10 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'mutation': {
         const name = this.gd.sets.tags[e.tag].name.toUpperCase();
-        this.genome.flash(e.tag);
+        this.genome.flash(e.tag, !services.meta.meta.settings.reduceMotion); // vfx/audio: the strip warps
         this.showBanner(`VIRUS MUTATED: ${name} RESIST ${e.level}`, '#ff6b8b', now);
         this.fx.pulse(L.cx, L.cy, Math.max(L.arena.w, L.arena.h) * 0.6, CRIMSON);
-        sfx.play('boss');
+        sfx.play('mutation'); // vfx/audio
         break;
       }
       case 'arenaGrow':
@@ -1486,6 +1504,7 @@ export class BattleScene extends Phaser.Scene {
         }
         this.settle();
         sfx.play('death');
+        sfx.sting('death'); // vfx/audio: death stinger, music layer 2 drops
         this.fx.coreBreach(L.cx, L.cy, coreR);
         this.shake(380, 0.01);
         this.deathAt = now;
@@ -1636,6 +1655,8 @@ export class BattleScene extends Phaser.Scene {
     this.crystal.draw(this.session.world, sectorTags(this.session.world, this.gd), time);
     this.genome.update(this.session.world.genome, this.session.world.wave, this.gd);
     this.fx.update();
+    this.vfx.update(); // vfx/audio
+    this.dockN = 0;
     this.hud.update(this.session.world, this.session.stats, this.speed, this.paused && !this.editor.visible && !this.fieldDrag?.moved, time, delta);
     this.upgrades.update(time);
     if (this.bannerUntil > 0) {
@@ -1652,6 +1673,8 @@ export class BattleScene extends Phaser.Scene {
     if (this.deathAt > 0 && !this.death.visible && time - this.deathAt > 700) {
       const dw = this.session.world;
       const p = this.paid;
+      const missions = p ? missionLines(services.meta.meta, p.s, this.gd) : [];
+      if (missions.some((m) => m.done)) services.audio.play('mission'); // vfx/audio
       this.death.show(
         {
           wave: dw.wave,
@@ -1661,7 +1684,7 @@ export class BattleScene extends Phaser.Scene {
           note: [latticeLine(this.gd, dw, true), p ? this.deathNote(p.s) : ''].filter((x) => x).join(' · '),
           canRevive: !dw.revived && !this.flags.stress,
           canDouble: p !== null && !p.doubled && !p.s.unpaid,
-          missions: p ? missionLines(services.meta.meta, p.s, this.gd) : [],
+          missions,
         },
         time,
       );

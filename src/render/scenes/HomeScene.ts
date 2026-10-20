@@ -474,7 +474,10 @@ export class HomeScene extends Phaser.Scene {
       const w = saved.world;
       const m = services.meta.meta;
       const st = settleRun(m, this.gd, this.md, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: saved.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest, missions: missionRun(w, this.gd, saved.stats), now: Date.now() });
-      if (st.missionKeys) showToast(`Daily mission done: +${st.missionKeys} Keys`, 4000);
+      if (st.missionKeys) {
+        showToast(`Daily mission done: +${st.missionKeys} Keys`, 4000);
+        services.audio.play('mission');
+      }
       addRunToLifetime(m.lifetime, saved.stats, {
         waves: w.wave,
         simTicks: w.tick,
