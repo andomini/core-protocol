@@ -108,3 +108,26 @@ Disjoint sets; a file not listed below is read-only for everyone. Shared seams a
 4. Merge A4; reconcile `state.ts` / `snapshot.ts` / `commands.ts` / `step.ts` / `Hints.ts` by keeping both additions under one
    version 8. Re-record the golden replay once more. Run the gates. Push.
 5. Phase 2 agents branch from the merged main.
+
+## 8. Phase 1 result (merged 2026-10-20, main 139e3e0)
+
+Four Opus agents in worktrees (notes: `2026-10-20-uniqueness-notes-a1..a4.md`), merged A2 → A3 → A4 → A1; one trivial
+conflict per shared seam, both v8 migrations kept under one `WORLD_VERSION = 8`; golden replay re-recorded once.
+
+| Gate | Before (main a254a3b) | After |
+|---|---|---|
+| B1 first pick ≤ 30 s | PASS | PASS |
+| B2 fresh player dies at waves 4–6 | FAIL (greedy median 7) | PASS (median 6; none-buy 3) |
+| B5 ≥ 80 % reach a 2-set by wave 10 | PASS | PASS (100 %, wave 1 via the boot sector) |
+| B6 tag medians within ±20 % | FAIL (1.60) | PASS (7/6/6/6/6 = 1.17) |
+| `npm test` | 616 | 668 |
+| `npm run ui` | 346/346 | 352/352 (stress 60 FPS desktop) |
+| build (local) | failed the brand check | 470.8 KB gz, checks pass |
+
+Fixes made at the merge: a portal-neutral label on the leaderboard rename button (the postbuild brand check failed on
+local/poki builds since 4d08748); the `demoCrystal` dev hook starts from an empty crystal and honours its slots
+(`id in w.perks` was always true); the dying body copy starts at its live pose.
+
+Open from the agents' notes: HintId `boot` not done; Space fires the Pulse and pause moved to P; the 50 s Pulse cooldown
+is long (try 30–40 s once telemetry exists); missions read the top set / best fusion at death, not the run's peak, and a
+"cleanse N hexes" mission needs a sim event (it became "destroy N nests"); mission Keys are not in `lifetime.keysEarned`.
