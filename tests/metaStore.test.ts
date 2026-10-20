@@ -69,6 +69,21 @@ describe('MetaStore', () => {
     expect(kv.getItem('core-protocol.run')).toBeNull();
   });
 
+  it('a v1 meta save migrates to v2 with empty daily missions and keeps its progress', () => {
+    const kv = memoryKV();
+    kv.setItem('core-protocol.meta', JSON.stringify({ v: 1, data: { bits: 77, keys: 3, tierUnlocked: 2, best: { '1': 55 } } }));
+    const a = new MetaStore(kv, D, M, () => 0);
+    expect(a.status).toBe('migrated');
+    expect([a.meta.bits, a.meta.keys, a.meta.tierUnlocked]).toEqual([77, 3, 2]);
+    expect(a.meta.missions).toEqual({ day: '', list: [], progress: [], claimed: [], last: null });
+    a.meta.missions = { day: '2026-10-20', list: [{ id: 'kills', target: 300, reward: 4, tier: 1, tag: null }], progress: [120], claimed: [false], last: null };
+    a.save();
+    const b = new MetaStore(kv, D, M, () => 0);
+    expect(b.status).toBe('ok');
+    expect(b.meta.missions.progress).toEqual([120]);
+    expect(JSON.parse(kv.getItem('core-protocol.meta')!).v).toBe(2);
+  });
+
   it('a dead world is never saved as a run', () => {
     const kv = memoryKV();
     const s = new MetaStore(kv, D, M, () => 0);
