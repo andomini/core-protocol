@@ -332,7 +332,7 @@ export class LeaderboardPanel {
     y += f + 14;
     this.t(p.x, y, id?.name ?? 'Not signed in', TEXT, { size: f + 4 });
     y += f + 16;
-    this.b('rename', { x: p.x, y, w: p.w, h: bh }, id?.linked ? 'NAME FROM CRAZYGAMES' : 'RENAME', () => void this.rename(), { enabled: !!id && !id.linked });
+    this.b('rename', { x: p.x, y, w: p.w, h: bh }, id?.linked ? 'ACCOUNT NAME' : 'RENAME', () => void this.rename(), { enabled: !!id && !id.linked });
     y += bh + 20;
     this.t(p.x, y, 'FRIEND CODE', TEXT_DIM);
     y += f + 8;
