@@ -102,6 +102,13 @@ export class Vfx {
     this.push(K.Dock, x, y, 0, 0, R, color, WHITE, VFX_MS.dock, index * VFX_MS.dockStagger);
   }
 
+  /** A structure upgrade (C4): a dock flash on the structure plus a wide ring, staggered per structure of the kind. */
+  upgrade(x: number, y: number, R: number, color: number, index = 0): void {
+    const delay = index * VFX_MS.dockStagger * 0.5;
+    this.push(K.Dock, x, y, 0, 0, R, color, WHITE, VFX_MS.dock, delay);
+    this.push(K.Ring, x, y, 0, 0, R * 1.8, color, WHITE, VFX_MS.button, delay + 60);
+  }
+
   /** A fusion link lights up: two heads race along a→b and b→a in their tags' colours and meet. */
   link(ax: number, ay: number, bx: number, by: number, ca: number, cb: number): void {
     this.push(K.Link, ax, ay, bx, by, 0, ca, cb, VFX_MS.link);

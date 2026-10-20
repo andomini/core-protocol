@@ -546,6 +546,67 @@ const scenarios = {
     check(results, 'stations: no console errors', h.errors.length === 0, h.errors);
     await h.close();
   },
+  async upgrades() {
+    // C4: structure upgrades. The STRUCTURES chip shows once a kind is built, opens the panel, BUY raises the level,
+    // U buys the cheapest, a tap on a turret opens the panel on its kind. Both orientations.
+    for (const device of ['phone', 'desktop']) {
+      const h = await open(browser, srv.base, device, '?seed=3');
+      await firstInput(h);
+      const before = await h.p.evaluate(() => {
+        const sc = window.__cp.game.scene.getScene('Battle');
+        return sc.structPanel.chip.bg.visible;
+      });
+      check(results, `upgrades ${device}: no STRUCTURES chip before anything is built`, before === false, before);
+      await h.call('demoStructures', 5000);
+      await h.p.waitForTimeout(400);
+      const ui = await h.p.evaluate(() => {
+        const P = window.__cp.game.scene.getScene('Battle').structPanel;
+        return { chip: P.chipRect, buy: P.buyRect, shown: P.chip.bg.visible, open: P.visible };
+      });
+      check(results, `upgrades ${device}: the STRUCTURES chip shows once structures are built`, ui.shown && !ui.open, ui);
+      await h.tapLogical(...centre(ui.chip));
+      await h.p.waitForTimeout(150);
+      const opened = await h.p.evaluate(() => {
+        const P = window.__cp.game.scene.getScene('Battle').structPanel;
+        return { open: P.visible, kind: P.kind, title: P.title.text, level: P.level.text, next: P.next.text, buy: P.buy.label.text };
+      });
+      check(results, `upgrades ${device}: the chip opens the panel (kind, LV, next effect, Energy cost)`, opened.open && /^LV 0\/\d+$/.test(opened.level) && /^Next: \+/.test(opened.next) && /E$/.test(opened.buy), opened);
+      await h.tapLogical(...centre(ui.buy));
+      await h.p.waitForTimeout(150);
+      const lv1 = await h.call('structLevels');
+      const lvText = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').structPanel.level.text);
+      check(results, `upgrades ${device}: BUY raises the level`, lv1[opened.kind] === 1 && /^LV 1\//.test(lvText), { lv1, lvText });
+      await h.shot(`structures-panel-${device === 'phone' ? 'portrait' : 'landscape'}`);
+      if (device === 'desktop') {
+        await h.p.keyboard.press('KeyU');
+        await h.p.waitForTimeout(150);
+        const lv2 = await h.call('structLevels');
+        const sum = (o) => Object.values(o).reduce((a, b) => a + b, 0);
+        check(results, 'upgrades desktop: U upgrades the cheapest structure', sum(lv2) === sum(lv1) + 1, { lv1, lv2 });
+      } else {
+        // Close, then tap a standing turret: the panel opens on the kind the field picks there (the turret, or the
+        // wall segment it stands on).
+        const t = await h.p.evaluate(() => {
+          const sc = window.__cp.game.scene.getScene('Battle');
+          sc.structPanel.hide();
+          const w = sc.session.world;
+          const s = w.structs.find((x) => x.kind === 'turret' && x.share > 0);
+          if (!s) return null;
+          const [x, y] = [sc.L.cx + s.x * sc.L.scale, sc.L.cy + s.y * sc.L.scale];
+          return { x, y, want: sc.structureAt(w, x, y)?.kind ?? null };
+        });
+        check(results, 'upgrades phone: a turret stands', t !== null && t.want !== null, t);
+        if (t !== null) {
+          await h.tapLogical(t.x, t.y);
+          await h.p.waitForTimeout(150);
+          const k = await h.p.evaluate(() => { const P = window.__cp.game.scene.getScene('Battle').structPanel; return { open: P.visible, kind: P.kind }; });
+          check(results, 'upgrades phone: tapping a structure opens the panel on its kind', k.open && k.kind === t.want, { k, want: t.want });
+        }
+      }
+      check(results, `upgrades ${device}: no console errors`, h.errors.length === 0, h.errors);
+      await h.close();
+    }
+  },
   async portal() {
     // 1. Local portal, no flags: lifecycle, telemetry, and no midgame at the first death.
     const h = await open(browser, srv.base, 'phone', '?weak=1&seed=3');

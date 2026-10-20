@@ -9,6 +9,7 @@
     "structHealth": "def", "structRegen": "def",
     "stationIncome": "util"
   },
+  "structUpgrades": { "turret": "atk", "mine": "atk", "wall": "def", "station": "util" },
   "tabWeight": {
     "greedy": { "atk": 1, "def": 1, "util": 1 },
     "atk-first": { "atk": 4, "def": 1, "util": 1 },

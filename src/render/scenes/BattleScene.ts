@@ -44,6 +44,7 @@ import { SetChips } from '../../ui/SetChips';
 import { fusionStructure, nextFusionTier, tagCounts } from '../../sim/perks';
 import type { RewardedPlacement } from '../../portal/ads';
 import { Hud } from '../../ui/Hud';
+import { cheapestUpgrade, StructurePanel } from '../../ui/StructurePanel'; // C4
 import { text } from '../../ui/kit';
 import { UpgradePanel } from '../../ui/UpgradePanel';
 import { circleInRect, type Layout } from '../../ui/layout';
@@ -116,6 +117,7 @@ export class BattleScene extends Phaser.Scene {
   private pinch: { d: number; mx: number; my: number } | null = null;
   private pan: { x: number; y: number; moved: boolean } | null = null;
   private zoomBtn!: Button;
+  structPanel!: StructurePanel; // C4
   editor!: CrystalEditor;
   genome!: GenomeStrip;
   /** The offer index whose new module is being placed (spec 2026-10-14 §A), or −1. */
@@ -333,6 +335,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       // The RESET ZOOM button's own press: the field under it is not tapped.
       if (this.zoomBtn.bg.visible && this.inRect(this.zoomBtn.r, p.worldX, p.worldY)) return;
+      if (this.structPanel.contains(p.worldX, p.worldY)) return; // C4: the structure chip / panel's own press
       if (this.gestureDown(p)) return;
       if (this.coreTap(p.worldX, p.worldY)) return; // pulse
       this.fieldDown(p.worldX, p.worldY);
@@ -362,6 +365,7 @@ export class BattleScene extends Phaser.Scene {
       const [bw, bh] = portrait ? [156, 52] : [124, 40];
       this.zoomBtn = new Button(this, { x: a.x + 24, y: a.y + a.h - bh - 20, w: bw, h: bh }, 'RESET ZOOM', this.L.minFont + 2, DEPTH.overlay - 3, () => this.resetZoom(), { fillA: 0.8 }).setVisible(false);
     }
+    this.structPanel = new StructurePanel(this, this.L, this.gd, { world: () => this.session.world, command: (cmd) => this.command(cmd) }); // C4
     this.genome = new GenomeStrip(this, this.L);
     this.editor = new CrystalEditor(this, this.L, this.gd, this.crystal, () => this.session.world, {
       place: (slot) => this.placeModule(slot),
@@ -421,6 +425,7 @@ export class BattleScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-SPACE', () => this.pulse());
     this.input.keyboard?.on('keydown-P', () => this.setPaused(!this.paused));
     this.input.keyboard?.on('keydown-S', () => this.cycleSpeed());
+    this.input.keyboard?.on('keydown-U', () => { const w = this.session.world; const k = w.dead || w.phase === 'pick' ? null : cheapestUpgrade(w, this.gd); if (k !== null) this.command({ type: 'upgradeStruct', kind: k }); }); // C4: cheapest structure upgrade
     if (WIDGET) {
       this.input.keyboard?.on('keydown-A', () => {
         this.autoBuy = !this.autoBuy;
@@ -858,6 +863,7 @@ export class BattleScene extends Phaser.Scene {
     const struct = mod < 0 && (tap || mouse) && !blocked ? this.structureAt(w, x, y) : null;
     if (mod < 0 && !tap && !mouse && !blocked && this.modTipAt >= STRUCT_TIP) return;
     const i = struct !== null ? STRUCT_TIP + struct.id : mod;
+    if (tap && struct !== null) this.structPanel.open(struct.kind); // C4: a tap (or click) on a structure opens its upgrade panel
     if (i === this.modTipAt) return;
     this.modTipAt = i;
     if (struct !== null) {
@@ -1446,6 +1452,16 @@ export class BattleScene extends Phaser.Scene {
         this.shake(100, 0.002);
         break;
       }
+      case 'structUpgrade': { // C4: a dock flash + ring on every standing structure of the kind
+        const col = TAG_COLOR[({ wall: 'cryo', turret: 'overload', mine: 'chain', station: 'mining' } as const)[e.kind]]; // C4
+        let n = 0; // C4
+        for (const s of this.session.world.structs) if (s.kind === e.kind && s.share > 0 && n < 8) this.vfx.upgrade(L.cx + s.x * L.scale, L.cy + s.y * L.scale, 20 * L.scale, col, n++); // C4
+        sfx.play('upgrade', 1.2 + e.level * 0.08); // C4
+        break; // C4
+      } // C4
+      case 'structUpgradeRejected': // C4
+        this.structPanel.reject(); // C4
+        break; // C4
       case 'structUp':
         this.fx.waveRing(L.cx + e.x * L.scale, L.cy + e.y * L.scale, 26 * L.scale, e.kind === 'station' ? TAG_COLOR.mining : TAG_COLOR.cryo);
         break;
@@ -1747,6 +1763,7 @@ export class BattleScene extends Phaser.Scene {
     this.dockN = 0;
     this.hud.update(this.session.world, this.session.stats, this.speed, this.paused && !this.editor.visible && !this.fieldDrag?.moved, time, delta);
     this.upgrades.update(time);
+    this.structPanel.update(w, w.dead || w.phase === 'pick' || this.paused || this.editor.visible || this.protocols.visible || this.statsPanel.visible); // C4
     if (this.bannerUntil > 0) {
       const left = this.bannerUntil - time;
       if (left <= 0) {

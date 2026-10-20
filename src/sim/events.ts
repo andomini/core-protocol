@@ -78,6 +78,10 @@ export type SimEvent =
   | { type: 'immunity'; untilTick: number }
   | { type: 'buy'; stat: StatId; levels: number; level: number; cost: number; free: boolean }
   | { type: 'buyRejected'; stat: string; reason: BuyRejectReason }
+  /** C4: a structure kind's upgrade level was bought (`level` = the new level). */
+  | { type: 'structUpgrade'; kind: StructureKind; level: number; cost: number }
+  /** C4: an `upgradeStruct` changed nothing: `locked` = none of that kind is built (or it has no ladder). */
+  | { type: 'structUpgradeRejected'; kind: string; reason: 'dead' | 'unknown' | 'locked' | 'maxed' | 'funds' }
   /** pulse: the core fired its Pulse (tag null: the plain ring); `energy`/`bits` paid by a mining harvest, `shield` added by firewall. */
   | { type: 'pulse'; tag: Tag | null; x: number; y: number; radius: number; targets: number; energy: number; bits: number; shield: number }
   /** `bonusBits`: the run-end Bits bonus (💰 4-set) added at death. */

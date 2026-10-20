@@ -1,6 +1,8 @@
-// npm run sim:balance -- [--seeds 24] [--tier 1] [--out reports/balance-m3.md] [--override patch.json] [--crystal auto|arrange]
-// --crystal arrange adds the combo 'greedy + fusion-pick (arrange)' (fusion-pick cards + best hex + hill-climb moves, tools/sim/bot.ts)
-// and a per-fusion table (share of runs reaching each tier, Energy/Bits share by killing-hit source) next to the auto-placed one.
+// npm run sim:balance -- [--seeds 48] [--tier 1] [--out reports/balance-m3.md] [--override patch.json] [--crystal arrange|auto]
+// --crystal arrange (the default, uniqueness plan item 13) adds the combo 'greedy + fusion-pick (arrange)' (fusion-pick cards + best
+// hex + hill-climb moves, tools/sim/bot.ts) and a per-fusion table next to the auto-placed one, and the B6 tag bots arrange too:
+// their tag's card, on the best free hex, then the hill-climb (a player committed to a tag arranges the crystal). The fresh-player
+// combos (B2, B5) keep autoSlot placement. --crystal auto reproduces the pre-C4 report (auto placement everywhere).
 // --override deep-merges a JSON patch into the game data (for tuning experiments; the report says so).
 // Runs bot policies (buy policy × protocol pick policy) on N seeds — first run: no workshop, nothing
 // unlocked, no cards — and writes a Markdown report with the M3 gate: B1, B2, B5, B6 (spec §7).
@@ -13,11 +15,11 @@ import { type RunResult, runBot } from './runner';
 
 const args = process.argv.slice(2);
 const arg = (k: string, d: string) => (args.includes(`--${k}`) ? args[args.indexOf(`--${k}`) + 1]! : d);
-const seeds = Number(arg('seeds', '24'));
+const seeds = Number(arg('seeds', '48'));
 const tier = Number(arg('tier', '1'));
 const out = arg('out', 'reports/balance-m3.md');
 const override = arg('override', '');
-const crystalArg = arg('crystal', 'auto');
+const crystalArg = arg('crystal', 'arrange');
 if (crystalArg !== 'auto' && crystalArg !== 'arrange') throw new Error(`--crystal must be auto or arrange, got ${crystalArg}`);
 const crystalMode: CrystalMode = crystalArg;
 
@@ -51,7 +53,7 @@ const combos: Combo[] = [
   ...POLICIES.map((buy) => ({ key: `${buy} + greedy-pick`, buy, pick: 'greedy-pick' as PickPolicyName, protocols: true })),
   { key: 'greedy + random-pick', buy: 'greedy', pick: 'random-pick', protocols: true },
   { key: 'greedy + first', buy: 'greedy', pick: 'first', protocols: true },
-  ...TAG_PICKS.map((pick) => ({ key: `greedy + ${pick}`, buy: 'greedy' as PolicyName, pick, protocols: true })),
+  ...TAG_PICKS.map((pick) => ({ key: `greedy + ${pick}`, buy: 'greedy' as PolicyName, pick, protocols: true, crystal: crystalMode })),
   { key: 'greedy, no protocols (M2b)', buy: 'greedy', pick: 'first', protocols: false },
   ...(crystalMode === 'arrange' ? [{ key: ARRANGE, buy: 'greedy' as PolicyName, pick: 'fusion-pick' as PickPolicyName, protocols: true, crystal: 'arrange' as CrystalMode }] : []),
 ];
@@ -236,6 +238,8 @@ const md = [
   `## B6: no dominant tag — tag bots' median waves within ±20 % — **${b6 ? 'PASS' : 'FAIL'}**`,
   '',
   `Medians: ${tagMeds.map((x) => `${x.t} ${x.m}`).join(' · ')}. max/min = ${f1(tmax)}/${f1(tmin)} = ${(tmax / tmin).toFixed(2)} (≤ 1.20 required); every tag within ±20 % of the mean ${f1(tmean)}: ${b6mean ? 'yes' : 'no'}.`,
+  '',
+  `Tag bots (greedy buys + tag:<t> picks) place their modules ${crystalMode === 'arrange' ? 'on the best free hex and hill-climb the crystal after each pick (`--crystal arrange`, the default)' : 'by autoSlot (`--crystal auto`)'}.`,
   '',
   `Share of tag-bot runs that reached their own 2-set: ${TAGS.map((t) => `${t} ${tagSetShare(`greedy + tag:${t}`)}`).join(' · ')}.`,
   '',
