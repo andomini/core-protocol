@@ -35,6 +35,18 @@ describe('enemies', () => {
     expect(e.x).toBeCloseTo(standoff, 6);
   });
 
+  it('a leech hits like a melee virus and, with no Bits banked, steals nothing (Bits never go below 0)', () => {
+    const { data, w } = setup();
+    w.bits = 0;
+    const stopAt = data.core.radius + data.enemies.leech.radius;
+    const e = spawnEnemy(w, data, 'leech', stopAt + 1, 0, []);
+    const ev = stepN(w, data, 3);
+    expect(ofType(ev, 'coreHit')).toHaveLength(1);
+    expect(ofType(ev, 'steal')).toHaveLength(0);
+    expect(w.bits).toBe(0);
+    expect(e.carried ?? 0).toBe(0);
+  });
+
   it('the core dies once and the world then freezes', () => {
     const { data, w } = setup({ health: 1 });
     spawnEnemy(w, data, 'basic', data.core.radius + data.enemies.basic.radius, 0, []);

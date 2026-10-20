@@ -23,7 +23,7 @@ export interface StatTab {
   sections: StatSection[];
 }
 
-const KIND_NAME: Record<EnemyKind, string> = { basic: 'Basic', fast: 'Fast', tank: 'Tank', ranged: 'Ranged', boss: 'Worm (boss)' };
+const KIND_NAME: Record<EnemyKind, string> = { basic: 'Basic', fast: 'Fast', tank: 'Tank', ranged: 'Ranged', boss: 'Worm (boss)', leech: 'Leech', spore: 'Spore', carrier: 'Carrier', phage: 'Phage' };
 const SOURCE_NAME: Record<DamageSource, string> = { shot: 'Shots', bounce: 'Bounces', lightning: 'Lightning', tesla: 'Tesla Coil', thorns: 'Thorns', turret: 'Bastion', mine: 'Minefield', pulse: 'Pulse' };
 
 export function clock(seconds: number): string {

@@ -15,8 +15,9 @@ import { type PerksData, type SetsData, STRUCTURE_KINDS, type StructureKind, TAG
 import { hexDist, isNeighbour } from './hex'; // boot
 import tiersJson from '../data/tiers.json';
 
-export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss';
-export const ENEMY_KINDS: readonly EnemyKind[] = ['basic', 'fast', 'tank', 'ranged', 'boss'];
+export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss' | 'leech' | 'spore' | 'carrier' | 'phage';
+/** Spawn-order list; the four uniqueness-plan kinds (B2) come last so older kinds keep their weighted-pick slots. */
+export const ENEMY_KINDS: readonly EnemyKind[] = ['basic', 'fast', 'tank', 'ranged', 'boss', 'leech', 'spore', 'carrier', 'phage'];
 
 export interface EnemyDef {
   /** Base HP at wave 1 on tier 1. */
@@ -42,6 +43,27 @@ export interface EnemyDef {
   knockback: number;
   /** 🔑 Keys dropped on death (the boss). */
   keys: number;
+  // Kind mechanics (uniqueness plan item 7; notes in 2026-10-20-uniqueness-notes-b2.md). Absent = no such mechanic.
+  /** Leech: Bits stolen from the run per core hit (base, scaled like kill Bits: × tier bitsMul × bitsGrowth^(wave−1)). */
+  steal?: number;
+  /** Leech: its kill pays back the carried Bits × this. */
+  returnMul?: number;
+  /** Spore: copies it splits into on death. */
+  splitCount?: number;
+  /** Spore: each copy's share of the parent's max HP, damage, Energy and Bits. */
+  splitShare?: number;
+  /** Spore: each copy's radius relative to the parent's. */
+  splitRadius?: number;
+  /** Spore: generations that still split (1 = the copies do not split again). */
+  splitGens?: number;
+  /** Carrier: other viruses within this distance (centre to centre, world px) take less damage while it lives. */
+  auraRadius?: number;
+  /** Carrier: the share of damage its aura removes (0..1); auras do not stack, carriers do not shield carriers. */
+  auraReduce?: number;
+  /** Phage: damage multiplier against structures; it walks to the nearest standing wall segment or station. */
+  structureMul?: number;
+  /** Phage: gap (world px) between its body and the structure it latches onto. */
+  latch?: number;
 }
 
 export interface TierDef {
@@ -532,7 +554,13 @@ export function validateData(d: GameData): GameData {
     wholeNonNeg(e.weight, `${at}.weight`);
     nonNeg(e.knockback, `${at}.knockback`);
     wholeNonNeg(e.keys, `${at}.keys`);
+    validateMechanics(e, at);
   }
+  check((d.enemies.leech.steal ?? 0) > 0, 'enemies.leech must steal (steal > 0)');
+  check((d.enemies.spore.splitCount ?? 0) > 0, 'enemies.spore must split (splitCount > 0)');
+  check((d.enemies.carrier.auraReduce ?? 0) > 0, 'enemies.carrier must shield (auraReduce > 0)');
+  check((d.enemies.phage.structureMul ?? 0) > 0, 'enemies.phage must hunt structures (structureMul > 0)');
+  check(d.enemies.phage.standoff > 0, 'enemies.phage must be ranged without a structure (standoff > 0)');
   check(
     d.enemies.basic.firstWave === 1 && d.enemies.basic.weight > 0,
     'enemies.basic must be spawnable from wave 1 (firstWave 1, weight > 0)',
@@ -574,6 +602,28 @@ export function validateData(d: GameData): GameData {
     check(Number.isFinite(x) && Number.isFinite(y) && Math.abs(x * x + y * y - 1) < 1e-9, `directions[${i}] must be a unit vector`);
   });
   return d;
+}
+
+/** The optional kind-mechanic fields of an enemy definition: each group complete or absent, values in range. */
+function validateMechanics(e: EnemyDef, at: string): void {
+  if (e.steal !== undefined || e.returnMul !== undefined) {
+    positive(e.steal as number, `${at}.steal`);
+    nonNeg(e.returnMul as number, `${at}.returnMul`);
+  }
+  if (e.splitCount !== undefined || e.splitShare !== undefined || e.splitRadius !== undefined || e.splitGens !== undefined) {
+    check(Number.isInteger(e.splitCount) && e.splitCount! >= 1 && e.splitCount! <= 4, `${at}.splitCount must be a whole number in [1, 4]`);
+    check(Number.isFinite(e.splitShare) && e.splitShare! > 0 && e.splitShare! < 1, `${at}.splitShare must be in (0, 1)`);
+    check(Number.isFinite(e.splitRadius) && e.splitRadius! > 0 && e.splitRadius! <= 1, `${at}.splitRadius must be in (0, 1]`);
+    check(Number.isInteger(e.splitGens) && e.splitGens! >= 1 && e.splitGens! <= 2, `${at}.splitGens must be 1 or 2`);
+  }
+  if (e.auraRadius !== undefined || e.auraReduce !== undefined) {
+    positive(e.auraRadius as number, `${at}.auraRadius`);
+    check(Number.isFinite(e.auraReduce) && e.auraReduce! > 0 && e.auraReduce! < 1, `${at}.auraReduce must be in (0, 1)`);
+  }
+  if (e.structureMul !== undefined || e.latch !== undefined) {
+    positive(e.structureMul as number, `${at}.structureMul`);
+    nonNeg(e.latch as number, `${at}.latch`);
+  }
 }
 
 export const DEFAULT_DATA: GameData = validateData({

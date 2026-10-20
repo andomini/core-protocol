@@ -8,6 +8,7 @@ import type { Enemy, Struct, World } from './state';
 import { activeStations, activeWalls, breakSegment, clearShatter, destroyStation, structMaxHp } from './structures';
 import { groundAt } from './territory';
 import type { CoreStats } from './stats';
+import { stealBits } from './viruses';
 
 /** Distance tolerance for "arrived": guards against endless sub-ulp moves at the stop point. */
 const ARRIVE_EPS = 1e-6;
@@ -33,6 +34,31 @@ function nearestStation(e: Enemy, n: number, aggro2: number): Struct | null {
       bestD2 = d2;
     }
   }
+  return best;
+}
+
+/**
+ * Phage (B2): the nearest standing wall segment or station anywhere on the field (no aggro limit); ties go to the
+ * first in the walls-then-stations scan. Null when nothing hittable stands (it then acts as a plain ranged virus).
+ */
+function phagePrey(e: Enemy, nStations: number): Struct | null {
+  let best: Struct | null = null;
+  let bestD2 = 0;
+  const consider = (s: Struct): void => {
+    if (s.share <= 0) return;
+    const dx = e.x - s.x;
+    const dy = e.y - s.y;
+    const d2 = dx * dx + dy * dy;
+    if (best === null || d2 < bestD2) {
+      best = s;
+      bestD2 = d2;
+    }
+  };
+  for (let i = 0; i < 6; i++) {
+    const s = walls[i];
+    if (s) consider(s);
+  }
+  for (let i = 0; i < nStations; i++) consider(stations[i]!);
   return best;
 }
 
@@ -82,9 +108,8 @@ function reflectThorns(w: World, data: GameData, st: CoreStats, prof: PerkProfil
 }
 
 /** A virus hits the structure in its way (wall segment or station): Defense applies, Thorns answer, and at 0 HP it goes down. */
-function attackStruct(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e: Enemy, target: Struct, events: SimEvent[]): void {
-  const ranged = e.standoff > 0;
-  const damage = clampValue(e.damage * (1 - st.defense));
+function attackStruct(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e: Enemy, target: Struct, events: SimEvent[], mul = 1, ranged = e.standoff > 0): void {
+  const damage = clampValue(e.damage * mul * (1 - st.defense));
   const maxHp = structMaxHp(st, prof.structures[target.kind]!);
   target.share = maxHp > 0 ? Math.max(0, target.share - damage / maxHp) : 0;
   events.push({ type: 'structHit', sid: target.id, kind: target.kind, x: target.x, y: target.y, enemyId: e.id, damage, ranged });
@@ -123,16 +148,21 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
     // Melee viruses crash into the crystal: they stop at its reach in their sector (spec 2026-10-14 §A).
     const reach = Math.max(coreRadius, prof.shape.reach[sectorOf(e.x, e.y)] ?? 0);
     const dist = dsqrt(e.x * e.x + e.y * e.y);
-    const seg = anyWall ? walls[sectorOf(e.x, e.y)] ?? null : null;
+    // Phage (B2): a structure hunter walks to the nearest standing segment or station and latches on (melee, × structureMul).
+    const structMul = data.enemies[e.kind].structureMul ?? 0;
+    const prey = structMul > 0 && (anyWall || nStations > 0) ? phagePrey(e, nStations) : null;
+    const seg = prey === null && anyWall ? walls[sectorOf(e.x, e.y)] ?? null : null;
     const wallStop = w.wallR + e.radius;
     const atWall = seg !== null && dist >= wallStop - ARRIVE_EPS;
     // Not held by a wall: a station close enough draws the virus off its way to the core.
-    const station = !atWall && nStations > 0 ? nearestStation(e, nStations, aggro2) : null;
+    const station = prey !== null ? prey : !atWall && nStations > 0 ? nearestStation(e, nStations, aggro2) : null;
     // The point the virus walks to ((0, 0) = the core) and how far from it it stops.
     const tx = station !== null ? station.x : 0;
     const ty = station !== null ? station.y : 0;
     const tdist = station !== null ? dsqrt((e.x - tx) * (e.x - tx) + (e.y - ty) * (e.y - ty)) : dist;
-    const stopAt = atWall
+    const stopAt = prey !== null
+      ? e.radius + (prey.kind === 'station' ? data.structures.station.radius : 0) + (data.enemies[e.kind].latch ?? 0)
+      : atWall
       ? Math.max(e.standoff, wallStop)
       : station !== null
         ? Math.max(e.standoff, data.structures.station.radius + e.radius)
@@ -153,6 +183,10 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
     e.attackCd -= pace;
     if (e.attackCd <= 0) {
       e.attackCd += e.attackIntervalTicks;
+      if (prey !== null) {
+        attackStruct(w, data, st, prof, e, prey, events, structMul, false);
+        continue;
+      }
       if (atWall || station !== null) {
         attackStruct(w, data, st, prof, e, (atWall ? seg : station)!, events);
         continue;
@@ -171,6 +205,8 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
       }
       w.core.hp = clampValue(w.core.hp - damage);
       events.push({ type: 'coreHit', enemyId: e.id, damage, ranged, blocked, absorbed });
+      // Leech (B2): a hit that got through the immunity window drains Bits.
+      if (!blocked) stealBits(w, data, e, events);
       reflectThorns(w, data, st, prof, e, damage, ranged, events);
     }
   }

@@ -8,7 +8,7 @@ import { DEFAULT_DATA, type EnemyKind } from '../sim/data';
 import { CORE, CORE_HIT, CYAN, ENEMY_ACCENT, ENEMY_COLOR, WHITE } from './palette';
 import { ImagePool } from './pools';
 import { ps } from './resolution';
-import { easeOut, type Frag, fragBudget, fragments } from './virusShapes';
+import { easeOut, type Frag, fragBudget, fragments, SPLIT_PUFFS } from './virusShapes';
 import { DEPTH } from './WorldView';
 
 const enum T {
@@ -54,7 +54,7 @@ export const MAX_PIECES = 160;
 const POP_MS = 200;
 const FRAG_MS = 430;
 /** Fragment size relative to the body, per kind (the frag textures are ~10 px shards at scale 1). */
-const FRAG_SIZE: Readonly<Record<EnemyKind, number>> = { basic: 0.95, fast: 0.75, tank: 1.3, ranged: 0.9, boss: 1.9 };
+const FRAG_SIZE: Readonly<Record<EnemyKind, number>> = { basic: 0.95, fast: 0.75, tank: 1.3, ranged: 0.9, boss: 1.9, leech: 0.8, spore: 0.9, carrier: 1.25, phage: 0.9 };
 
 export class Effects {
   private readonly g: Phaser.GameObjects.Graphics;
@@ -151,6 +151,30 @@ export class Effects {
     const img = pool.get(tex).setPosition(x, y).setRotation(rot).setScale(s0).setAlpha(a0);
     if (tint !== 0xffffff) img.setTint(tint);
     this.pieces.push({ img, pool, x, y, dx, dy, rot, spin, s0, s1, a0, hold, start, dur });
+  }
+
+  /**
+   * Spore split: a soft pink puff cloud and a wide slow ring where the parent burst, plus one short beam to each copy (the
+   * copies already exist as live bodies at their spots). `r` is the parent's on-screen radius.
+   */
+  split(x: number, y: number, r: number, kids: readonly { x: number; y: number }[]): void {
+    const color = ENEMY_COLOR.spore;
+    this.emitter(color).explode(14, x, y);
+    this.emitter(ENEMY_ACCENT.spore).explode(SPLIT_PUFFS * kids.length, x, y);
+    this.push(T.Ring, x, y, 0, 0, r * 3.2, color, 420);
+    for (const k of kids) this.push(T.Beam, x, y, k.x, k.y, 0, ENEMY_ACCENT.spore, 180);
+  }
+
+  /** Leech steal: a Bits-cyan flash on the core rim and a thin beam to the leech (the Bits go into it). */
+  steal(cx: number, cy: number, coreR: number, lx: number, ly: number, color: number): void {
+    const dx = lx - cx;
+    const dy = ly - cy;
+    const d = Math.hypot(dx, dy) || 1;
+    const ex = cx + (dx / d) * coreR;
+    const ey = cy + (dy / d) * coreR;
+    this.push(T.Beam, ex, ey, lx, ly, 0, color, 200);
+    this.push(T.Ring, lx, ly, 0, 0, 18, color, 240);
+    this.emitter(color).explode(6, ex, ey);
   }
 
   /** Small spark where a projectile lands (throttled under heavy fire). */

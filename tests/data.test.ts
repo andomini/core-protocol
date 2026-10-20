@@ -42,6 +42,18 @@ describe('game data', () => {
     expect(() => testData({ enemies: { tank: { knockback: -1 } } })).toThrow(/enemies\.tank\.knockback/);
   });
 
+  it('new-kind mechanics: each kind has its own, bad values name the field', () => {
+    const e = DEFAULT_DATA.enemies;
+    expect(e.leech.steal).toBeGreaterThan(0);
+    expect(e.spore.splitCount).toBeGreaterThan(0);
+    expect(e.carrier.auraReduce).toBeGreaterThan(0);
+    expect(e.phage.structureMul).toBeGreaterThan(1);
+    expect(() => testData({ enemies: { spore: { splitCount: 9 } } })).toThrow(/enemies\.spore\.splitCount/);
+    expect(() => testData({ enemies: { spore: { splitShare: 1 } } })).toThrow(/enemies\.spore\.splitShare/);
+    expect(() => testData({ enemies: { carrier: { auraRadius: -1 } } })).toThrow(/enemies\.carrier\.auraRadius/);
+    expect(() => testData({ enemies: { phage: { structureMul: 0 } } })).toThrow(/phage/);
+  });
+
   it('rejects empty tiers', () => {
     expect(() => validateData({ ...structuredClone(DEFAULT_DATA), tiers: [] })).toThrow(/tiers/);
   });

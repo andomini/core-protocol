@@ -5,16 +5,16 @@
 // Reads the World only. Positions are interpolated between ticks with RunSession.prevOf().
 
 import Phaser from 'phaser';
-import type { EnemyKind } from '../sim/data';
+import { DEFAULT_DATA, type EnemyKind } from '../sim/data';
 import type { Enemy } from '../sim/state';
 import type { Layout } from '../ui/layout';
 import { TAGS, type Tag } from '../sim/perkData';
-import { CORE, CORE_HIT, CRIMSON, ENEMY_ACCENT, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, MARK, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
+import { BITS, CORE, CORE_HIT, CRIMSON, ENEMY_ACCENT, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, MARK, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
 import { ImagePool } from './pools';
 import { ps, RS } from './resolution';
 import type { RunSession } from './RunSession';
 import { GRID_TILE, TRACER_LEN } from './textures';
-import { animFrame, bossMembrane, type Pose, pose, texKey } from './virusShapes';
+import { animFrame, bossMembrane, glintLevel, type Pose, pose, texKey } from './virusShapes';
 
 /** Per-channel blend of two 0xRRGGBB colours: `t` = 0 → a, 1 → b. */
 export function mixColor(a: number, b: number, t: number): number {
@@ -280,7 +280,9 @@ export class WorldView {
       const toCore = Math.atan2(L.cy - sy, L.cx - sx);
       const fade = Math.min(1, (now - s.bornAt) / SPAWN_FADE_MS);
       const pop = 1 + (1 - fade) * 0.7;
-      const k = ps(L.scale * ENEMY_VIS) * pop;
+      // Bodies are baked at the kind's base radius; a spore copy (smaller radius) shrinks its texture to match.
+      const base = DEFAULT_DATA.enemies[s.kind].radius;
+      const k = ps(L.scale * ENEMY_VIS) * pop * (s.kind === 'boss' || e.radius === base ? 1 : e.radius / base);
       const img = s.img;
       img.setPosition(sx, sy).setAlpha(fade);
       const swell = now < s.flashUntil ? 1 + (HIT_SWELL * (s.flashUntil - now)) / FLASH_MS : 1;
@@ -311,6 +313,30 @@ export class WorldView {
         }
       }
       const r = e.radius * L.scale * ENEMY_VIS;
+      const def = DEFAULT_DATA.enemies[s.kind];
+      // Carrier aura: a faint filled disc and a slowly dashed ring at auraRadius (the area that takes less damage).
+      if ((def.auraReduce ?? 0) > 0) {
+        const ar = def.auraRadius! * L.scale;
+        const breathe = 0.85 + 0.15 * Math.sin(now / 500 + e.id);
+        bars.fillStyle(ENEMY_COLOR[s.kind], 0.05 * fade).fillCircle(sx, sy, ar);
+        bars.lineStyle(Math.max(1.5, r * 0.08), ENEMY_COLOR[s.kind], 0.5 * fade * breathe);
+        const a0 = now * 0.0004;
+        for (let i = 0; i < 12; i++) {
+          const a = a0 + (i * Math.PI) / 6;
+          bars.beginPath().arc(sx, sy, ar, a, a + Math.PI / 9).strokePath();
+        }
+      }
+      // Leech glint: the Bits it carries, a pulsing Bits-cyan spark on its back (brighter the more it holds).
+      const carried = e.carried ?? 0;
+      if (carried > 0) {
+        const lv = glintLevel(carried, e.bits);
+        const tw = 0.7 + 0.3 * Math.sin(now / 120 + e.id);
+        const back = r * 0.25;
+        const gx = sx - Math.cos(toCore) * back;
+        const gy = sy - Math.sin(toCore) * back;
+        bars.fillStyle(BITS, 0.25 * lv * fade).fillCircle(gx, gy, r * (0.5 + 0.3 * lv));
+        bars.fillStyle(BITS, (0.6 + 0.4 * lv) * tw * fade).fillCircle(gx, gy, Math.max(2, r * 0.22 * (0.7 + 0.5 * lv)));
+      }
       if (gene !== null) bars.lineStyle(Math.max(1.5, r * 0.14), TAG_COLOR[gene], 0.75 * fade).strokeCircle(sx, sy, r + 3);
       // Bounty Mark: a gold reticle (ring + four turning ticks).
       if (e.marked === true) {

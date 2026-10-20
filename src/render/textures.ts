@@ -179,7 +179,7 @@ function spikes(ctx: Ctx, c: number, n: number, r0: number, r1: number, club: nu
 
 /**
  * Virus bodies (uniqueness plan item 2; notes in 2026-10-20-uniqueness-notes-a2.md): baked once at the data radius and
- * drawn at ps(layout scale × ENEMY_VIS). Directional bodies (fast, ranged, boss head) face +x, the heading to the core.
+ * drawn at ps(layout scale × ENEMY_VIS). Directional bodies (fast, ranged, leech, phage, boss head) face +x, the heading to the core.
  */
 function enemies(scene: Phaser.Scene, data: GameData): void {
   const r = (k: EnemyKind): number => data.enemies[k].radius;
@@ -270,17 +270,17 @@ function enemies(scene: Phaser.Scene, data: GameData): void {
     for (const [x, y] of T) dot(ctx, x, y, 1.8, A.tank, 5);
   });
 
-  // ranged: a bacteriophage — hexagonal head away from the core, ringed tail sheath, baseplate, six legs toward +x.
-  const rr = r('ranged');
-  for (let f = 0; f < FRAMES.ranged; f++) {
-    shapeTexture(scene, texKey('ranged', f), rr * 1.55, (ctx, c) => {
-      const X = (k: number): number => c + k * rr;
-      // Legs (behind the baseplate): [base x, base y, knee x, knee y, foot x, foot y], mirrored in y.
+  // phage: a bacteriophage (it hunts structures; the ranged virus got the spitting cone instead) — hexagonal head away from the core, ringed tail sheath, baseplate, six legs toward +x.
+  const rp = r('phage');
+  for (let f = 0; f < FRAMES.phage; f++) {
+    shapeTexture(scene, texKey('phage', f), rp * 1.55, (ctx, c) => {
+      const X = (k: number): number => c + k * rp;
+      // Legs (behind the baseplate): [base x, base y, knee x, knee y, foot x, foot y], mirpored in y.
       const legs: [number, number, number, number, number, number][] =
         f === 1
           ? [[0.62, 0.28, 0.82, 0.78, 1.32, 0.66], [0.64, 0.12, 1.0, 0.44, 1.4, 0.3]]
           : [[0.62, 0.28, 0.72, 0.88, 1.22, 0.98], [0.64, 0.12, 0.92, 0.52, 1.36, 0.5]];
-      glow(ctx, C.ranged, 1.7, () => {
+      glow(ctx, C.phage, 1.7, () => {
         for (const [bx, by, kx, ky, fx, fy] of legs) {
           for (const s of [-1, 1]) {
             ctx.moveTo(X(bx), X(by * s));
@@ -289,28 +289,146 @@ function enemies(scene: Phaser.Scene, data: GameData): void {
           }
         }
       });
-      body(ctx, c, c, rr * 0.4, C.ranged, 1.8, () => poly(ctx, [[X(-0.12), X(-0.14)], [X(0.58), X(-0.14)], [X(0.58), X(0.14)], [X(-0.12), X(0.14)]]), 6);
-      glow(ctx, A.ranged, 1, () => {
+      body(ctx, c, c, rp * 0.4, C.phage, 1.8, () => poly(ctx, [[X(-0.12), X(-0.14)], [X(0.58), X(-0.14)], [X(0.58), X(0.14)], [X(-0.12), X(0.14)]]), 6);
+      glow(ctx, A.phage, 1, () => {
         for (const k of [0.06, 0.22, 0.38]) {
           ctx.moveTo(X(k), X(-0.14));
           ctx.lineTo(X(k), X(0.14));
         }
       });
-      glow(ctx, C.ranged, 2.4, () => {
+      glow(ctx, C.phage, 2.4, () => {
         ctx.moveTo(X(0.64), X(-0.34));
         ctx.lineTo(X(0.64), X(0.34));
         ctx.moveTo(X(-0.16), X(-0.24));
         ctx.lineTo(X(-0.16), X(0.24));
       });
       const head: Pt[] = regular(0, 0, 1, 6, 0).map(([x, y]) => [X(-0.78 + x * 0.6), X(y * 0.56)] as Pt);
-      body(ctx, X(-0.78), c, rr * 0.62, C.ranged, 2.4, () => poly(ctx, head), 9);
-      glow(ctx, A.ranged, 1.2, () => {
+      body(ctx, X(-0.78), c, rp * 0.62, C.phage, 2.4, () => poly(ctx, head), 9);
+      glow(ctx, A.phage, 1.2, () => {
         ctx.moveTo(X(-1.05), X(-0.08));
         ctx.bezierCurveTo(X(-0.95), X(-0.38), X(-0.62), X(-0.38), X(-0.6), X(-0.06));
         ctx.bezierCurveTo(X(-0.58), X(0.3), X(-0.9), X(0.32), X(-0.88), X(0.06));
       });
     });
   }
+
+  // ranged: a spitting cone — a fluted funnel whose wide mouth faces the core (+x), a bulb at the back, a nozzle that
+  // pumps a droplet out (frame 1: the nozzle squeezed, the droplet out). Reads as "shoots" without the phage legs.
+  const rr = r('ranged');
+  for (let f = 0; f < FRAMES.ranged; f++) {
+    shapeTexture(scene, texKey('ranged', f), rr * 1.6, (ctx, c) => {
+      const X = (k: number): number => c + k * rr;
+      const mouth = f === 1 ? 0.62 : 0.74;
+      const cone: Pt[] = [[X(-0.95), X(-0.2)], [X(-0.2), X(-0.42)], [X(0.7), X(-mouth)], [X(0.98), X(-mouth * 0.55)], [X(0.98), X(mouth * 0.55)], [X(0.7), X(mouth)], [X(-0.2), X(0.42)], [X(-0.95), X(0.2)]];
+      body(ctx, c, c, rr, C.ranged, 2.4, () => smooth(ctx, cone), 10);
+      // Flutes along the cone, converging on the bulb.
+      glow(ctx, A.ranged, 1, () => {
+        for (const k of [-0.5, 0, 0.5]) {
+          ctx.moveTo(X(-0.55), X(k * 0.32));
+          ctx.lineTo(X(0.78), X(k * mouth * 1.25));
+        }
+      });
+      // Nozzle ring at the mouth and the droplet it spits.
+      glow(ctx, C.ranged, 2, () => {
+        ctx.moveTo(X(0.98), X(-mouth * 0.5));
+        ctx.lineTo(X(0.98), X(mouth * 0.5));
+      });
+      dot(ctx, X(f === 1 ? 1.38 : 1.12), c, f === 1 ? 2.6 : 1.8, A.ranged, 8);
+      // The bulb (venom sac) at the back.
+      dot(ctx, X(-0.62), c, rr * 0.16, A.ranged, 6);
+    });
+  }
+
+  // leech: a tick — a fat oval abdomen with a scute, a small head toward the core (+x) with a proboscis that pumps
+  // (frame 1: stretched), four short legs a side.
+  const rl = r('leech');
+  for (let f = 0; f < FRAMES.leech; f++) {
+    shapeTexture(scene, texKey('leech', f), rl * 1.7, (ctx, c) => {
+      const X = (k: number): number => c + k * rl;
+      glow(ctx, C.leech, 1.4, () => {
+        for (let i = 0; i < 4; i++) {
+          const bx = X(-0.25 + i * 0.25);
+          const sw = (f === 1 ? 0.08 : -0.08) * (i % 2 === 0 ? 1 : -1);
+          for (const s of [-1, 1]) {
+            ctx.moveTo(bx, X(0.55 * s));
+            ctx.lineTo(bx + rl * (0.12 + sw), X(1.02 * s));
+            ctx.lineTo(bx + rl * (0.3 + sw), X(1.18 * s));
+          }
+        }
+      });
+      const abdomen: Pt[] = regular(0, 0, 1, 12, 0).map(([x, y]) => [X(-0.15 + x * 0.82), X(y * 0.68)] as Pt);
+      body(ctx, X(-0.15), c, rl * 0.85, C.leech, 2.2, () => smooth(ctx, abdomen), 9);
+      // Scute (the hard shield on the back) and a glint spot where the Bits go.
+      glow(ctx, A.leech, 1, () => {
+        ctx.moveTo(X(-0.7), X(-0.32));
+        ctx.quadraticCurveTo(X(-0.1), X(-0.62), X(0.3), X(-0.2));
+        ctx.quadraticCurveTo(X(0.42), X(0), X(0.3), X(0.2));
+        ctx.quadraticCurveTo(X(-0.1), X(0.62), X(-0.7), X(0.32));
+      });
+      body(ctx, X(0.78), c, rl * 0.3, C.leech, 1.8, () => smooth(ctx, regular(X(0.78), c, rl * 0.3, 8, 0)), 7);
+      const tip = f === 1 ? 1.62 : 1.38;
+      glow(ctx, A.leech, 1.6, () => {
+        ctx.moveTo(X(1.02), X(-0.06));
+        ctx.lineTo(X(tip), c);
+        ctx.lineTo(X(1.02), X(0.06));
+      });
+      dot(ctx, X(tip), c, 1.4, A.leech, 6);
+    });
+  }
+
+  // spore: a soft puffball — a lumpy rounded capsule with short stubby nubs and spore specks inside; on death it bursts
+  // into smaller puffballs (the same texture scaled down).
+  const rs = r('spore');
+  shapeTexture(scene, texKey('spore'), rs * 1.35, (ctx, c) => {
+    const lumps = 11;
+    const pts: Pt[] = Array.from({ length: lumps * 2 }, (_, i) => {
+      const a = (i / (lumps * 2)) * TAU;
+      const k = i % 2 === 0 ? 1 : 0.86;
+      return [c + Math.cos(a) * rs * k, c + Math.sin(a) * rs * k] as Pt;
+    });
+    glow(ctx, C.spore, 1.6, () => {
+      for (let i = 0; i < 7; i++) {
+        const a = 0.4 + (i / 7) * TAU;
+        ctx.moveTo(c + Math.cos(a) * rs * 0.98, c + Math.sin(a) * rs * 0.98);
+        ctx.lineTo(c + Math.cos(a) * rs * 1.2, c + Math.sin(a) * rs * 1.2);
+      }
+    });
+    body(ctx, c, c, rs, C.spore, 2.2, () => smooth(ctx, pts), 11);
+    // Spore specks: a ring and a centre cluster, all small (a puffball, not a face).
+    for (const [x, y] of regular(c, c, rs * 0.56, 7, 0.2)) dot(ctx, x, y, 1.6, A.spore, 5);
+    for (const [x, y] of regular(c, c, rs * 0.22, 3, 0.9)) dot(ctx, x, y, 1.3, A.spore, 4);
+    // A seam where it will burst.
+    ctx.strokeStyle = rgba(A.spore, 0.4);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(c, c, rs * 0.8, -0.6, 0.9);
+    ctx.stroke();
+  });
+
+  // carrier: a slow armoured shell — an octagonal carapace of overlapping plates around a small core; its aura ring is
+  // drawn live in WorldView (it must track auraRadius, not the body size).
+  const rc = r('carrier');
+  shapeTexture(scene, texKey('carrier'), rc * 1.25, (ctx, c) => {
+    const R = rc;
+    const outer = regular(c, c, R, 8, Math.PI / 8);
+    body(ctx, c, c, R, C.carrier, 3.6, () => poly(ctx, outer), 12);
+    // Plates: a middle octagon and spokes from it to every outer corner.
+    const mid = regular(c, c, R * 0.6, 8, Math.PI / 8);
+    glow(ctx, A.carrier, 1.2, () => {
+      polyPath(ctx, mid);
+      for (let i = 0; i < 8; i++) {
+        ctx.moveTo(mid[i]![0], mid[i]![1]);
+        ctx.lineTo(outer[i]![0], outer[i]![1]);
+      }
+    });
+    // Rivets on the outer plates and the shielded core.
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * TAU;
+      dot(ctx, c + Math.cos(a) * R * 0.8, c + Math.sin(a) * R * 0.8, 1.4, A.carrier, 4);
+    }
+    body(ctx, c, c, R * 0.3, C.carrier, 2, () => poly(ctx, regular(c, c, R * 0.3, 6, 0)), 8);
+    dot(ctx, c, c, R * 0.1, A.carrier, 8);
+  });
 
   // boss: a big spiked capsid around a glowing nucleus with a coiled genome; its lipid envelope (`e_boss_membrane`) is a
   // separate image so it can breathe. The trailing segments are budding progeny virions (`e_boss_seg`).

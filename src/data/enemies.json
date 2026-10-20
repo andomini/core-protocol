@@ -3,5 +3,9 @@
   "fast": {"hp": 6.0, "damage": 4.4, "speed": 90, "radius": 11, "attackInterval": 0.8, "standoff": 0, "energy": 2, "bits": 1, "firstWave": 2, "weight": 5, "knockback": 1.2, "keys": 0},
   "tank": {"hp": 60.0, "damage": 17.6, "speed": 25, "radius": 22, "attackInterval": 1.5, "standoff": 0, "energy": 6, "bits": 3, "firstWave": 3, "weight": 2, "knockback": 0.4, "keys": 0},
   "ranged": {"hp": 10.0, "damage": 8.8, "speed": 40, "radius": 13, "attackInterval": 2, "standoff": 240, "energy": 3, "bits": 2, "firstWave": 5, "weight": 3, "knockback": 1, "keys": 0},
-  "boss": {"hp": 360.0, "damage": 22.0, "speed": 20, "radius": 40, "attackInterval": 2, "standoff": 0, "energy": 50, "bits": 25, "firstWave": 10, "weight": 0, "knockback": 0.1, "keys": 1}
+  "boss": {"hp": 360.0, "damage": 22.0, "speed": 20, "radius": 40, "attackInterval": 2, "standoff": 0, "energy": 50, "bits": 25, "firstWave": 10, "weight": 0, "knockback": 0.1, "keys": 1},
+  "leech": {"hp": 21.0, "damage": 3.3, "speed": 55, "radius": 12, "attackInterval": 1, "standoff": 0, "energy": 2, "bits": 2, "firstWave": 4, "weight": 2, "knockback": 1, "keys": 0, "steal": 2, "returnMul": 1.5},
+  "spore": {"hp": 22.0, "damage": 6.6, "speed": 38, "radius": 16, "attackInterval": 1.2, "standoff": 0, "energy": 3, "bits": 2, "firstWave": 8, "weight": 2, "knockback": 0.8, "keys": 0, "splitCount": 3, "splitShare": 0.35, "splitRadius": 0.62, "splitGens": 1},
+  "carrier": {"hp": 50.0, "damage": 8.8, "speed": 22, "radius": 20, "attackInterval": 1.5, "standoff": 0, "energy": 6, "bits": 4, "firstWave": 12, "weight": 1, "knockback": 0.3, "keys": 0, "auraRadius": 90, "auraReduce": 0.4},
+  "phage": {"hp": 16.0, "damage": 7.7, "speed": 30, "radius": 14, "attackInterval": 1.8, "standoff": 200, "energy": 4, "bits": 3, "firstWave": 16, "weight": 2, "knockback": 0.9, "keys": 0, "structureMul": 3, "latch": 2}
 }

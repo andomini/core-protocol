@@ -16,7 +16,12 @@ export type SimEvent =
   | { type: 'shot'; projectileId: number; targetId: number; crit: boolean; big: boolean }
   /** `dealt`: damage actually removed (no overkill); `healed`: Lifesteal HP from this hit. */
   | { type: 'hit'; enemyId: number; damage: number; dealt: number; crit: boolean; source: HitSource; healed: number }
-  | { type: 'kill'; enemyId: number; kind: EnemyKind; energy: number; bits: number; keys: number }
+  /** `returned`: the share of `bits` that was a Leech's stolen Bits paid back (absent when none). */
+  | { type: 'kill'; enemyId: number; kind: EnemyKind; energy: number; bits: number; keys: number; returned?: number }
+  /** A Leech's core hit stole `bits` from the run; it now carries `carried` (paid back × returnMul by its kill). */
+  | { type: 'steal'; enemyId: number; bits: number; carried: number }
+  /** A dead spore at (x, y) burst into the copies `ids` (their own spawn events come first). */
+  | { type: 'split'; enemyId: number; kind: EnemyKind; x: number; y: number; ids: number[] }
   /** A Bounty Mark was killed (its kill event already paid `energy`/`bits`, Mark multipliers included). */
   | { type: 'markKill'; enemyId: number; x: number; y: number; energy: number; bits: number }
   /** The Bounty jackpot paid `bits` (the run's `n`th jackpot) at the Mark killed at (x, y). */

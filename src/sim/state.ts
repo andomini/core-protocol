@@ -36,6 +36,10 @@ export interface Enemy {
   kbUntil: number;
   /** Bounty Mark (spec 2026-10-16, phase 2): absent = not marked. */
   marked?: boolean;
+  /** Leech (B2): Bits stolen so far, paid back × returnMul on its death; absent = none (optional: no World version bump). */
+  carried?: number;
+  /** Spore (B2): split generation, absent = 0 (a regular spawn); copies of a split are gen + 1. */
+  gen?: number;
 }
 
 /** A fusion tier rise waiting for its weld (spec 2026-10-16 §3): the target tier, the link count it needs held, since when. */

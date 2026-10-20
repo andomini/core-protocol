@@ -55,7 +55,7 @@ import { pulseSfx } from '../audio';
 import { Effects } from '../effects';
 import { Vfx } from '../vfx';
 import { FixedLoop } from '../loop';
-import { BG, CRIMSON, CYAN, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
+import { BG, BITS, CRIMSON, CYAN, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
 import { SetTooltip } from '../../ui/SetTooltip';
 import { fusionLevel, fusionLines, fusionReachedLines, fusionTags, latticeLine, totalLines } from '../../ui/perkText';
 import { RunSession } from '../RunSession';
@@ -68,8 +68,8 @@ const OFFLINE_TOAST_MS = 2600;
 const MAX_TICKS_PER_FRAME = 4;
 /** `modTipAt` for a structure tooltip is this + the structure id (a crystal module is its index, below it). */
 const STRUCT_TIP = 1_000_000;
-const ENEMY_TEX: Record<EnemyKind, string> = { basic: 'e_basic', fast: 'e_fast', tank: 'e_tank', ranged: 'e_ranged', boss: 'e_boss_head' };
-const STRESS_KINDS: EnemyKind[] = ['basic', 'fast', 'tank', 'ranged'];
+const ENEMY_TEX: Record<EnemyKind, string> = { basic: 'e_basic', fast: 'e_fast', tank: 'e_tank', ranged: 'e_ranged', boss: 'e_boss_head', leech: 'e_leech', spore: 'e_spore', carrier: 'e_carrier', phage: 'e_phage' };
+const STRESS_KINDS: EnemyKind[] = ['basic', 'fast', 'tank', 'ranged', 'leech', 'spore', 'carrier', 'phage'];
 /** Player-facing speeds; up to maxSpeed only through dev hooks / stress (labs unlock ×3–×5 in M4). */
 const SPEEDS: number[] = battleJson.speeds;
 
@@ -1310,8 +1310,15 @@ export class BattleScene extends Phaser.Scene {
         this.view.enemyScreen(en, 1, this.tmp);
         // The dying copy starts at the body's live pose (the same spin and heading the view drew it with).
         const rot = pose(e.kind, now, en.id, en.id % 2 === 0 ? 1 : -1, Math.atan2(-en.y, -en.x), DEATH_POSE).rot;
-        this.fx.death(e.kind, ENEMY_TEX[e.kind], this.tmp.x, this.tmp.y, rot, L.scale * ENEMY_VIS, e.kind === 'boss');
+        // A spore copy is smaller than the kind's base body: its burst scales with it.
+        const size = e.kind === 'boss' ? 1 : en.radius / DEFAULT_DATA.enemies[e.kind].radius;
+        this.fx.death(e.kind, ENEMY_TEX[e.kind], this.tmp.x, this.tmp.y, rot, L.scale * ENEMY_VIS * size, e.kind === 'boss');
         sfx.play(e.kind === 'boss' ? 'bossDie' : 'kill');
+        // A leech gives back the Bits it carried (×returnMul): a Bits flash and the coin sound.
+        if ((e.returned ?? 0) > 0) {
+          this.fx.pulse(this.tmp.x, this.tmp.y, 30 * L.scale, BITS);
+          sfx.play('coin');
+        }
         if (e.kind === 'boss') this.shake(260, 0.006);
         break;
       }
@@ -1322,6 +1329,18 @@ export class BattleScene extends Phaser.Scene {
         this.hud.coreHit(now);
         this.fx.coreHit(this.view.coreX, this.view.coreY, coreR, heavy);
         if (e.ranged && this.screenOf(e.enemyId)) this.fx.beam(this.tmp.x, this.tmp.y, L.cx, L.cy, coreR);
+        break;
+      }
+      case 'steal': {
+        if (this.screenOf(e.enemyId)) this.fx.steal(this.view.coreX, this.view.coreY, coreR, this.tmp.x, this.tmp.y, BITS);
+        sfx.play('zap', 0.7);
+        break;
+      }
+      case 'split': {
+        const kids: { x: number; y: number }[] = [];
+        for (const id of e.ids) if (this.screenOf(id)) kids.push({ x: this.tmp.x, y: this.tmp.y });
+        const [px, py] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
+        this.fx.split(px, py, DEFAULT_DATA.enemies[e.kind].radius * L.scale * ENEMY_VIS, kids);
         break;
       }
       case 'structHit': {
