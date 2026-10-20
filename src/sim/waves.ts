@@ -1,3 +1,4 @@
+import { applyBoss, isFinaleWave, tierBossId } from './bosses';
 import { ENEMY_KINDS, type EnemyKind, type GameData } from './data';
 import { pauseTicks, scaleForWave, waveTicks } from './economy';
 import type { SimEvent } from './events';
@@ -24,7 +25,8 @@ export function enemiesPerWave(data: GameData, wave: number): number {
 /** Boss waves: every `config.bossEvery` waves, or the tier's own cadence (the "Swarm" condition). */
 export function isBossWave(data: GameData, wave: number, tier = 1): boolean {
   const every = data.tiers[tier - 1]?.bossEvery ?? data.config.bossEvery;
-  return wave > 0 && wave % every === 0;
+  // c1: the tier's FINALE wave is always a boss wave.
+  return (wave > 0 && wave % every === 0) || isFinaleWave(data, wave, tier);
 }
 
 function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, events: SimEvent[]): void {
@@ -79,7 +81,8 @@ function startWave(w: World, data: GameData, st: CoreStats, prof: PerkProfile, e
   w.spawnQueue = queue;
   w.spawnInterval = queue.length > 0 ? Math.max(1, Math.floor((waveTicks(data) * SPAWN_WINDOW) / queue.length)) : 1;
   w.nextSpawnTick = 1;
-  events.push({ type: 'waveStart', wave: w.wave, boss });
+  const bossId = boss ? tierBossId(data, w.tier) : undefined;
+  events.push(bossId === undefined ? { type: 'waveStart', wave: w.wave, boss } : { type: 'waveStart', wave: w.wave, boss, bossId, finale: isFinaleWave(data, w.wave, w.tier) });
 }
 
 /**
@@ -143,6 +146,7 @@ export function spawnEnemy(w: World, data: GameData, kind: EnemyKind, x: number,
     frozenUntil: 0,
     kbUntil: 0,
   };
+  if (kind === 'boss') applyBoss(w, data, e, events); // c1: the tier's boss
   w.enemies.push(e);
   events.push({ type: 'spawn', id: e.id, kind, x, y });
   return e;

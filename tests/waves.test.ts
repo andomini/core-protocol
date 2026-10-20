@@ -40,7 +40,7 @@ describe('waves', () => {
     const w = createWorld(data, { seed: 5, tier: 1, protocols: false });
     const events = stepN(w, data, 1 + 9 * 900);
     const starts = ofType(events, 'waveStart');
-    expect(starts.at(-1)).toEqual({ type: 'waveStart', wave: 10, boss: true });
+    expect(starts.at(-1)).toEqual({ type: 'waveStart', wave: 10, boss: true, bossId: 'overseer', finale: false });
     expect(starts.filter((s) => s.boss).map((s) => s.wave)).toEqual([10]);
 
     let wave = 0;

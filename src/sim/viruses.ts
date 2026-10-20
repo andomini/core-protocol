@@ -82,7 +82,7 @@ let cacheLen = -1;
 function carriersOf(w: World, data: GameData): Enemy[] {
   if (cacheWorld === w && cacheTick === w.tick && cacheId === w.nextId && cacheList === w.enemies && cacheLen === w.enemies.length) return carriers;
   carriers.length = 0;
-  for (const c of w.enemies) if ((data.enemies[c.kind].auraReduce ?? 0) > 0) carriers.push(c);
+  for (const c of w.enemies) if (auraReduceOf(data, c) > 0) carriers.push(c);
   cacheWorld = w;
   cacheTick = w.tick;
   cacheId = w.nextId;
@@ -92,8 +92,25 @@ function carriersOf(w: World, data: GameData): Enemy[] {
 }
 
 /** True when the data has any aura kind that can spawn (a cheap skip for every hit otherwise). */
+let auraData: GameData | null = null;
+let auraAny = false;
 function auraKinds(data: GameData): boolean {
-  return (data.enemies.carrier.auraReduce ?? 0) > 0;
+  if (auraData !== data) {
+    auraData = data;
+    auraAny = (data.enemies.carrier.auraReduce ?? 0) > 0 || Object.values(data.bosses.bosses).some((b) => (b.auraReduce ?? 0) > 0);
+  }
+  return auraAny;
+}
+
+/** c1: the aura a virus holds — its kind's (Carrier) or its tier boss's (Swarm Lord); 0 = none. */
+function auraReduceOf(data: GameData, e: Enemy): number {
+  if (e.boss !== undefined) return data.bosses.bosses[e.boss]?.auraReduce ?? 0;
+  return data.enemies[e.kind].auraReduce ?? 0;
+}
+
+function auraRadiusOf(data: GameData, e: Enemy): number {
+  if (e.boss !== undefined) return data.bosses.bosses[e.boss]?.auraRadius ?? 0;
+  return data.enemies[e.kind].auraRadius ?? 0;
 }
 
 /**
@@ -102,16 +119,15 @@ function auraKinds(data: GameData): boolean {
  */
 export function auraMul(w: World, data: GameData, e: Enemy): number {
   if (!auraKinds(data)) return 1;
-  if ((data.enemies[e.kind].auraReduce ?? 0) > 0) return 1;
+  if (auraReduceOf(data, e) > 0) return 1;
   const list = carriersOf(w, data);
   let best = 0;
   for (const c of list) {
     if (c.hp <= 0) continue;
-    const def = data.enemies[c.kind];
-    const r = def.auraRadius!;
+    const r = auraRadiusOf(data, c);
     const dx = c.x - e.x;
     const dy = c.y - e.y;
-    if (dx * dx + dy * dy <= r * r) best = Math.max(best, def.auraReduce!);
+    if (dx * dx + dy * dy <= r * r) best = Math.max(best, auraReduceOf(data, c));
   }
   return 1 - best;
 }

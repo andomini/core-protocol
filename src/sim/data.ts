@@ -14,6 +14,7 @@ import pulseJson from '../data/pulse.json'; // pulse
 import { type PerksData, type SetsData, STRUCTURE_KINDS, type StructureKind, TAGS, type Tag, validatePerks, validateSets } from './perkData';
 import { hexDist, isNeighbour } from './hex'; // boot
 import tiersJson from '../data/tiers.json';
+import bossesJson from '../data/bosses.json'; // c1
 
 export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss' | 'leech' | 'spore' | 'carrier' | 'phage';
 /** Spawn-order list; the four uniqueness-plan kinds (B2) come last so older kinds keep their weighted-pick slots. */
@@ -83,6 +84,55 @@ export interface TierDef {
   speedMul?: number;
   /** Short condition label for the tier picker ('' = none). */
   condition?: string;
+  /** c1: the tier's boss (an id in bosses.json); absent = the plain `enemies.boss`. */
+  boss?: string;
+  /** c1: the FINALE wave (meta.json tiers.unlockWaves of this tier): a guaranteed boss wave whose kill unlocks the next tier. */
+  finale?: number;
+}
+
+/**
+ * c1 (uniqueness plan item 8, notes in 2026-10-20-uniqueness-notes-c1.md): a tier's boss. It is an `enemies.boss` scaled
+ * by these numbers, with one mechanic keyed by its fields (each group complete or absent).
+ */
+export interface BossDef {
+  name: string;
+  /** One line "how to beat it" for the HUD boss bar. */
+  hint: string;
+  hpMul: number;
+  radius: number;
+  speedMul: number;
+  damageMul: number;
+  /** Overrides of the base block (Artillery: a far ranged boss). */
+  standoff?: number;
+  attackInterval?: number;
+  /** Render cue only: seconds of telegraph before a ranged shot. */
+  shotWarn?: number;
+  /** Shield: every `shieldEvery` s of its life it is immune for the last `shieldSec` s, telegraphed `shieldWarn` s before. */
+  shieldEvery?: number;
+  shieldSec?: number;
+  shieldWarn?: number;
+  /** Brood: each `broodStep` of max HP lost releases `broodCount` × `broodKind` around it (the brood does not split). */
+  broodStep?: number;
+  broodCount?: number;
+  broodKind?: EnemyKind;
+  /** Drain: each landed core hit takes `drainEnergy` (wave-scaled like kill Energy) and heals `drainHeal` of max HP; the kill pays it back × `drainReturn`. */
+  drainEnergy?: number;
+  drainHeal?: number;
+  drainReturn?: number;
+  /** Aura: like a Carrier's (viruses within `auraRadius` take `auraReduce` less damage). */
+  auraRadius?: number;
+  auraReduce?: number;
+  /** Mutagen: forced genome levels when it spawns (the dominant tag, as at a mutation wave). */
+  mutations?: number;
+  /** Enrage: below `enrageAt` of max HP it moves `enrageSpeed` × faster (once). */
+  enrageAt?: number;
+  enrageSpeed?: number;
+}
+
+export interface BossesDef {
+  /** The FINALE boss has this many times the HP. */
+  finaleHpMul: number;
+  bosses: Record<string, BossDef>;
 }
 
 /** Fixed core geometry; every upgradable core value lives in `stats.json`. */
@@ -342,6 +392,8 @@ export interface GameData {
   core: CoreDef;
   enemies: Record<EnemyKind, EnemyDef>;
   tiers: TierDef[];
+  /** c1: one boss per tier. */
+  bosses: BossesDef;
   stats: StatsData;
   perks: PerksData;
   sets: SetsData;
@@ -578,6 +630,7 @@ export function validateData(d: GameData): GameData {
     if (t.rangedRateMul !== undefined) positive(t.rangedRateMul, `tiers[${i}].rangedRateMul`);
     if (t.speedMul !== undefined) positive(t.speedMul, `tiers[${i}].speedMul`);
   });
+  validateBosses(d); // c1
 
   // pulse
   const pu = d.pulse;
@@ -626,11 +679,59 @@ function validateMechanics(e: EnemyDef, at: string): void {
   }
 }
 
+/** c1: boss definitions and the tiers' boss / FINALE fields. */
+function validateBosses(d: GameData): void {
+  const b = d.bosses;
+  check(b !== undefined && typeof b.bosses === 'object', 'bosses is missing');
+  check(Number.isFinite(b.finaleHpMul) && b.finaleHpMul >= 1, 'bosses.finaleHpMul must be ≥ 1');
+  for (const [id, x] of Object.entries(b.bosses)) {
+    const at = `bosses.${id}`;
+    check(typeof x.name === 'string' && x.name.length > 0 && typeof x.hint === 'string' && x.hint.length > 0, `${at} needs a name and a hint`);
+    positive(x.hpMul, `${at}.hpMul`);
+    positive(x.radius, `${at}.radius`);
+    positive(x.speedMul, `${at}.speedMul`);
+    positive(x.damageMul, `${at}.damageMul`);
+    if (x.standoff !== undefined) nonNeg(x.standoff, `${at}.standoff`);
+    if (x.attackInterval !== undefined) positive(x.attackInterval, `${at}.attackInterval`);
+    if (x.shotWarn !== undefined) nonNeg(x.shotWarn, `${at}.shotWarn`);
+    if (x.shieldEvery !== undefined || x.shieldSec !== undefined || x.shieldWarn !== undefined) {
+      positive(x.shieldEvery as number, `${at}.shieldEvery`);
+      positive(x.shieldSec as number, `${at}.shieldSec`);
+      nonNeg(x.shieldWarn as number, `${at}.shieldWarn`);
+      check(x.shieldSec! + x.shieldWarn! < x.shieldEvery!, `${at}: shieldSec + shieldWarn must be < shieldEvery`);
+    }
+    if (x.broodStep !== undefined || x.broodCount !== undefined || x.broodKind !== undefined) {
+      check(Number.isFinite(x.broodStep) && x.broodStep! > 0 && x.broodStep! < 1, `${at}.broodStep must be in (0, 1)`);
+      check(Number.isInteger(x.broodCount) && x.broodCount! >= 1 && x.broodCount! <= 6, `${at}.broodCount must be a whole number in [1, 6]`);
+      check(ENEMY_KINDS.includes(x.broodKind!) && x.broodKind !== 'boss', `${at}.broodKind must be a non-boss enemy kind`);
+    }
+    if (x.drainEnergy !== undefined || x.drainHeal !== undefined || x.drainReturn !== undefined) {
+      positive(x.drainEnergy as number, `${at}.drainEnergy`);
+      check(Number.isFinite(x.drainHeal) && x.drainHeal! >= 0 && x.drainHeal! < 1, `${at}.drainHeal must be in [0, 1)`);
+      nonNeg(x.drainReturn as number, `${at}.drainReturn`);
+    }
+    if (x.auraRadius !== undefined || x.auraReduce !== undefined) {
+      positive(x.auraRadius as number, `${at}.auraRadius`);
+      check(Number.isFinite(x.auraReduce) && x.auraReduce! > 0 && x.auraReduce! < 1, `${at}.auraReduce must be in (0, 1)`);
+    }
+    if (x.mutations !== undefined) check(Number.isInteger(x.mutations) && x.mutations >= 1, `${at}.mutations must be a whole number ≥ 1`);
+    if (x.enrageAt !== undefined || x.enrageSpeed !== undefined) {
+      check(Number.isFinite(x.enrageAt) && x.enrageAt! > 0 && x.enrageAt! < 1, `${at}.enrageAt must be in (0, 1)`);
+      positive(x.enrageSpeed as number, `${at}.enrageSpeed`);
+    }
+  }
+  d.tiers.forEach((t, i) => {
+    if (t.boss !== undefined) check(b.bosses[t.boss] !== undefined, `tiers[${i}].boss "${t.boss}" is not in bosses`);
+    if (t.finale !== undefined) check(Number.isInteger(t.finale) && t.finale >= 1, `tiers[${i}].finale must be a whole number ≥ 1`);
+  });
+}
+
 export const DEFAULT_DATA: GameData = validateData({
   config: configJson as SimConfig,
   core: coreJson as CoreDef,
   enemies: enemiesJson as Record<EnemyKind, EnemyDef>,
   tiers: tiersJson as TierDef[],
+  bosses: bossesJson as unknown as BossesDef, // c1
   stats: statsJson as StatsData,
   perks: perksJson as unknown as PerksData,
   sets: setsJson as unknown as SetsData,
