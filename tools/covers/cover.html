@@ -5,148 +5,508 @@
 <title>Core Protocol cover</title>
 <style>
   @font-face { font-family: 'Orbitron'; src: url('../../public/fonts/orbitron-latin.woff2') format('woff2'); font-weight: 400 900; }
-  html, body { margin: 0; background: #070b1a; overflow: hidden; }
+  html, body { margin: 0; background: #04121a; overflow: hidden; }
   canvas { display: block; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <script>
-// Cover / thumbnail art in the game's neon style (spec §4). Query: ?w=800&h=800&title=0|1&seed=7
-// No text when title=0 (Poki thumbnails must have no text or frames).
+// Cover / thumbnail art (uniqueness plan item 5; notes in docs/superpowers/plans/2026-10-20-uniqueness-notes-b1.md).
+// Query: ?w=800&h=800&title=0|1&seed=7. No text when title=0 (Poki thumbnails: no text, no frames).
+// What it shows: the core inside its hex crystal (7 modules in the five tag colours, a lit Overload set of 3, a fused
+// Overload+Firewall link), a Pulse ring expanding from the core, and virus bodies coming in over the infected territory.
+// Colours are copied from src/render/palette.ts; the virus bodies are a port of enemies() in src/render/textures.ts
+// (same paths, data radii from src/data/enemies.json). Keep them in sync when those change.
 const q = new URLSearchParams(location.search);
 const W = Number(q.get('w') || 800);
 const H = Number(q.get('h') || 800);
 const TITLE = q.get('title') === '1';
 let seed = Number(q.get('seed') || 7);
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-const c = document.getElementById('c');
-c.width = W; c.height = H;
-const g = c.getContext('2d');
-const S = Math.min(W, H) / 800; // design scale
+const cv = document.getElementById('c');
+cv.width = W; cv.height = H;
+const ctx = cv.getContext('2d');
+const TAU = Math.PI * 2;
+const SQRT3 = 1.7320508075688772;
 
-const COL = { cyan: '#22e5ff', magenta: '#ff2bd6', yellow: '#ffe14a', orange: '#ff5a2a', violet: '#a45bff', crimson: '#ff2d55', chain: '#b18cff', cryo: '#7fe3ff' };
+// ---- palette.ts --------------------------------------------------------------------------------------------------
+const WHITE = 0xffffff;
+const TAG = { overload: 0xffd23f, cryo: 0x7fe3ff, chain: 0xb18cff, mining: 0x4dff9a, firewall: 0xff7a45 };
+const ENEMY_COLOR = { basic: 0xff2bd6, fast: 0xc4ff3a, tank: 0xff4f6a, ranged: 0xd64bff, boss: 0xff2d55 };
+const ENEMY_ACCENT = { basic: 0xffb3f0, fast: 0xf4ffb0, tank: 0xffc2a8, ranged: 0x9ff2ff, boss: 0xffd0dc };
+const VIRUS_BODY = 0x14061a;
+const CRIMSON = 0xff2d55;
+const RADIUS = { basic: 14, fast: 11, tank: 22, ranged: 13, boss: 40 }; // enemies.json
+// Cover-only: the deep teal ink the brief asks for instead of purple-on-black.
+const INK = 0x041318;
+const TEAL = 0x2fb8b0;
 
-function glow(color, blur) { g.shadowColor = color; g.shadowBlur = blur * S; }
-function noGlow() { g.shadowBlur = 0; }
-function poly(cx, cy, r, n, rot) {
-  g.beginPath();
-  for (let i = 0; i < n; i++) { const a = rot + (Math.PI * 2 * i) / n; const x = cx + r * Math.cos(a); const y = cy + r * Math.sin(a); i ? g.lineTo(x, y) : g.moveTo(x, y); }
-  g.closePath();
+function rgba(c, a) { return `rgba(${(c >> 16) & 255},${(c >> 8) & 255},${c & 255},${a})`; }
+
+// ---- port of textures.ts helpers (RS = blur scale of the current draw, set per body) ------------------------------
+let RS = 1;
+function poly(ctx, pts) { ctx.beginPath(); pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.closePath(); }
+function regular(cx, cy, r, n, rot) { return Array.from({ length: n }, (_, i) => { const a = rot + (i / n) * TAU; return [cx + Math.cos(a) * r, cy + Math.sin(a) * r]; }); }
+function dot(ctx, x, y, r, color, blur = 8) {
+  ctx.shadowColor = rgba(color, 1); ctx.shadowBlur = blur * RS; ctx.fillStyle = rgba(color, 1);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+  ctx.shadowBlur = 0; ctx.fillStyle = rgba(WHITE, 0.9); ctx.beginPath(); ctx.arc(x, y, r * 0.45, 0, TAU); ctx.fill();
 }
-function neonShape(cx, cy, r, n, rot, color, lw = 3) {
-  for (const [w, a] of [[lw * 4, 0.18], [lw * 2, 0.35], [lw, 1]]) {
-    g.save(); glow(color, 18); g.globalAlpha = a; g.strokeStyle = color; g.lineWidth = w * S; poly(cx, cy, r, n, rot); g.stroke(); g.restore();
+function glow(ctx, color, lw, path, fillA = 0) {
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.shadowColor = rgba(color, 1); ctx.shadowBlur = 9 * RS; ctx.strokeStyle = rgba(color, 0.35); ctx.lineWidth = lw * 2.6;
+  ctx.beginPath(); path(); ctx.stroke();
+  if (fillA > 0) { ctx.shadowBlur = 0; ctx.fillStyle = rgba(color, fillA); ctx.fill(); }
+  ctx.shadowBlur = 6 * RS; ctx.strokeStyle = rgba(color, 1); ctx.lineWidth = lw; ctx.beginPath(); path(); ctx.stroke();
+  ctx.shadowBlur = 0; ctx.strokeStyle = rgba(WHITE, 0.8); ctx.lineWidth = Math.max(0.8, lw * 0.35); ctx.beginPath(); path(); ctx.stroke();
+}
+function body(ctx, cx, cy, r, color, lw, path, blur = 10) {
+  ctx.lineJoin = 'round';
+  path(); ctx.fillStyle = rgba(VIRUS_BODY, 0.82); ctx.fill();
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, rgba(color, 0.1)); g.addColorStop(0.65, rgba(color, 0.2)); g.addColorStop(1, rgba(color, 0.5));
+  ctx.fillStyle = g; path(); ctx.fill();
+  ctx.shadowColor = rgba(color, 0.9); ctx.shadowBlur = blur * 1.6 * RS; ctx.strokeStyle = rgba(color, 0.3); ctx.lineWidth = lw * 2.8; path(); ctx.stroke();
+  ctx.shadowBlur = blur * RS; ctx.strokeStyle = rgba(color, 1); ctx.lineWidth = lw; path(); ctx.stroke();
+  ctx.shadowBlur = 0; ctx.strokeStyle = rgba(WHITE, 0.75); ctx.lineWidth = Math.max(0.8, lw * 0.34); path(); ctx.stroke();
+}
+function fadeStroke(ctx, pts, color, lw, a0, a1) {
+  const [x0, y0] = pts[0]; const [x1, y1] = pts[pts.length - 1];
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (const [w, k, blur, col] of [[lw * 2.6, 0.35, 8, color], [lw, 1, 5, color], [Math.max(0.7, lw * 0.35), 0.8, 0, WHITE]]) {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, rgba(col, a0 * k)); g.addColorStop(1, rgba(col, a1 * k));
+    ctx.shadowColor = rgba(color, 1); ctx.shadowBlur = blur * RS; ctx.strokeStyle = g; ctx.lineWidth = w;
+    ctx.beginPath(); pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y))); ctx.stroke();
   }
-  g.save(); g.globalAlpha = 0.12; g.fillStyle = color; poly(cx, cy, r, n, rot); g.fill(); g.restore();
-  g.save(); g.globalAlpha = 0.7; g.strokeStyle = color; g.lineWidth = 1.5 * S; poly(cx, cy, r * 0.5, n, rot); g.stroke(); g.restore();
+  ctx.shadowBlur = 0;
+}
+function spikes(ctx, c, n, r0, r1, club, color, rot = 0, lw = 2) {
+  glow(ctx, color, lw, () => { for (let i = 0; i < n; i++) { const a = rot + (i / n) * TAU; ctx.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0); ctx.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1); } });
+  for (let i = 0; i < n; i++) { const a = rot + (i / n) * TAU; dot(ctx, c + Math.cos(a) * (r1 + club * 0.5), c + Math.sin(a) * (r1 + club * 0.5), club, color, 6); }
+}
+
+// ---- virus bodies (textures.ts enemies(), drawn around 0,0; directional bodies face +x) ---------------------------
+const C = ENEMY_COLOR, A = ENEMY_ACCENT;
+const VIRUS = {
+  basic(ctx) {
+    const rb = RADIUS.basic, c = 0, R = rb * 0.7;
+    spikes(ctx, c, 9, R * 0.92, rb * 1.08, 2.4, C.basic, 0.2);
+    body(ctx, c, c, R, C.basic, 2.6, () => { ctx.beginPath(); ctx.arc(c, c, R, 0, TAU); });
+    ctx.strokeStyle = rgba(A.basic, 0.35); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(c, c, R * 0.5, 0, TAU); ctx.stroke();
+    for (const [x, y] of regular(c, c, R * 0.5, 5, 0.5)) dot(ctx, x, y, 1.5, A.basic, 4);
+  },
+  fast(ctx, f = 1) {
+    const rf = RADIUS.fast, c = 0, hx = c + rf * 0.35, hr = rf * 0.62, tail = c - rf * 0.95, phase = (f / 3) * TAU;
+    for (const [y0, amp, off] of [[-0.24, 0.32, 0], [0, 0.22, 2.1], [0.24, 0.32, 4.2]]) {
+      const pts = [];
+      for (let i = 0; i <= 14; i++) { const t = i / 14; pts.push([tail + rf * 0.15 - t * rf * 1.25, c + y0 * rf * (1 + t * 1.6) + Math.sin(t * 7.5 - phase - off) * amp * rf * t]); }
+      fadeStroke(ctx, pts, C.fast, 1.6, 1, 0.12);
+    }
+    const a0 = -Math.PI * 0.62;
+    const outline = () => {
+      ctx.beginPath(); ctx.arc(hx, c, hr, a0, -a0);
+      ctx.quadraticCurveTo(hx - hr * 0.9, c + hr * 0.75, tail, c);
+      ctx.quadraticCurveTo(hx - hr * 0.9, c - hr * 0.75, hx + Math.cos(a0) * hr, c + Math.sin(a0) * hr);
+      ctx.closePath();
+    };
+    body(ctx, hx, c, hr * 1.2, C.fast, 2.4, outline, 9);
+    dot(ctx, hx + hr * 0.1, c, 2.3, A.fast, 6);
+  },
+  tank(ctx) {
+    const rt = RADIUS.tank, c = 0, R = rt * 0.86;
+    const V = regular(c, c, R, 6, -Math.PI / 2), T = regular(c, c, R * 0.5, 3, -Math.PI / 2);
+    spikes(ctx, c, 6, R * 1.02, rt * 1.14, 3, C.tank, -Math.PI / 2, 2.4);
+    body(ctx, c, c, R, C.tank, 4.4, () => poly(ctx, V), 12);
+    const NEAR = [0, 0, 1, 1, 2, 2], facets = [];
+    for (let i = 0; i < 6; i++) facets.push([V[i], V[(i + 1) % 6], T[i % 2 === 0 ? NEAR[i] : NEAR[(i + 1) % 6]]]);
+    for (let j = 0; j < 3; j++) facets.push([T[j], T[(j + 1) % 3], V[2 * j + 1]]);
+    facets.push([T[0], T[1], T[2]]);
+    for (const f of facets) {
+      const mx = (f[0][0] + f[1][0] + f[2][0]) / 3 - c, my = (f[0][1] + f[1][1] + f[2][1]) / 3 - c;
+      const lit = Math.max(0, (-mx - my) / (R * 0.9));
+      poly(ctx, f); ctx.fillStyle = rgba(C.tank, 0.1 + 0.42 * lit); ctx.fill();
+      ctx.strokeStyle = rgba(A.tank, 0.7); ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    ctx.strokeStyle = rgba(A.tank, 0.55); ctx.lineWidth = 1; poly(ctx, regular(c, c, R * 0.82, 6, -Math.PI / 2)); ctx.stroke();
+    for (const [x, y] of T) dot(ctx, x, y, 1.8, A.tank, 5);
+  },
+  ranged(ctx, f = 0) {
+    const rr = RADIUS.ranged, c = 0, X = (k) => c + k * rr;
+    const legs = f === 1
+      ? [[0.62, 0.28, 0.82, 0.78, 1.32, 0.66], [0.64, 0.12, 1.0, 0.44, 1.4, 0.3]]
+      : [[0.62, 0.28, 0.72, 0.88, 1.22, 0.98], [0.64, 0.12, 0.92, 0.52, 1.36, 0.5]];
+    glow(ctx, C.ranged, 1.7, () => { for (const [bx, by, kx, ky, fx, fy] of legs) for (const s of [-1, 1]) { ctx.moveTo(X(bx), X(by * s)); ctx.lineTo(X(kx), X(ky * s)); ctx.lineTo(X(fx), X(fy * s)); } });
+    body(ctx, c, c, rr * 0.4, C.ranged, 1.8, () => poly(ctx, [[X(-0.12), X(-0.14)], [X(0.58), X(-0.14)], [X(0.58), X(0.14)], [X(-0.12), X(0.14)]]), 6);
+    glow(ctx, A.ranged, 1, () => { for (const k of [0.06, 0.22, 0.38]) { ctx.moveTo(X(k), X(-0.14)); ctx.lineTo(X(k), X(0.14)); } });
+    glow(ctx, C.ranged, 2.4, () => { ctx.moveTo(X(0.64), X(-0.34)); ctx.lineTo(X(0.64), X(0.34)); ctx.moveTo(X(-0.16), X(-0.24)); ctx.lineTo(X(-0.16), X(0.24)); });
+    const head = regular(0, 0, 1, 6, 0).map(([x, y]) => [X(-0.78 + x * 0.6), X(y * 0.56)]);
+    body(ctx, X(-0.78), c, rr * 0.62, C.ranged, 2.4, () => poly(ctx, head), 9);
+    glow(ctx, A.ranged, 1.2, () => {
+      ctx.moveTo(X(-1.05), X(-0.08));
+      ctx.bezierCurveTo(X(-0.95), X(-0.38), X(-0.62), X(-0.38), X(-0.6), X(-0.06));
+      ctx.bezierCurveTo(X(-0.58), X(0.3), X(-0.9), X(0.32), X(-0.88), X(0.06));
+    });
+  },
+  boss(ctx) {
+    const br = RADIUS.boss, c = 0, R = br * 0.6;
+    // Lipid envelope (e_boss_membrane), simplified to its two glowing lines and knobs.
+    const lobe = (k) => Array.from({ length: 56 }, (_, i) => { const a = (i / 56) * TAU; const rad = br * (k + 0.045 * Math.sin(a * 7) + 0.025 * Math.sin(a * 3 + 1)); return [Math.cos(a) * rad, Math.sin(a) * rad]; });
+    for (const [pts, lw, a] of [[lobe(0.98), 2.6, 1], [lobe(0.88), 1.4, 0.7]]) {
+      ctx.shadowColor = rgba(C.boss, 1); ctx.shadowBlur = 10 * RS; ctx.strokeStyle = rgba(C.boss, a); ctx.lineWidth = lw; poly(ctx, pts); ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 7; i++) { const a = ((i + 0.25) / 7) * TAU; dot(ctx, Math.cos(a) * br * 1.02, Math.sin(a) * br * 1.02, 2.6, A.boss, 7); }
+    spikes(ctx, c, 16, R * 0.95, br * 0.8, 3.2, C.boss, 0.1, 2.4);
+    body(ctx, c, c, R, C.boss, 3.4, () => poly(ctx, regular(c, c, R, 20, 0)), 12);
+    const g = ctx.createRadialGradient(c, c, 0, c, c, R * 0.55);
+    g.addColorStop(0, rgba(WHITE, 0.9)); g.addColorStop(0.35, rgba(A.boss, 0.6)); g.addColorStop(1, rgba(C.boss, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c, c, R * 0.55, 0, TAU); ctx.fill();
+    glow(ctx, A.boss, 1.6, () => { for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * TAU * 2.2, rad = R * (0.12 + 0.6 * t); i === 0 ? ctx.moveTo(c + Math.cos(a) * rad, c + Math.sin(a) * rad) : ctx.lineTo(c + Math.cos(a) * rad, c + Math.sin(a) * rad); } });
+  },
+};
+/** Draws a virus of `kind` at (x, y) scaled ×k, heading `rot` (rad; +x of the body points that way). */
+function virus(kind, x, y, k, rot, alpha = 1, frame) {
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.rotate(rot); ctx.scale(k, k); RS = k;
+  VIRUS[kind](ctx, frame); ctx.restore(); RS = 1;
+}
+
+// ---- layout ------------------------------------------------------------------------------------------------------
+const wide = W > H * 1.3;
+const tall = H > W * 1.2;
+const S = Math.min(W, H) / 800;
+// Scene zoom: the square CrazyGames cover gives the title the top quarter.
+const Z = TITLE && !tall ? (wide ? 0.85 : 0.84) : 1;
+const U = S * Z;
+const CX = wide ? W * 0.7 : W / 2;
+const CY = wide ? H * 0.5 : tall ? (TITLE ? H * 0.6 : H / 2) : TITLE ? H * 0.6 : H / 2;
+const HEX = 60 * U; // crystal / territory cell size (pointy-top, centre to vertex)
+const hexToPixel = (q, r) => [CX + HEX * SQRT3 * (q + r / 2), CY + HEX * 1.5 * r];
+const hexDist = (q, r) => (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2;
+const DIRS = [[1, 0], [1, -1], [0, -1], [-1, 0], [-1, 1], [0, 1]];
+function hexPath(x, y, R) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = (60 * i - 30) * Math.PI / 180; const px = x + R * Math.cos(a), py = y + R * Math.sin(a); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath(); }
+/** Endpoints of the edge of hex (x, y) radius R that faces the point (nx, ny). */
+function edgeToward(x, y, R, nx, ny) {
+  const dx = nx - x, dy = ny - y, L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+  const mx = x + ux * R * SQRT3 / 2, my = y + uy * R * SQRT3 / 2;
+  return [[mx - uy * R / 2, my + ux * R / 2], [mx + uy * R / 2, my - ux * R / 2]];
+}
+const OWN = 3; // owned territory: hex distance ≤ OWN; the rest is infected
+const PULSE_R = 292 * U;
+
+// The crystal: a lit Overload set of 3 on the east, Firewall fused to it, then Cryo, Chain, Mining round the core.
+const MODULES = [
+  { q: 1, r: -1, tag: 'overload' }, { q: 1, r: 0, tag: 'overload' }, { q: 2, r: -1, tag: 'overload' },
+  { q: 0, r: 1, tag: 'firewall' }, { q: -1, r: 1, tag: 'cryo' }, { q: -1, r: 0, tag: 'chain' }, { q: 0, r: -1, tag: 'mining' },
+];
+const FUSED = [[1, 0], [0, 1]]; // Overload+Firewall: the fused link
+const modAt = (q, r) => MODULES.find((m) => m.q === q && m.r === r);
+// Sector tint of owned land (SECTOR_DIRS order east → counter-clockwise), echoing the boot sector colours.
+const SECTOR_TAG = ['overload', 'overload', 'mining', 'chain', 'cryo', 'firewall'];
+
+// ---- drawing -----------------------------------------------------------------------------------------------------
+function background() {
+  const bg = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.max(W, H) * 0.8);
+  bg.addColorStop(0, '#0f3a42'); bg.addColorStop(0.35, '#0a2830'); bg.addColorStop(0.75, '#061a20'); bg.addColorStop(1, '#030d11');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  // Territory: every cell on screen; owned cells in a faint sector tint, infected ones rose, a crimson front line.
+  const n = Math.ceil(Math.max(W, H) / (HEX * 1.5)) + 2;
+  for (let r = -n; r <= n; r++) for (let q = -n - Math.abs(r); q <= n + Math.abs(r); q++) {
+    const [x, y] = hexToPixel(q, r);
+    if (x < -HEX * 2 || y < -HEX * 2 || x > W + HEX * 2 || y > H + HEX * 2) continue;
+    const d = hexDist(q, r);
+    if (d === 0) continue;
+    const own = d <= OWN;
+    let sec = Math.round(Math.atan2(-(y - CY), x - CX) / (Math.PI / 3)); sec = ((sec % 6) + 6) % 6;
+    hexPath(x, y, HEX * 0.93);
+    if (own) {
+      ctx.fillStyle = rgba(TAG[SECTOR_TAG[sec]], 0.05 + 0.03 * (OWN - d)); ctx.fill();
+      ctx.strokeStyle = rgba(TEAL, 0.22); ctx.lineWidth = 1.2 * U; ctx.stroke();
+    } else {
+      const far = Math.min(1, (d - OWN) / 5);
+      ctx.fillStyle = rgba(CRIMSON, 0.07 - 0.03 * far); ctx.fill();
+      ctx.strokeStyle = rgba(0xff4f6a, 0.16 - 0.07 * far); ctx.lineWidth = 1.2 * U; ctx.stroke();
+    }
+    // Front line: the edges of an owned cell that face an infected neighbour.
+    if (own) for (const [dq, dr] of DIRS) if (hexDist(q + dq, r + dr) > OWN) {
+      const [nx, ny] = hexToPixel(q + dq, r + dr);
+      const [a, b] = edgeToward(x, y, HEX, nx, ny);
+      ctx.save(); ctx.shadowColor = rgba(CRIMSON, 1); ctx.shadowBlur = 10 * U; ctx.strokeStyle = rgba(CRIMSON, 0.7); ctx.lineWidth = 3 * U; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); ctx.restore();
+    }
+  }
+  // Warm light from the core.
+  const lt = ctx.createRadialGradient(CX, CY, 0, CX, CY, 330 * U);
+  lt.addColorStop(0, rgba(0xffc54a, 0.34)); lt.addColorStop(0.35, rgba(0xff9a3c, 0.12)); lt.addColorStop(1, rgba(0xff9a3c, 0));
+  ctx.fillStyle = lt; ctx.fillRect(0, 0, W, H);
+  // Mild vignette (no fog over the action).
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.hypot(W, H) * 0.55);
+  vg.addColorStop(0, 'rgba(2,8,11,0)'); vg.addColorStop(1, 'rgba(2,8,11,0.55)');
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+}
+
+/** The Pulse: a bright overload-tinted shock ring with a trailing band and a faint echo. */
+function pulseRing() {
+  const col = TAG.overload;
+  const band = ctx.createRadialGradient(CX, CY, PULSE_R * 0.55, CX, CY, PULSE_R);
+  band.addColorStop(0, rgba(col, 0)); band.addColorStop(0.8, rgba(col, 0.1)); band.addColorStop(1, rgba(col, 0.32));
+  ctx.fillStyle = band; ctx.beginPath(); ctx.arc(CX, CY, PULSE_R, 0, TAU); ctx.fill();
+  for (const [lw, c, a, blur] of [[22, col, 0.25, 30], [9, col, 0.85, 22], [3.2, WHITE, 1, 10]]) {
+    ctx.save(); ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = blur * U; ctx.strokeStyle = rgba(c, a); ctx.lineWidth = lw * U;
+    ctx.beginPath(); ctx.arc(CX, CY, PULSE_R, 0, TAU); ctx.stroke(); ctx.restore();
+  }
+  ctx.save(); ctx.strokeStyle = rgba(col, 0.35); ctx.lineWidth = 3 * U; ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = 12 * U;
+  ctx.beginPath(); ctx.arc(CX, CY, PULSE_R * 0.7, 0, TAU); ctx.stroke(); ctx.restore();
+  // Sparks thrown off the ring.
+  for (let i = 0; i < 70; i++) {
+    const a = rnd() * TAU, d = PULSE_R + (rnd() - 0.3) * 26 * U, s = (2 + rnd() * 3.5) * U;
+    ctx.save(); ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = 8 * U; ctx.fillStyle = rgba(rnd() < 0.4 ? WHITE : col, 0.6 + rnd() * 0.4);
+    ctx.fillRect(CX + Math.cos(a) * d - s / 2, CY + Math.sin(a) * d - s / 2, s, s); ctx.restore();
+  }
+}
+
+// Tag glyphs (port of src/ui/tagIcon.ts), stroked with a glow.
+function tagGlyph(tag, x, y, size, color, lit) {
+  const s = size / 2, lw = Math.max(2, size * 0.11);
+  ctx.save(); ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.shadowColor = rgba(color, 1); ctx.shadowBlur = (lit ? 14 : 8) * U;
+  const ink = lit ? 0xfffbe8 : color;
+  ctx.strokeStyle = rgba(ink, 1); ctx.fillStyle = rgba(ink, 1); ctx.lineWidth = lw;
+  const P = (pts, fill) => { poly(ctx, pts.map(([px, py]) => [x + px * s, y + py * s])); fill ? ctx.fill() : ctx.stroke(); };
+  switch (tag) {
+    case 'overload': P([[0.15, -1], [-0.55, 0.1], [-0.02, 0.1], [-0.2, 1], [0.55, -0.15], [0.04, -0.15]], true); break;
+    case 'cryo':
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = (Math.PI / 3) * i + Math.PI / 2, dx = Math.cos(a) * s * 0.92, dy = Math.sin(a) * s * 0.92;
+        ctx.moveTo(x - dx, y - dy); ctx.lineTo(x + dx, y + dy);
+        for (const sg of [1, -1]) {
+          const bx = x + dx * 0.55 * sg, by = y + dy * 0.55 * sg;
+          ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(a + 0.6 * sg) * s * 0.3 * sg, by + Math.sin(a + 0.6 * sg) * s * 0.3 * sg);
+          ctx.moveTo(bx, by); ctx.lineTo(bx + Math.cos(a - 0.6 * sg) * s * 0.3 * sg, by + Math.sin(a - 0.6 * sg) * s * 0.3 * sg);
+        }
+      }
+      ctx.stroke(); break;
+    case 'chain': {
+      const r = s * 0.42, off = s * 0.36;
+      ctx.beginPath(); ctx.ellipse(x - off, y + off * 0.2, r * 1.05, r * 0.65, 0, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(x + off, y - off * 0.2, r * 1.05, r * 0.65, 0, 0, TAU); ctx.stroke(); break;
+    }
+    case 'mining':
+      P([[0, -1], [0.75, -0.3], [0, 1], [-0.75, -0.3]], false);
+      ctx.beginPath(); ctx.moveTo(x - s * 0.75, y - s * 0.3); ctx.lineTo(x + s * 0.75, y - s * 0.3); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke(); break;
+    case 'firewall':
+      P([[0, -1], [0.8, -0.6], [0.7, 0.2], [0, 1], [-0.7, 0.2], [-0.8, -0.6]], false);
+      ctx.globalAlpha = 0.45; P([[0, -0.6], [0.45, -0.35], [0.4, 0.12], [0, 0.6]], true); break;
+  }
+  ctx.restore();
+}
+
+function crystal() {
+  const R = HEX * 0.94;
+  // Free slots of the next ring: faint dashed hexes (room to grow).
+  ctx.save(); ctx.setLineDash([6 * U, 7 * U]); ctx.strokeStyle = rgba(0x9ff8ff, 0.28); ctx.lineWidth = 1.6 * U;
+  for (let r = -2; r <= 2; r++) for (let q = -2; q <= 2; q++) if (hexDist(q, r) === 2 && !modAt(q, r)) { const [x, y] = hexToPixel(q, r); hexPath(x, y, R * 0.86); ctx.stroke(); }
+  ctx.restore();
+  // Plates: the lit set glows as one shape, singles are dim.
+  const lit = (m) => m.tag === 'overload';
+  for (const m of MODULES) {
+    const [x, y] = hexToPixel(m.q, m.r), col = TAG[m.tag];
+    ctx.save(); hexPath(x, y, R);
+    if (lit(m)) { ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = 34 * U; ctx.fillStyle = rgba(col, 0.55); }
+    else { ctx.shadowColor = rgba(col, 0.8); ctx.shadowBlur = 14 * U; ctx.fillStyle = rgba(col, 0.3); }
+    ctx.fill(); ctx.restore();
+  }
+  // Outer edges of each cluster (an edge is drawn when the hex across it is not the same tag).
+  for (const m of MODULES) {
+    const [x, y] = hexToPixel(m.q, m.r), col = TAG[m.tag];
+    for (const [dq, dr] of DIRS) {
+      const o = modAt(m.q + dq, m.r + dr);
+      if (o && o.tag === m.tag) continue;
+      const [a, b] = edgeToward(x, y, R, ...hexToPixel(m.q + dq, m.r + dr));
+      for (const [lw, c, al, blur] of lit(m) ? [[9, col, 0.4, 22], [4.2, col, 1, 12], [1.6, WHITE, 0.9, 0]] : [[3.2, col, 0.95, 8], [1.2, WHITE, 0.6, 0]]) {
+        ctx.save(); ctx.lineCap = 'round'; ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = blur * U; ctx.strokeStyle = rgba(c, al); ctx.lineWidth = lw * U;
+        ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); ctx.restore();
+      }
+    }
+  }
+  // Modules: a dark inset hex with the glyph.
+  for (const m of MODULES) {
+    const [x, y] = hexToPixel(m.q, m.r), col = TAG[m.tag];
+    ctx.save(); hexPath(x, y, R * 0.72); ctx.fillStyle = rgba(0x05121a, lit(m) ? 0.72 : 0.85); ctx.fill();
+    ctx.strokeStyle = rgba(col, lit(m) ? 0.95 : 0.7); ctx.lineWidth = 1.8 * U; ctx.stroke(); ctx.restore();
+    tagGlyph(m.tag, x, y, R * 0.78, col, lit(m));
+  }
+  // Links between different tags: a two-colour weld across the shared edge; faint unless fused.
+  for (const m of MODULES) for (const [dq, dr] of DIRS) {
+    const o = modAt(m.q + dq, m.r + dr);
+    if (!o || o.tag === m.tag || MODULES.indexOf(o) < MODULES.indexOf(m)) continue;
+    const fused = FUSED.some(([fq, fr]) => fq === m.q && fr === m.r) && FUSED.some(([fq, fr]) => fq === o.q && fr === o.r);
+    const [x, y] = hexToPixel(m.q, m.r);
+    const [ox, oy] = hexToPixel(o.q, o.r);
+    const [a, b] = edgeToward(x, y, R * 1.03, ox, oy);
+    // Two-colour stripe: each half of the edge width in its tag's colour.
+    const nx = (ox - x) / Math.hypot(ox - x, oy - y), ny = (oy - y) / Math.hypot(ox - x, oy - y);
+    const off = (fused ? 4.5 : 1.8) * U;
+    for (const [col, sgn] of [[TAG[m.tag], -1], [TAG[o.tag], 1]]) {
+      ctx.save(); ctx.lineCap = 'round'; ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = (fused ? 34 : 6) * U;
+      ctx.strokeStyle = rgba(col, fused ? 1 : 0.55); ctx.lineWidth = (fused ? 9 : 3) * U;
+      ctx.beginPath(); ctx.moveTo(a[0] + nx * off * sgn, a[1] + ny * off * sgn); ctx.lineTo(b[0] + nx * off * sgn, b[1] + ny * off * sgn); ctx.stroke(); ctx.restore();
+    }
+    if (fused) {
+      const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+      // A hot lens of light over the weld, then arcs jumping between the two modules.
+      const ln = ctx.createRadialGradient(mx, my, 0, mx, my, HEX * 0.9);
+      ln.addColorStop(0, rgba(0xfff3c4, 0.7)); ln.addColorStop(0.4, rgba(0xff9a3c, 0.3)); ln.addColorStop(1, rgba(0xff9a3c, 0));
+      ctx.fillStyle = ln; ctx.beginPath(); ctx.arc(mx, my, HEX * 0.9, 0, TAU); ctx.fill();
+      for (const t of [-0.32, 0, 0.32]) {
+        const px = mx + (b[0] - a[0]) * t, py = my + (b[1] - a[1]) * t;
+        ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.shadowColor = rgba(0xffb43c, 1); ctx.shadowBlur = 14 * U; ctx.strokeStyle = rgba(0xfffbe8, 0.95); ctx.lineWidth = 2.2 * U;
+        ctx.beginPath(); ctx.moveTo(px - nx * HEX * 0.42, py - ny * HEX * 0.42);
+        for (let k = 1; k < 5; k++) { const f = k / 5 - 0.5, j = (rnd() - 0.5) * 12 * U; ctx.lineTo(px + nx * HEX * 0.84 * f - ny * j, py + ny * HEX * 0.84 * f + nx * j); }
+        ctx.lineTo(px + nx * HEX * 0.42, py + ny * HEX * 0.42); ctx.stroke(); ctx.restore();
+      }
+      // The fusion's flare: a white-hot core line and a split diamond (the pair disc) on the weld.
+      ctx.save(); ctx.lineCap = 'round'; ctx.shadowColor = rgba(0xffb43c, 1); ctx.shadowBlur = 30 * U; ctx.strokeStyle = rgba(WHITE, 0.95); ctx.lineWidth = 2.4 * U;
+      ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(...b); ctx.stroke(); ctx.restore();
+      const dr = 17 * U, ang = Math.atan2(ny, nx);
+      ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+      ctx.shadowColor = rgba(0xffb43c, 1); ctx.shadowBlur = 22 * U;
+      ctx.fillStyle = rgba(TAG[m.tag], 1); poly(ctx, [[0, -dr], [-dr * 0.8, 0], [0, dr]]); ctx.fill();
+      ctx.fillStyle = rgba(TAG[o.tag], 1); poly(ctx, [[0, -dr], [dr * 0.8, 0], [0, dr]]); ctx.fill();
+      ctx.shadowBlur = 0; ctx.strokeStyle = rgba(0xfffbe8, 1); ctx.lineWidth = 2 * U; poly(ctx, [[0, -dr], [dr * 0.8, 0], [0, dr], [-dr * 0.8, 0]]); ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
+function core() {
+  const R = HEX * 1.0;
+  const halo = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 2.2);
+  halo.addColorStop(0, rgba(0xfffbe8, 0.85)); halo.addColorStop(0.35, rgba(0xfff3c4, 0.3)); halo.addColorStop(1, rgba(TAG.overload, 0));
+  ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(CX, CY, R * 2.2, 0, TAU); ctx.fill();
+  const tube = (pts, col, lw, fillA, blur) => {
+    ctx.save(); ctx.lineJoin = 'round';
+    ctx.shadowColor = rgba(col, 0.9); ctx.shadowBlur = blur * 1.8 * U; ctx.strokeStyle = rgba(col, 0.3); ctx.lineWidth = lw * 3.2 * U; poly(ctx, pts); ctx.stroke();
+    ctx.shadowBlur = 0; poly(ctx, pts); ctx.fillStyle = rgba(col, fillA); ctx.fill();
+    ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = blur * U; ctx.strokeStyle = rgba(col, 1); ctx.lineWidth = lw * U; poly(ctx, pts); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.strokeStyle = rgba(WHITE, 0.9); ctx.lineWidth = Math.max(1, lw * 0.4 * U); poly(ctx, pts); ctx.stroke();
+    ctx.restore();
+  };
+  ctx.save(); hexPath(CX, CY, R * 0.98); ctx.fillStyle = rgba(0x061218, 0.9); ctx.fill(); ctx.restore();
+  tube(regular(CX, CY, R * 0.98, 6, Math.PI / 6), 0xfff3c4, 5, 0.14, 22);
+  tube(regular(CX, CY, R * 0.62, 6, 0.12), 0xffb43c, 3, 0.35, 12);
+  tube(regular(CX, CY, R * 0.3, 6, Math.PI / 6), 0xfff3c4, 2, 0.75, 10);
+  ctx.save(); ctx.shadowColor = rgba(WHITE, 1); ctx.shadowBlur = 24 * U; ctx.fillStyle = '#fffdf2';
+  ctx.beginPath(); ctx.arc(CX, CY, R * 0.2, 0, TAU); ctx.fill(); ctx.restore();
+  for (const [x, y] of regular(CX, CY, R * 0.98, 6, Math.PI / 6)) { RS = U; dot(ctx, x, y, 3 * U, TAG.overload, 8); RS = 1; }
+}
+
+/** A virus caught by the ring: a flash, shell fragments flying out (frag_0 / frag_2 shapes) and pixels. */
+function burst(x, y, k, kind) {
+  const col = ENEMY_COLOR[kind];
+  const fl = ctx.createRadialGradient(x, y, 0, x, y, 30 * k);
+  fl.addColorStop(0, rgba(WHITE, 0.75)); fl.addColorStop(0.3, rgba(col, 0.35)); fl.addColorStop(1, rgba(col, 0));
+  ctx.fillStyle = fl; ctx.beginPath(); ctx.arc(x, y, 30 * k, 0, TAU); ctx.fill();
+  for (let i = 0; i < 5; i++) {
+    const a = ((i + 0.5 + (rnd() - 0.5) * 0.7) * TAU) / 5, d = (16 + rnd() * 12) * k;
+    ctx.save(); ctx.translate(x + Math.cos(a) * d, y + Math.sin(a) * d); ctx.rotate(a); ctx.scale(k * 0.8, k * 0.8); RS = k;
+    glow(ctx, col, 2.4, () => ctx.arc(-6, 0, 10, -0.75, 0.75));
+    glow(ctx, col, 1.6, () => { ctx.moveTo(4, 0); ctx.lineTo(9, 0); });
+    dot(ctx, 10, 0, 2, col, 5);
+    ctx.restore(); RS = 1;
+  }
+  for (let i = 0; i < 16; i++) {
+    const a = rnd() * TAU, d = (8 + rnd() * 34) * k, s = (1.6 + rnd() * 2.2) * k;
+    ctx.save(); ctx.shadowColor = rgba(col, 1); ctx.shadowBlur = 8 * U; ctx.fillStyle = rgba(rnd() < 0.3 ? WHITE : col, 0.7);
+    ctx.fillRect(x + Math.cos(a) * d, y + Math.sin(a) * d, s, s); ctx.restore();
+  }
+}
+
+// Viruses: [kind, angle (rad, screen), distance from the core (design px), scale, frame]. Heading points at the core.
+const HERO = [
+  ['tank', -2.35, 392, 3.0],
+  ['fast', -0.62, 392, 3.9, 1],
+  ['ranged', 2.4, 385, 3.7, 0],
+  ['basic', 0.62, 305, 3.3],          // caught by the Pulse
+  ['basic', -1.58, 372, 2.6],
+];
+const EXTRA_WIDE = [['tank', -0.05, 415, 2.6], ['ranged', 1.0, 430, 3.0, 1]];
+const EXTRA_TALL = [['boss', 1.92, 480, 2.3], ['fast', -1.9, 470, 2.4, 2]];
+
+function inTitle(x, y, r) {
+  if (!TITLE) return false;
+  if (wide) return x - r < W * 0.5;
+  return y - r < H * (tall ? 0.27 : 0.25);
+}
+
+function viruses() {
+  // A dim swarm further out in the infected zone (the horde behind the heroes).
+  const swarm = [];
+  for (let i = 0; i < 80 && swarm.length < (wide ? 12 : tall ? 9 : 6); i++) {
+    const a = rnd() * TAU, d = (430 + rnd() * 260) * U;
+    const x = CX + Math.cos(a) * d, y = CY + Math.sin(a) * d, k = (1.2 + rnd() * 0.6) * U;
+    if (x < -20 || y < -20 || x > W + 20 || y > H + 20 || inTitle(x, y, 30 * k)) continue;
+    if (swarm.some((o) => Math.hypot(o.x - x, o.y - y) < 80 * U)) continue;
+    swarm.push({ x, y, k, kind: ['basic', 'basic', 'fast', 'tank', 'ranged'][Math.floor(rnd() * 5)], a });
+  }
+  for (const s of swarm) virus(s.kind, s.x, s.y, s.k, s.a + Math.PI + (s.kind === 'basic' || s.kind === 'tank' ? rnd() * 3 : 0), 0.42, 1);
+  const list = [...HERO, ...(TITLE && wide ? EXTRA_WIDE : []), ...(TITLE && tall ? EXTRA_TALL : [])];
+  for (const [kind, a, dist, k0, frame] of list) {
+    const d = dist * U, k = k0 * U;
+    const x = CX + Math.cos(a) * d, y = CY + Math.sin(a) * d;
+    if (inTitle(x, y, RADIUS[kind] * 1.2 * k)) continue;
+    const head = a + Math.PI; // +x of the body toward the core
+    const rot = kind === 'basic' ? a * 1.7 : kind === 'tank' ? 0.25 : kind === 'boss' ? head : head;
+    // Motion: a soft trail behind the movers.
+    if (kind !== 'boss') {
+      const tr = ctx.createLinearGradient(x, y, x + Math.cos(a) * 90 * U, y + Math.sin(a) * 90 * U);
+      tr.addColorStop(0, rgba(ENEMY_COLOR[kind], 0.18)); tr.addColorStop(1, rgba(ENEMY_COLOR[kind], 0));
+      ctx.save(); ctx.strokeStyle = tr; ctx.lineCap = 'round'; ctx.lineWidth = RADIUS[kind] * k * 1.1;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * 90 * U, y + Math.sin(a) * 90 * U); ctx.stroke(); ctx.restore();
+    }
+    virus(kind, x, y, k, rot, 1, frame);
+    if (Math.abs(d - PULSE_R) < 50 * U) burst(x, y, k * 0.5, kind);
+  }
+}
+
+function tracers() {
+  // Two warm shots from the core toward the tank and the phage.
+  for (const [a, len] of [[-2.35, 0.84], [2.4, 0.82]]) {
+    const sx = CX + Math.cos(a) * 352 * U * (len - 0.2), sy = CY + Math.sin(a) * 352 * U * (len - 0.2);
+    const ex = CX + Math.cos(a) * 352 * U * len, ey = CY + Math.sin(a) * 352 * U * len;
+    const g = ctx.createLinearGradient(sx, sy, ex, ey);
+    g.addColorStop(0, rgba(0xffd23f, 0)); g.addColorStop(1, rgba(0xfff3c4, 0.95));
+    ctx.save(); ctx.shadowColor = rgba(0xffd23f, 1); ctx.shadowBlur = 14 * U; ctx.strokeStyle = g; ctx.lineWidth = 6 * U; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke(); ctx.restore();
+  }
+}
+
+function title() {
+  const size = (wide ? 94 : tall ? 96 : 104) * S;
+  const tx = wide ? W * 0.05 : W / 2;
+  const ty = wide ? H * 0.4 : tall ? H * 0.1 : H * 0.095;
+  ctx.textAlign = wide ? 'left' : 'center'; ctx.textBaseline = 'middle'; ctx.font = `900 ${size}px Orbitron`;
+  ['CORE', 'PROTOCOL'].forEach((t, i) => {
+    const y = ty + i * size * 1.06;
+    ctx.save(); ctx.lineJoin = 'round'; ctx.lineWidth = 14 * S; ctx.strokeStyle = 'rgba(3,13,17,0.95)'; ctx.strokeText(t, tx, y); ctx.restore();
+    ctx.save(); ctx.shadowColor = rgba(0xff9a3c, 1); ctx.shadowBlur = 30 * S; ctx.fillStyle = rgba(0xff7a45, 0.9); ctx.fillText(t, tx, y + 5 * S); ctx.restore();
+    const gr = ctx.createLinearGradient(0, y - size / 2, 0, y + size / 2);
+    gr.addColorStop(0, '#fffbe8'); gr.addColorStop(0.55, '#ffe58a'); gr.addColorStop(1, '#ffc23a');
+    ctx.save(); ctx.shadowColor = rgba(0xffd23f, 1); ctx.shadowBlur = 18 * S; ctx.fillStyle = gr; ctx.fillText(t, tx, y); ctx.restore();
+  });
 }
 
 async function draw() {
   try { await document.fonts.load('900 80px Orbitron'); } catch {}
-  // Background: radial vignette + perspective-free neon grid.
-  const bg = g.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.75);
-  bg.addColorStop(0, '#0d1838'); bg.addColorStop(0.6, '#070b1a'); bg.addColorStop(1, '#03050d');
-  g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  const step = 48 * S;
-  for (let x = (W / 2) % step; x < W; x += step) { g.strokeStyle = 'rgba(31,107,255,0.13)'; g.lineWidth = 1; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
-  for (let y = (H / 2) % step; y < H; y += step) { g.strokeStyle = 'rgba(31,107,255,0.13)'; g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-  // Core position: a bit off-centre on wide covers so the title has room.
-  const cx = W > H * 1.3 ? W * 0.7 : W / 2;
-  const cy = TITLE && H > W * 1.2 ? H * 0.58 : H / 2 + (TITLE && W <= H * 1.3 ? 40 * S : 0);
-  const R = 270 * S;
-  // Range ring (dashed) and inner ring.
-  g.save(); glow(COL.cyan, 10); g.strokeStyle = 'rgba(34,229,255,0.35)'; g.lineWidth = 2 * S; g.setLineDash([10 * S, 12 * S]);
-  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke(); g.restore();
-  g.save(); g.strokeStyle = 'rgba(34,229,255,0.12)'; g.lineWidth = 1.5 * S; g.beginPath(); g.arc(cx, cy, R * 0.52, 0, Math.PI * 2); g.stroke(); g.restore();
-
-  // Viruses around the core.
-  const enemies = [];
-  const kinds = [['magenta', 4, 18], ['magenta', 4, 18], ['yellow', 3, 15], ['orange', 4, 30], ['violet', 4, 18]];
-  for (let i = 0; i < 40 && enemies.length < 18; i++) {
-    const a = rnd() * Math.PI * 2;
-    const d = R * (0.62 + rnd() * 0.6);
-    const [col, n, r] = kinds[Math.floor(rnd() * kinds.length)];
-    const x = cx + Math.cos(a) * d; const y = cy + Math.sin(a) * d;
-    if (x < -40 || y < -40 || x > W + 40 || y > H + 40) continue;
-    if (TITLE && W > H * 1.3 && x < W * 0.56) continue; // keep the title area clear
-    if (TITLE && W <= H * 1.3 && y < H * 0.3) continue;
-    if (enemies.some((o) => Math.hypot(o.x - x, o.y - y) < 70 * S)) continue;
-    enemies.push({ x, y, col, n, r: r * S * (1.1 + rnd() * 0.4), rot: rnd() * 3 });
-  }
-  // Boss worm: a chain of red hexagons curling on one side.
-  const worm = [];
-  const wa = W > H * 1.3 ? 0.9 : 2.0; const wd = R * 0.9;
-  for (let i = 0; i < 7; i++) {
-    const t = i * 0.16;
-    worm.push({ x: cx + Math.cos(wa + t) * (wd + i * 14 * S), y: cy + Math.sin(wa + t) * (wd + i * 14 * S), r: (46 - i * 4) * S });
-  }
-
-  // Tracers from the core to a few targets.
-  const targets = enemies.slice(0, 6);
-  for (const t of targets) {
-    const dx = t.x - cx, dy = t.y - cy, L = Math.hypot(dx, dy);
-    const sx = cx + (dx / L) * 70 * S, sy = cy + (dy / L) * 70 * S;
-    const ex = cx + (dx / L) * (L * (0.55 + rnd() * 0.3)), ey = cy + (dy / L) * (L * (0.55 + rnd() * 0.3));
-    g.save(); glow('#9ff8ff', 14); const gr = g.createLinearGradient(sx, sy, ex, ey); gr.addColorStop(0, 'rgba(159,248,255,0)'); gr.addColorStop(1, 'rgba(230,255,255,0.95)');
-    g.strokeStyle = gr; g.lineWidth = 4 * S; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke(); g.restore();
-  }
-  // Lightning chain between several viruses.
-  const chain = [enemies[6]].filter(Boolean);
-  while (chain.length < 4) {
-    const last = chain[chain.length - 1];
-    const next = enemies.filter((e) => !chain.includes(e) && !targets.includes(e)).sort((a, b) => Math.hypot(a.x - last.x, a.y - last.y) - Math.hypot(b.x - last.x, b.y - last.y))[0];
-    if (!next || Math.hypot(next.x - last.x, next.y - last.y) > 230 * S) break;
-    chain.push(next);
-  }
-  for (let i = 0; i + 1 < chain.length; i++) {
-    const a = chain[i], b = chain[i + 1];
-    for (const [lw, col, al] of [[9, COL.chain, 0.35], [3, '#ffffff', 0.95]]) {
-      g.save(); glow(COL.chain, 16); g.globalAlpha = al; g.strokeStyle = col; g.lineWidth = lw * S; g.beginPath(); g.moveTo(a.x, a.y);
-      for (let k = 1; k < 7; k++) { const f = k / 7; const nx = -(b.y - a.y), ny = b.x - a.x; const L = Math.hypot(nx, ny) || 1; const j = (rnd() - 0.5) * 30 * S;
-        g.lineTo(a.x + (b.x - a.x) * f + (nx / L) * j, a.y + (b.y - a.y) * f + (ny / L) * j); }
-      g.lineTo(b.x, b.y); g.stroke(); g.restore();
-    }
-  }
-  // Enemies.
-  for (const e of enemies) neonShape(e.x, e.y, e.r, e.n, e.rot, COL[e.col], 3);
-  // A few frozen ones (icy tint).
-  for (const e of enemies.slice(10, 13)) {
-    g.save(); glow(COL.cryo, 26); g.globalAlpha = 0.35; g.fillStyle = COL.cryo; poly(e.x, e.y, e.r * 1.25, e.n, e.rot); g.fill(); g.restore();
-    neonShape(e.x, e.y, e.r * 1.25, e.n, e.rot, COL.cryo, 2);
-  }
-  for (let i = worm.length - 1; i >= 0; i--) neonShape(worm[i].x, worm[i].y, worm[i].r, 6, 0.3 + i * 0.2, COL.crimson, i === 0 ? 4 : 3);
-  // Pixel bursts (deaths).
-  for (let b = 0; b < 5; b++) {
-    const e = enemies[13 + b]; if (!e) break;
-    for (let i = 0; i < 18; i++) { const a = rnd() * Math.PI * 2, d = (10 + rnd() * 50) * S; g.save(); glow(COL[e.col], 10); g.fillStyle = COL[e.col]; g.globalAlpha = 0.5 + rnd() * 0.5;
-      const s = (3 + rnd() * 4) * S; g.fillRect(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, s, s); g.restore(); }
-  }
-  // The core: layered glowing hexagons + bright centre + orbit ticks.
-  const coreR = 80 * S;
-  g.save(); const halo = g.createRadialGradient(cx, cy, 0, cx, cy, coreR * 3.2); halo.addColorStop(0, 'rgba(34,229,255,0.45)'); halo.addColorStop(1, 'rgba(34,229,255,0)');
-  g.fillStyle = halo; g.beginPath(); g.arc(cx, cy, coreR * 3.2, 0, Math.PI * 2); g.fill(); g.restore();
-  neonShape(cx, cy, coreR, 6, Math.PI / 6 + 0.15, COL.cyan, 5);
-  neonShape(cx, cy, coreR * 0.62, 6, Math.PI / 6 - 0.2, COL.cyan, 3);
-  g.save(); glow('#ffffff', 30); g.fillStyle = '#eaffff'; g.beginPath(); g.arc(cx, cy, coreR * 0.2, 0, Math.PI * 2); g.fill(); g.restore();
-  g.save(); glow(COL.cyan, 12); g.strokeStyle = COL.cyan; g.lineWidth = 3 * S;
-  for (let i = 0; i < 4; i++) { const a0 = i * Math.PI / 2 + 0.3; g.beginPath(); g.arc(cx, cy, coreR * 1.45, a0, a0 + 1.0); g.stroke(); }
-  g.restore();
-
-  if (TITLE) {
-    const wide = W > H * 1.3;
-    const size = (wide ? 110 : W < H ? 92 : 96) * S;
-    const tx = wide ? W * 0.07 : W / 2;
-    const ty = wide ? H * 0.36 : H * 0.14;
-    g.textAlign = wide ? 'left' : 'center'; g.textBaseline = 'middle'; g.font = `900 ${size}px Orbitron`;
-    const lines = ['CORE', 'PROTOCOL'];
-    lines.forEach((t, i) => {
-      const y = ty + i * size * 1.05;
-      g.save(); glow(COL.cyan, 30); g.lineWidth = 10 * S; g.strokeStyle = 'rgba(3,5,13,0.9)'; g.strokeText(t, tx, y); g.restore();
-      g.save(); g.globalAlpha = 0.6; g.fillStyle = '#ff1050'; g.fillText(t, tx + 4 * S, y); g.fillStyle = '#00f0ff'; g.fillText(t, tx - 4 * S, y); g.restore();
-      g.save(); glow(COL.cyan, 24); g.fillStyle = '#eaffff'; g.fillText(t, tx, y); g.restore();
-    });
-  }
+  background();
+  pulseRing();
+  tracers();
+  viruses();
+  crystal();
+  core();
+  if (TITLE) title();
   document.body.dataset.ready = '1';
 }
 draw();

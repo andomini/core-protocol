@@ -7,11 +7,13 @@
 ```sh
 npm run package                 # dist/core-protocol-poki.zip, dist/core-protocol-crazygames.zip
 node tools/covers/render.mjs    # статичні обкладинки → publish/out/*.png (tools/covers/cover.html)
-node tools/covers/record.mjs 9  # запис геймплею (dev-сервер + dev-хуки) → publish/out/raw/port.webm
+UI_PORT=5186 node tools/covers/record.mjs 9  # запис геймплею (власний Vite-сервер + dev-хуки) → publish/out/raw/port.webm
 tools/covers/videos.sh          # → publish/out/poki-animated-thumbnail-1080x1080.mp4
 ```
 
-`record.mjs` сам налаштовує сцену: Chain/Cryo протоколи, god mode, хвиля 20 з босом, додатковий натовп вірусів, весь текст прихований.
+Обкладинки (`cover.html`) показують те, що є тільки в цій грі: ядро в гекс-кристалі з 7 модулів у кольорах тегів (сет Overload із 3 світиться, зв'язок Overload+Firewall зварений як фузія), кільце Pulse, тіла вірусів (капсид, комета з джгутиками, гранований танк, фаг на ніжках, на портретній ще бос) над інфікованою територією; фон глибокий teal, не фіолетовий кіберпанк. Кольори з `src/render/palette.ts`, форми вірусів — порт `enemies()` із `src/render/textures.ts`: якщо там щось зміниться, онови і `cover.html`. Перевір читабельність у ~200 px (зменш PNG).
+
+`record.mjs` сам налаштовує сцену: boot-сектор (бажано Hot Start), Chain/Cryo протоколи в кристалі, god mode, хвиля 20 з босом, додатковий натовп вірусів, по одному Pulse у кожному з двох кліпів, які ріже `videos.sh`, весь текст і рамка кнопки PULSE приховані. Запис потребує ffmpeg від Playwright: якщо `record.mjs` пише «Executable doesn't exist … ffmpeg-1011», один раз запусти `node node_modules/playwright-core/cli.js install ffmpeg` (саме цей CLI, не `npx playwright`, бо той ставить іншу ревізію). Увесь цикл record + videos — близько хвилини.
 
 ## Poki
 
@@ -19,7 +21,7 @@ tools/covers/videos.sh          # → publish/out/poki-animated-thumbnail-1080x1
 |---|---|---|
 | Збірка | `dist/core-protocol-poki.zip` (410 KB, 9 файлів, `index.html` у корені) | без зовнішніх запитів, крім SDK (шрифти в збірці) ✅ |
 | Статична мініатюра | `publish/out/poki-thumbnail-1080x1080.png` (є і 800×800) | квадрат ≥ 628×628, без тексту і рамок ✅ |
-| Анімована мініатюра | `publish/out/poki-animated-thumbnail-1080x1080.mp4` | 1:1 ≥ 1080, ≥ 50 fps, 4–6 с (5 с), без звуку, ≤ 100 MB (2.7 MB), починається зі статичного арту ✅ |
+| Анімована мініатюра | `publish/out/poki-animated-thumbnail-1080x1080.mp4` | 1:1 ≥ 1080, ≥ 50 fps, 4–6 с (5 с), без звуку, ≤ 100 MB (3.3 MB), починається зі статичного арту ✅ |
 
 Вимоги, які вже виконано (перевірено фейковим SDK у `npm run ui` і `npm run ui:portal-build`, не на справжньому):
 - ✅ `gameLoadingFinished` один раз; `gameplayStart` лише після першого вводу; `gameplayStop` на паузі, оверлеях (вибір протоколу, меню, статистика), смерті й рекламі.
@@ -51,5 +53,5 @@ tools/covers/videos.sh          # → publish/out/poki-animated-thumbnail-1080x1
 
 - Phaser 3 — MIT.
 - Шрифти Orbitron і Chakra Petch — SIL OFL 1.1, тексти ліцензій у збірці: `fonts/OFL-*.txt`.
-- Арт — процедурний неон, власний.
+- Арт — процедурний неон, власний (обкладинки малює `tools/covers/cover.html` тим самим кодом форм, що й гра).
 - Гра не збирає персональних даних і не робить запитів, крім SDK порталу, тож політика конфіденційності не потрібна.
