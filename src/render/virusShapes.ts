@@ -4,12 +4,28 @@ import type { EnemyKind } from '../sim/data';
 
 const TAU = Math.PI * 2;
 
-/** Animation frames baked per kind (fast: flagella beat, ranged: phage legs flex). */
-export const FRAMES: Readonly<Record<EnemyKind, number>> = { basic: 1, fast: 3, tank: 1, ranged: 2, boss: 1 };
+/**
+ * Animation frames baked per kind (fast: flagella beat, ranged: the spitting cone's nozzle pumps, phage: legs flex,
+ * leech: the proboscis pumps).
+ */
+export const FRAMES: Readonly<Record<EnemyKind, number>> = { basic: 1, fast: 3, tank: 1, ranged: 2, boss: 1, leech: 2, spore: 1, carrier: 1, phage: 2 };
 /** Milliseconds per animation frame (0 = static). */
-const FRAME_MS: Readonly<Record<EnemyKind, number>> = { basic: 0, fast: 85, tank: 0, ranged: 260, boss: 0 };
+const FRAME_MS: Readonly<Record<EnemyKind, number>> = { basic: 0, fast: 85, tank: 0, ranged: 320, boss: 0, leech: 220, spore: 0, carrier: 0, phage: 260 };
 
-const BASE_KEY: Readonly<Record<EnemyKind, string>> = { basic: 'e_basic', fast: 'e_fast', tank: 'e_tank', ranged: 'e_ranged', boss: 'e_boss_head' };
+const BASE_KEY: Readonly<Record<EnemyKind, string>> = {
+  basic: 'e_basic',
+  fast: 'e_fast',
+  tank: 'e_tank',
+  ranged: 'e_ranged',
+  boss: 'e_boss_head',
+  leech: 'e_leech',
+  spore: 'e_spore',
+  carrier: 'e_carrier',
+  phage: 'e_phage',
+};
+
+/** Kinds whose body has a front (+x in the texture) that turns toward the core. */
+export const DIRECTIONAL: readonly EnemyKind[] = ['fast', 'ranged', 'boss', 'leech', 'phage'];
 
 /** Texture key of frame `f` of a kind: frame 0 is the plain key (`e_fast`), later frames add `_<f>`. */
 export function texKey(kind: EnemyKind, f = 0): string {
@@ -58,11 +74,42 @@ export function pose(kind: EnemyKind, now: number, id: number, spin: number, toC
       out.sy = p;
       break;
     }
-    case 'ranged':
+    case 'ranged': {
+      // The spitting cone: aims steadily, the body squeezes along its axis as the nozzle pumps.
+      const q = Math.sin(now / 160 + id);
+      out.rot = toCore + Math.sin(now / 420 + id) * 0.08;
+      out.sx = 1 + 0.05 * q;
+      out.sy = 1 - 0.04 * q;
+      break;
+    }
+    case 'phage':
       out.rot = toCore + Math.sin(now / 300 + id) * 0.2;
       out.sx = 1;
       out.sy = 1;
       break;
+    case 'leech': {
+      // A tick crawling: the head stays on the core, the body rocks a little side to side.
+      out.rot = toCore + Math.sin(now / 140 + id) * 0.12;
+      const p = 1 + 0.03 * Math.sin(now / 220 + id);
+      out.sx = p;
+      out.sy = 2 - p;
+      break;
+    }
+    case 'spore': {
+      // A soft puffball: slow wobbling breath (out of phase on the two axes), slow drift turn.
+      out.rot = now * 0.0003 * spin;
+      out.sx = 1 + 0.06 * Math.sin(now / 450 + id);
+      out.sy = 1 + 0.06 * Math.sin(now / 450 + id + 1.3);
+      break;
+    }
+    case 'carrier': {
+      // The armoured shell: the slowest turn of all and a faint heavy breath.
+      const p = 1 + 0.02 * Math.sin(now / 700 + id);
+      out.rot = now * 0.00012 * spin;
+      out.sx = p;
+      out.sy = p;
+      break;
+    }
     case 'boss': {
       out.rot = toCore;
       out.sx = 1;
@@ -85,14 +132,28 @@ export function bossMembrane(now: number, id: number): { scale: number; rot: num
 /** Fragment textures (`frag_<v>`, baked white): 0 capsid shell arc with a spike, 1 triangular plate, 2 droplet. */
 export const FRAG_VARIANTS = 3;
 /** Shell fragments per death (the brief: 3–5 for a virus; the boss bursts wider). */
-export const FRAG_COUNT: Readonly<Record<EnemyKind, number>> = { basic: 4, fast: 3, tank: 5, ranged: 4, boss: 10 };
+export const FRAG_COUNT: Readonly<Record<EnemyKind, number>> = { basic: 4, fast: 3, tank: 5, ranged: 4, boss: 10, leech: 3, spore: 5, carrier: 5, phage: 4 };
 const FRAG_KINDS: Readonly<Record<EnemyKind, readonly number[]>> = {
   basic: [0, 0, 2],
   fast: [2, 0],
   tank: [1, 1, 0],
-  ranged: [1, 2],
+  ranged: [2, 1],
   boss: [0, 1, 2],
+  leech: [2, 0],
+  spore: [2, 2, 0],
+  carrier: [1, 1, 1, 0],
+  phage: [1, 2],
 };
+
+/** Split burst (spore): how many spore puffs fly out of the dying parent, per copy. */
+export const SPLIT_PUFFS = 4;
+
+/** Leech glint: the carried Bits as a 0..1 fill of its glint (log-ish so a small theft still shows, never past 1). */
+export function glintLevel(carried: number, ownBits: number): number {
+  if (!(carried > 0)) return 0;
+  const k = carried / Math.max(1e-9, ownBits);
+  return Math.min(1, 0.35 + 0.65 * (k / (k + 4)));
+}
 
 export interface Frag {
   /** Direction of flight (rad). */

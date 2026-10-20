@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_DATA, type EnemyKind } from '../src/sim/data';
 import { ENEMY_COLOR, TAG_COLOR } from '../src/render/palette';
-import { animFrame, easeOut, type Frag, FRAG_COUNT, FRAG_VARIANTS, fragBudget, fragments, FRAMES, pose, texKey, bossMembrane } from '../src/render/virusShapes';
+import { animFrame, easeOut, type Frag, FRAG_COUNT, FRAG_VARIANTS, fragBudget, fragments, FRAMES, pose, texKey, bossMembrane, DIRECTIONAL, glintLevel } from '../src/render/virusShapes';
 
 const KINDS = Object.keys(DEFAULT_DATA.enemies) as EnemyKind[];
 const TAU = Math.PI * 2;
@@ -19,7 +19,8 @@ function lcg(seed: number): () => number {
 
 describe('virus texture frames', () => {
   it('every enemy kind has a body, frame 0 keeps the legacy key (BattleScene passes it to death bursts)', () => {
-    expect(KINDS.sort()).toEqual(['basic', 'boss', 'fast', 'ranged', 'tank']);
+    expect([...KINDS].sort()).toEqual(['basic', 'boss', 'carrier', 'fast', 'leech', 'phage', 'ranged', 'spore', 'tank']);
+    for (const k of ['leech', 'spore', 'carrier', 'phage'] as const) expect(texKey(k)).toBe(`e_${k}`);
     expect(texKey('basic')).toBe('e_basic');
     expect(texKey('boss')).toBe('e_boss_head');
     expect(texKey('fast', 2)).toBe('e_fast_2');
@@ -43,8 +44,9 @@ describe('virus texture frames', () => {
 
 describe('idle pose', () => {
   const out = { rot: 0, sx: 1, sy: 1 };
-  it('directional bodies (fast, ranged, boss) face the core within a small sway', () => {
-    for (const k of ['fast', 'ranged', 'boss'] as const) {
+  it('directional bodies (fast, ranged, leech, phage, boss) face the core within a small sway', () => {
+    expect([...DIRECTIONAL].sort()).toEqual(['boss', 'fast', 'leech', 'phage', 'ranged']);
+    for (const k of DIRECTIONAL) {
       for (let t = 0; t < 3000; t += 97) {
         const p = pose(k, t, 5, 1, 1.0, out);
         expect(Math.abs(p.rot - 1.0)).toBeLessThanOrEqual(0.21);
@@ -64,9 +66,25 @@ describe('idle pose', () => {
     }
   });
 
-  it('the tank turns slower than the basic (it reads as heavier)', () => {
+  it('the tank turns slower than the basic and the carrier slowest of all (they read as heavier)', () => {
     const at = (k: EnemyKind) => pose(k, 10000, 0, 1, 0, out).rot;
     expect(Math.abs(at('tank'))).toBeLessThan(Math.abs(at('basic')));
+    expect(Math.abs(at('carrier'))).toBeLessThan(Math.abs(at('tank')));
+  });
+
+  it('the spore breathes on both axes out of phase (a soft puffball, not a rigid shell)', () => {
+    let differ = 0;
+    for (let t = 0; t < 3000; t += 101) if (Math.abs(pose('spore', t, 2, 1, 0, out).sx - out.sy) > 0.01) differ++;
+    expect(differ).toBeGreaterThan(5);
+  });
+
+  it('the leech glint grows with the carried Bits, is off at 0 and never exceeds 1', () => {
+    expect(glintLevel(0, 2)).toBe(0);
+    const a = glintLevel(1, 2);
+    const b = glintLevel(20, 2);
+    expect(a).toBeGreaterThan(0.3);
+    expect(b).toBeGreaterThan(a);
+    expect(glintLevel(1e300, 2)).toBeLessThanOrEqual(1);
   });
 
   it('the boss membrane breathes and its nucleus glow stays visible', () => {

@@ -24,16 +24,24 @@ export const ENEMY_COLOR = {
   basic: MAGENTA,
   fast: 0xc4ff3a, // acid lime
   tank: 0xff4f6a, // infected rose
-  ranged: 0xd64bff, // orchid
+  ranged: 0x3dff52, // acid green (B2: the spitting cone; the orchid phage body went to `phage`)
   boss: CRIMSON,
+  leech: 0x4a8cff, // tick blue (carries the run's Bits)
+  spore: 0xff3d9a, // puffball pink
+  carrier: 0xb9c2ff, // pale steel shell (low saturation: reads as armour, not as a tag)
+  phage: 0xd64bff, // orchid bacteriophage
 } as const;
 /** Second tone per virus: nucleus / genome / membrane highlights. */
 export const ENEMY_ACCENT = {
   basic: 0xffb3f0,
   fast: 0xf4ffb0,
   tank: 0xffc2a8,
-  ranged: 0x9ff2ff,
+  ranged: 0xe0ffb0,
   boss: 0xffd0dc,
+  leech: 0xc8dcff,
+  spore: 0xffd0e8,
+  carrier: 0xffffff,
+  phage: 0x9ff2ff,
 } as const;
 /** Dark body fill behind every virus (reads against the grid under normal blending). */
 export const VIRUS_BODY = 0x14061a;
