@@ -27,7 +27,7 @@ export const ENEMY_COLOR = {
   ranged: 0x3dff52, // acid green (B2: the spitting cone; the orchid phage body went to `phage`)
   boss: CRIMSON,
   leech: 0x4a8cff, // tick blue (carries the run's Bits)
-  spore: 0xff3d9a, // puffball pink
+  spore: 0xffc4ec, // pale puffball (whitish pink: lighter than the magenta basic, so the two round bodies differ)
   carrier: 0xb9c2ff, // pale steel shell (low saturation: reads as armour, not as a tag)
   phage: 0xd64bff, // orchid bacteriophage
 } as const;
@@ -39,7 +39,7 @@ export const ENEMY_ACCENT = {
   ranged: 0xe0ffb0,
   boss: 0xffd0dc,
   leech: 0xc8dcff,
-  spore: 0xffd0e8,
+  spore: 0xff4fbf,
   carrier: 0xffffff,
   phage: 0x9ff2ff,
 } as const;

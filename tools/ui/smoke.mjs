@@ -23,6 +23,10 @@ async function showcase(h) {
     cp.spawn('tank', 2, 22);
     cp.spawn('fast', 3, 52);
     cp.spawn('basic', 5, 9);
+    cp.spawn('leech', 2, 30);
+    cp.spawn('spore', 2, 60);
+    cp.spawn('carrier', 1, 44);
+    cp.spawn('phage', 2, 16);
   });
 }
 
