@@ -55,6 +55,8 @@ describe('spawn ring vs visible arena', () => {
       expect(ringPx - halfLong).toBeLessThan(data.enemies.basic.speed * L.scale);
       expect(data.config.spawnRadius).toBeGreaterThan(data.stats.stats.range.base);
       expect(data.config.spawnRadius).toBeGreaterThan(data.enemies.ranged.standoff);
+      // Every kind with a standoff (ranged, phage) walks in from the ring before it stops.
+      for (const def of Object.values(data.enemies)) expect(data.config.spawnRadius).toBeGreaterThan(def.standoff);
     });
 
     it(`${o}: from any of the 64 spawn directions a basic is visible within ${MAX_SECONDS} s`, () => {

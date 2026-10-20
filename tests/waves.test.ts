@@ -55,6 +55,23 @@ describe('waves', () => {
     expect(bossSpawns).toBe(1);
   });
 
+  it('the new kinds (leech, spore, carrier, phage) join by wave 20 and basic stays the most common kind', () => {
+    const data = tough();
+    const w = createWorld(data, { seed: 9, tier: 1, protocols: false });
+    const events = stepN(w, data, 1 + 19 * 900 + 400);
+    const count: Record<string, number> = {};
+    let wave = 0;
+    for (const e of events) {
+      if (e.type === 'waveStart') wave = e.wave;
+      // Only the wave's own draws: spore copies come from a kill, not the spawn pick.
+      if (e.type === 'spawn' && !(w.enemies.find((x) => x.id === e.id)?.gen ?? 0)) count[e.kind] = (count[e.kind] ?? 0) + 1;
+    }
+    for (const k of ['leech', 'spore', 'carrier', 'phage']) expect(count[k] ?? 0).toBeGreaterThan(0);
+    const max = Math.max(...Object.values(count));
+    expect(count.basic).toBe(max);
+    expect(wave).toBe(20);
+  });
+
   it('enemiesPerWave grows and respects the cap', () => {
     const data = testData({ config: { maxEnemiesPerWave: 10 } });
     expect(enemiesPerWave(data, 1)).toBe(7);

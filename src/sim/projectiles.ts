@@ -9,6 +9,7 @@ import type { MarkValues } from './perkData';
 import type { Enemy, Projectile, World } from './state';
 import { arenaRadius, cleanse, farMul, groundAt } from './territory';
 import type { CoreStats } from './stats';
+import { auraMul, carriedReturn, splitSpore } from './viruses';
 
 /** Below this distance from the core the outward direction is undefined; knockback uses directions[0]. */
 const CENTER_EPS = 1e-9;
@@ -77,6 +78,9 @@ export function hitEnemy(
   events: SimEvent[],
 ): void {
   if (e.hp <= 0 || !(damage > 0)) return;
+  // A Carrier's aura (B2) shields the viruses around it from every source.
+  const aura = auraMul(w, data, e);
+  if (aura < 1) damage = clampValue(damage * aura);
   // Ground under the target (spec 2026-10-14 §B): ⚡ cells amplify every hit, 🔗 cells bounces and lightning.
   const ground = groundAt(w, data, prof.shape.sectors, e.x, e.y);
   if (ground === 'overload') damage = clampValue(damage * data.territory.overloadDamage);
@@ -122,15 +126,18 @@ export function hitEnemy(
       }
     }
     const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how * markEnergy);
-    const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far * markBits);
+    // A Leech pays back what it stole × returnMul, outside every Bits multiplier.
+    const returned = carriedReturn(data, e);
+    const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far * markBits + returned);
     const keys = data.enemies[e.kind].keys + (boss ? prof.bossKeys : 0);
     w.energy = clampValue(w.energy + energy);
     w.bits = clampValue(w.bits + bits);
     w.keys = clampValue(w.keys + keys);
     w.kills += 1;
     cleanse(w, data, e);
-    events.push({ type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys });
+    events.push(returned > 0 ? { type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys, returned } : { type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys });
     if (m !== null) payMark(w, data, m, e, energy, bits, events);
+    splitSpore(w, data, e, events);
     return;
   }
   // At most one knockback per enemy per cooldown: Multishot volleys must not pin the whole crowd.
