@@ -67,7 +67,7 @@ describe('a live session log replays exactly', () => {
       if (s.picking) {
         // Every other pick is resolved apply-now (as the overlay does), the rest by the next step.
         if (i % 2 === 0) s.queue({ type: 'reroll', via: 'ad' });
-        s.queue({ type: 'pickPerk', index: i % 3 });
+        s.queue(s.world.bootOffer.length > 0 ? { type: 'pickBoot', index: i % 3 } : { type: 'pickPerk', index: i % 3 });
         if (i % 2 === 0) s.applyPendingNow(() => {});
       }
       const stat = STAT_IDS[i++ % STAT_IDS.length]!;
@@ -80,6 +80,7 @@ describe('a live session log replays exactly', () => {
     expect(s.world.dead).toBe(true);
     expect(hashWorld(r.world)).toBe(hashWorld(s.world));
     expect(s.log.length).toBeGreaterThan(50);
-    expect(s.world.picks).toBeGreaterThanOrEqual(3);
+    expect(s.world.boot).not.toBe(''); // boot pick (stands in for the wave 1–3 picks), then protocol picks
+    expect(s.world.picks).toBeGreaterThanOrEqual(1);
   });
 });

@@ -68,17 +68,42 @@ async function minTextCheck(h, label) {
 
 const centre = (r) => [r.x + r.w / 2, r.y + r.h / 2];
 
+/** Index of the first offered card that adds a new module (not a stack of a held perk). */
+const newCard = (s) => Math.max(0, s.offer.findIndex((id) => !(id in s.perks)));
+
+/** If the run-start boot pick is open, a real tap on boot card `i`; returns once it closed. */
+async function takeBoot(h, i = 0) {
+  const s = await h.state();
+  if (s.bootOffer.length === 0) return s;
+  await h.p.waitForTimeout(500);
+  const cards = (await h.call('ui')).pick.cards;
+  await h.tapLogical(...centre(cards[i]));
+  return (await h.waitFor((x) => x.bootOffer.length === 0 && (x.offer.length > 0 || !x.pickOpen), 2000, 50)).s;
+}
+
+/** The boot sector stands in for the wave 1–3 picks (boot.json skipPicks): opens a protocol pick now (dev hook). */
+async function openPick(h) {
+  await h.call('pickNow');
+  return (await h.waitFor((x) => x.pickOpen && x.offer.length > 0, 2000, 50)).s;
+}
+
 async function bootChecks(h, label, orientation) {
   const s0 = await h.state();
   check(results, `${label}: boots into Battle (${orientation})`, s0.scene === 'Battle' && s0.orientation === orientation, s0);
-  // B1: the run opens on the wave-1 protocol pick (tick 0); a real tap on the first card installs it.
-  const open0 = await h.waitFor((s) => s.pickOpen, 3000, 50);
-  metrics[`${label}.firstPickMs`] = open0.ms;
-  check(results, `${label}: the wave-1 protocol pick is open at start`, open0.ok && open0.s.tick === 0 && open0.s.offer.length === 3, open0.s);
+  // B1: the run opens on the boot sector pick (tick 0), then the wave-1 protocol pick; real taps on the cards.
+  const boot0 = await h.waitFor((s) => s.pickOpen, 3000, 50);
+  metrics[`${label}.firstPickMs`] = boot0.ms;
+  check(results, `${label}: the boot sector pick is open at start`, boot0.ok && boot0.s.tick === 0 && boot0.s.bootOffer.length === 3 && boot0.s.offer.length === 0, boot0.s);
+  await h.p.waitForTimeout(450);
+  await minTextCheck(h, `${label} boot overlay`);
+  await h.shot(`boot-${label}`);
+  const b1 = await takeBoot(h, 0);
+  check(results, `${label}: a boot card installs its 3 modules (set 2 on) and closes the pick`, b1.tick <= 10 && b1.boot !== '' && b1.crystal.length === 3 && Object.values(b1.setTiers).some((v) => v >= 2) && !b1.pickOpen, b1);
+  const open0 = { s: await openPick(h) };
   await minTextCheck(h, `${label} pick overlay`);
   await h.p.waitForTimeout(400);
   const cards = (await h.call('ui')).pick.cards;
-  await h.tapLogical(...centre(cards[0]));
+  await h.tapLogical(...centre(cards[newCard(open0.s)]));
   // Crystal placement step (spec 2026-10-14 §A): free hexes light up; a tap on the pulsing auto hex bolts it on.
   const placing = await h.waitFor((s) => s.placing, 1500, 50);
   const pl = (await h.call('ui')).place;
@@ -86,8 +111,8 @@ async function bootChecks(h, label, orientation) {
   await h.p.waitForTimeout(250);
   if (pl?.autoSlot) await h.tapLogical(pl.autoSlot[0], pl.autoSlot[1]);
   const took = await h.waitFor((s) => !s.pickOpen, 1500, 50);
-  check(results, `${label}: tapping a hex bolts the module there`, took.ok && took.s.crystal.length === 1, took.s.crystal);
-  check(results, `${label}: tapping a card installs it`, took.ok && took.s.picks === 1 && Object.keys(took.s.perks).length === 1, took.s);
+  check(results, `${label}: tapping a hex bolts the module there`, took.ok && took.s.crystal.length === 4, took.s.crystal);
+  check(results, `${label}: tapping a card installs it`, took.ok && took.s.picks === 1 && Object.keys(took.s.perks).length === 4, took.s);
   // The editor stays open in Arrange mode until DONE; then the battle resumes.
   const ed = await h.call('editor');
   check(results, `${label}: the editor switches to Arrange after placing`, ed?.open && ed.mode === 'arrange', ed);
@@ -107,8 +132,10 @@ async function arenaTap(h) {
   await h.tapLogical(a.x + a.w * 0.15, a.y + a.h * 0.85);
 }
 
-/** The first input of a run is the wave-1 protocol pick: a real tap on card 0 (gameplay starts after it). */
+/** The first input of a run is the boot sector pick: a real tap on card 0 (gameplay starts after it; any open protocol pick too). */
 async function firstInput(h) {
+  const s = await takeBoot(h);
+  if (!s.pickOpen) return;
   await h.p.waitForTimeout(400);
   const cards = (await h.call('ui')).pick.cards;
   await h.tapLogical(cards[0].x + cards[0].w / 2, cards[0].y + cards[0].h / 2);
@@ -744,7 +771,9 @@ const scenarios = {
     for (const [device, label] of [['phone', 'portrait'], ['desktop', 'landscape']]) {
       const h = await open(browser, srv.base, device, '?seed=21');
       h.autoPick = false;
-      const s0 = (await h.waitFor((s) => s.pickOpen, 3000, 50)).s;
+      await h.waitFor((s) => s.pickOpen, 3000, 50);
+      await takeBoot(h);
+      const s0 = await openPick(h);
       await h.p.waitForTimeout(450);
       await h.shot(`pick-${label}`);
       const ui = (await h.call('ui')).pick;
@@ -757,7 +786,7 @@ const scenarios = {
       await h.tapLogical(...centre(ui.boost));
       await h.p.waitForFunction(() => window.__cp.game.scene.getScene('Battle').session.world.boost.from > 0, null, { timeout: 5000 }).catch(() => {});
       const b = await h.p.evaluate(() => window.__cp.game.scene.getScene('Battle').session.world.boost);
-      check(results, `${label} protocols: BOOST (rewarded) arms ×Energy for the next waves`, b.from === 1 && b.until > b.from, b);
+      check(results, `${label} protocols: BOOST (rewarded) arms ×Energy for the next waves`, b.from >= 1 && b.from <= 2 && b.until > b.from, b);
       await h.p.waitForTimeout(400); // the refreshed overlay ignores taps for 150 ms (double-tap guard)
       await h.tapLogical(...centre(ui.cards[1]));
       await placeAuto(h);
@@ -844,9 +873,11 @@ const scenarios = {
       const h = await open(browser, srv.base, device, '?seed=3');
       h.autoPick = false;
       await h.waitFor((s) => s.pickOpen, 3000, 50);
+      await takeBoot(h);
+      const sb = await openPick(h);
       await h.p.waitForTimeout(450);
-      // Place: the first card adds a module, so the editor opens in Place mode with a readout.
-      await h.tapLogical(...centre((await h.call('ui')).pick.cards[0]));
+      // Place: a card that adds a module opens the editor in Place mode with a readout.
+      await h.tapLogical(...centre((await h.call('ui')).pick.cards[newCard(sb)]));
       await h.waitFor((s) => s.placing, 1500, 50);
       await h.p.waitForTimeout(250);
       const e0 = await h.call('editor');
@@ -859,9 +890,9 @@ const scenarios = {
       const slot = pl.free.find(([q, r]) => !auto || q !== auto[0] || r !== auto[1]) ?? pl.free[0];
       const pt = await h.call('slotScreen', slot[0], slot[1]);
       await h.tapLogical(pt[0], pt[1]);
-      const placed = await h.waitFor((s) => !s.pickOpen && s.crystal.length === 1, 1500, 50);
+      const placed = await h.waitFor((s) => !s.pickOpen && s.crystal.length === sb.crystal.length + 1, 1500, 50);
       const e1 = await h.call('editor');
-      check(results, `${label} editor: a slot tap places the module there and switches to Arrange`, placed.ok && placed.s.crystal[0][0] === slot[0] && placed.s.crystal[0][1] === slot[1] && e1.mode === 'arrange', { slot, crystal: placed.s.crystal, e1 });
+      check(results, `${label} editor: a slot tap places the module there and switches to Arrange`, placed.ok && placed.s.crystal.some(([q, r]) => q === slot[0] && r === slot[1]) && e1.mode === 'arrange', { slot, crystal: placed.s.crystal, e1 });
       await tapDone(h);
       const run = await h.state();
       check(results, `${label} editor: DONE closes it and the battle resumes`, !(await h.call('editor')).open && !run.paused, run.paused);

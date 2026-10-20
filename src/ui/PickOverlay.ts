@@ -1,22 +1,27 @@
 // Protocol pick overlay (spec §2.4): "CHOOSE A PROTOCOL" / "WAVE N CLEARED", 3–4 cards with the tag glyph,
 // rarity frame, effect lines from data, NEW / LV badge and set progress; REROLL (free with the lab node,
 // else a rewarded ad) and BOOST (rewarded: ×Energy for the next waves). The sim waits in its `pick` phase.
+// Boot mode (uniqueness plan item 1): at run start, large boot-sector cards, each with its mini-crystal,
+// the set-2 bonus it switches on and the fusion it points to; no REROLL / BOOST.
 
 import Phaser from 'phaser';
 import { CYAN, ENERGY, ENERGY_CSS, LOCKED, PANEL_FILL, RARITY_COLOR, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM } from '../render/palette';
 import { DEPTH } from '../render/WorldView';
-import type { GameData } from '../sim/data';
-import { boostActive, boostAvailable, tagCounts } from '../sim/perks';
-import type { Tag } from '../sim/perkData';
+import type { BootSector, GameData } from '../sim/data';
+import { hexDist, hexToPixel, isNeighbour, ring } from '../sim/hex';
+import { boostActive, boostAvailable, bootSector, tagCounts } from '../sim/perks';
+import { fusionKey, type Tag } from '../sim/perkData';
 import type { World } from '../sim/state';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
-import { perkLines, pickBadges, setProgress, upgradeLines } from './perkText';
-import { pickGeometry, type PickGeometry } from './pickLayout';
+import { perkLines, pickBadges, setProgress, setTierLines, upgradeLines } from './perkText';
+import { type BootGeometry, bootGeometry, pickGeometry, type PickGeometry } from './pickLayout';
 import { drawTagIcon } from './tagIcon';
 
 export interface PickHandlers {
   pick(index: number): void;
+  /** Boot mode: takes boot sector `index`. */
+  boot(index: number): void;
   reroll(): void;
   boost(): void;
 }
@@ -52,6 +57,9 @@ export class PickOverlay {
   /** Locks input briefly after (re)showing so a double tap cannot pick by accident. */
   private armedAt = 0;
   private busy = false;
+  /** The open pick is the boot pick (cards are boot sectors). */
+  private bootMode = false;
+  private readonly g0: PickGeometry;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -66,6 +74,7 @@ export class PickOverlay {
     this.blocker = scene.add.zone(L.w / 2, L.h / 2, L.w, L.h).setDepth(D).setInteractive();
     this.geo = pickGeometry(L, data.perks.offer.sizeLab);
     const g0 = pickGeometry(L, data.perks.offer.size);
+    this.g0 = g0;
     this.title = text(scene, L.w / 2, g0.headerY, '', g0.titleSize, { font: 'title', weight: '900', glow: '#22e5ff', blur: 16 }).setOrigin(0.5).setDepth(D + 0.3);
     this.sub = text(scene, L.w / 2, g0.subY, '', g0.subSize, { color: TEXT_DIM }).setOrigin(0.5).setDepth(D + 0.3);
     for (let i = 0; i < data.perks.offer.sizeLab; i++) this.cards.push(this.makeCard(i));
@@ -93,7 +102,7 @@ export class PickOverlay {
       zone: s.add.zone(0, 0, 10, 10).setDepth(D + 0.5).setInteractive({ useHandCursor: true }),
       r: { x: 0, y: 0, w: 0, h: 0 },
     };
-    card.zone.on('pointerdown', () => this.guard(() => this.h.pick(i)));
+    card.zone.on('pointerdown', () => this.guard(() => (this.bootMode ? this.h.boot(i) : this.h.pick(i))));
     return card;
   }
 
@@ -120,19 +129,23 @@ export class PickOverlay {
     return this.boostBtn.r;
   }
 
-  /** Shows (or refreshes) the overlay for the world's open offer. */
+  /** Shows (or refreshes) the overlay for the world's open offer (the boot offer while it is open). */
   show(w: World, now: number): void {
+    if (w.bootOffer.length > 0) return this.showBoot(w, now);
     const key = `${w.picks}:${w.rerolls}:${w.offer.join(',')}:${w.boost.from}`;
     if (this.visible && key === this.shownKey) return;
     const fresh = !this.visible || !this.shownKey.startsWith(`${w.picks}:`);
     this.shownKey = key;
     this.visible = true;
+    this.bootMode = false;
     this.armedAt = now + (fresh ? 350 : 150);
     this.n = w.offer.length;
     const geo = pickGeometry(this.L, this.n);
     this.geo = geo;
     this.dim.setVisible(true);
     this.blocker.setInteractive();
+    this.title.setFontSize(this.g0.titleSize).setPosition(this.L.w / 2, this.g0.headerY);
+    this.sub.setFontSize(this.g0.subSize).setPosition(this.L.w / 2, this.g0.subY);
     this.title.setText(w.picks === 0 && w.wave <= 1 ? 'CHOOSE A PROTOCOL' : `WAVE ${w.wave} CLEARED`).setVisible(true);
     this.sub.setText('Install one protocol · sets unlock at 2 / 4 / 6').setVisible(true);
     const counts = tagCounts(w, this.data);
@@ -171,6 +184,145 @@ export class PickOverlay {
     }
   }
 
+  // boot
+  /** Boot mode: the boot offer as large cards (mini-crystal, blurb, set-2 bonus, fusion hint). */
+  private showBoot(w: World, now: number): void {
+    const key = `boot:${w.bootOffer.join(',')}`;
+    if (this.visible && key === this.shownKey) return;
+    const fresh = !this.visible || !this.bootMode;
+    this.shownKey = key;
+    this.visible = true;
+    this.bootMode = true;
+    this.armedAt = now + 450;
+    this.n = w.bootOffer.length;
+    const geo = bootGeometry(this.L, this.n);
+    this.dim.setVisible(true);
+    this.blocker.setInteractive();
+    this.title.setFontSize(geo.titleSize).setPosition(this.L.w / 2, geo.headerY).setText('CHOOSE A BOOT SECTOR').setVisible(true);
+    const mods = this.data.boot.sectors[0]?.modules.length ?? 0;
+    this.sub.setFontSize(geo.subSize).setPosition(this.L.w / 2, geo.subY).setText(`The crystal starts with ${mods} modules · their set is on from wave 1`).setVisible(true);
+    for (let i = 0; i < this.cards.length; i++) {
+      const c = this.cards[i]!;
+      const sector = i < this.n ? bootSector(this.data, w.bootOffer[i]!) : undefined;
+      if (sector === undefined) {
+        this.setCardVisible(c, false);
+        continue;
+      }
+      this.fillBoot(c, geo, geo.cards[i]!, sector);
+      this.setCardVisible(c, true);
+    }
+    this.rerollBtn.setVisible(false);
+    this.boostBtn.setVisible(false);
+    if (fresh) {
+      const targets: Phaser.GameObjects.GameObject[] = [];
+      for (let i = 0; i < this.n; i++) {
+        const c = this.cards[i]!;
+        targets.push(c.g, c.tag, c.name, c.rarity, c.badge, c.lines, c.progress);
+        if (c.frame) targets.push(c.frame);
+      }
+      this.scene.tweens.add({ targets, alpha: { from: 0, to: 1 }, duration: 320 });
+      this.scene.tweens.add({ targets: [this.dim, this.title, this.sub], alpha: { from: 0, to: 1 }, duration: 220 });
+    }
+  }
+
+  // boot
+  private fillBoot(c: Card, geo: BootGeometry, r: Rect, s: BootSector): void {
+    const tag = s.tag;
+    const tc = TAG_COLOR[tag];
+    c.r = r;
+    const key = `${r.x},${r.y},${r.w}x${r.h}:boot:${tag}`;
+    if (c.frameKey !== key) {
+      c.frame?.destroy();
+      c.frame = panel(this.scene, r, D + 0.1, { fill: PANEL_FILL, fillA: 0.97, edge: tc, cut: 22, lw: 3, blur: 16 });
+      c.frameKey = key;
+    }
+    c.zone.setPosition(r.x + r.w / 2, r.y + r.h / 2).setSize(r.w, r.h);
+    if (c.zone.input) c.zone.input.hitArea.setSize(r.w, r.h);
+    const g = c.g.clear();
+    const cx = r.x + geo.crystal.dx;
+    const cy = r.y + geo.crystal.dy;
+    this.drawMiniCrystal(g, s, cx, cy, geo.hexSize);
+    const tagName = this.data.sets.tags[tag].name.toUpperCase();
+    const partner = this.data.sets.tags[s.partner].name.toUpperCase();
+    const fusion = this.data.sets.fusions[fusionKey(tag, s.partner)]?.name ?? partner;
+    const set2 = this.data.sets.tiers[0]!;
+    const bonus = setTierLines(this.data, tag, set2).join(' · ');
+    const modules = s.modules.map((m) => this.data.perks.perks[m.perk]!.name).join(' · ');
+    const footer = `SET ${set2} ON: ${bonus}\n+ ${partner} beside it → ${fusion}`;
+    const pad = geo.horizontal ? 26 : 20;
+    const rad = (this.data.crystal.maxRing + 1) * 1.74 * geo.hexSize;
+    c.tag.setText(tagName).setColor(TAG_CSS[tag]).setFontSize(geo.smallSize);
+    c.rarity.setText('').setFontSize(geo.smallSize);
+    c.name.setText(s.name.toUpperCase()).setColor(TAG_CSS[tag]).setFontSize(geo.nameSize);
+    c.lines.setFontSize(geo.lineSize).setColor(TEXT);
+    c.progress.setFontSize(geo.smallSize).setColor(TAG_CSS[tag]);
+    if (geo.horizontal) {
+      const tx = r.x + geo.crystal.dx + rad + 18;
+      const tw = r.x + r.w - pad - tx;
+      c.tag.setOrigin(0.5, 0).setPosition(cx, Math.min(r.y + r.h - geo.smallSize - 10, cy + rad - 6));
+      c.name.setOrigin(0, 0).setPosition(tx, r.y + 18);
+      if (c.name.width > tw) c.name.setFontSize(Math.max(this.L.minFont, Math.floor((geo.nameSize * tw) / c.name.width)));
+      c.lines.setText(s.blurb).setOrigin(0, 0).setAlign('left').setPosition(tx, r.y + 18 + geo.nameSize + 12).setWordWrapWidth(tw);
+      c.progress.setText(footer).setOrigin(0, 1).setAlign('left').setPosition(tx, r.y + r.h - 16).setWordWrapWidth(tw);
+    } else {
+      const tw = r.w - pad * 2;
+      c.tag.setOrigin(0.5, 0).setPosition(cx, cy + rad + 2);
+      c.name.setOrigin(0.5, 0).setAlign('center').setPosition(cx, c.tag.y + geo.smallSize + 10);
+      c.lines.setText(`${s.blurb}\n${modules}`).setOrigin(0.5, 0).setAlign('center').setPosition(cx, c.name.y + geo.nameSize + 12).setWordWrapWidth(tw);
+      c.progress.setText(footer).setOrigin(0.5, 1).setAlign('center').setPosition(cx, r.y + r.h - 18).setWordWrapWidth(tw);
+    }
+    // Sticker: BOOT, top-left corner.
+    c.badge.setText('BOOT').setColor('#03050d').setFontSize(geo.smallSize);
+    const bw = c.badge.width + 18;
+    const bh = c.badge.height + 4;
+    const bx = r.x + 14;
+    const by = r.y + 10;
+    g.fillStyle(tc, 0.95).fillRoundedRect(bx, by, bw, bh, 6);
+    c.badge.setOrigin(0.5, 0.5).setPosition(bx + bw / 2, by + bh / 2);
+  }
+
+  // boot
+  /**
+   * The sector's crystal in miniature: the core block, empty hexes out to maxRing, its modules in the tag colour
+   * with their glyph, and one free hex beside the cluster marked in the partner's colour (the fusion hint).
+   */
+  private drawMiniCrystal(g: Phaser.GameObjects.Graphics, s: BootSector, cx: number, cy: number, size: number): void {
+    const cr = this.data.crystal;
+    const hexes: [number, number][] = [[0, 0]];
+    for (let k = 1; k <= cr.maxRing; k++) hexes.push(...ring(k));
+    const taken = (q: number, r: number) => s.modules.some((m) => m.slot[0] === q && m.slot[1] === r);
+    const hint = hexes.find(([q, r]) => hexDist(q, r) > cr.coreRing && !taken(q, r) && s.modules.some((m) => isNeighbour(q, r, m.slot[0], m.slot[1])));
+    const pts = (q: number, r: number, k: number): Phaser.Types.Math.Vector2Like[] => {
+      const [x, y] = hexToPixel(q, r, size);
+      const out: Phaser.Types.Math.Vector2Like[] = [];
+      for (let i = 0; i < 6; i++) {
+        const a = ((60 * i + 30) * Math.PI) / 180;
+        out.push({ x: cx + x + Math.cos(a) * size * k, y: cy + y + Math.sin(a) * size * k });
+      }
+      return out;
+    };
+    for (const [q, r] of hexes) {
+      const p = pts(q, r, 0.9);
+      if (hexDist(q, r) <= cr.coreRing) g.fillStyle(CYAN, 0.22).fillPoints(p, true).lineStyle(1.5, CYAN, 0.55).strokePoints(p, true);
+      else if (!taken(q, r)) g.lineStyle(1, LOCKED, 0.45).strokePoints(p, true);
+    }
+    if (hint) {
+      const ptc = TAG_COLOR[s.partner];
+      const p = pts(hint[0], hint[1], 0.9);
+      g.fillStyle(ptc, 0.14).fillPoints(p, true).lineStyle(2, ptc, 0.9).strokePoints(p, true);
+      const [hx, hy] = hexToPixel(hint[0], hint[1], size);
+      const k = size * 0.35;
+      g.lineBetween(cx + hx - k, cy + hy, cx + hx + k, cy + hy).lineBetween(cx + hx, cy + hy - k, cx + hx, cy + hy + k);
+    }
+    const tc = TAG_COLOR[s.tag];
+    for (const m of s.modules) {
+      const p = pts(m.slot[0], m.slot[1], 0.92);
+      g.fillStyle(tc, 0.85).fillPoints(p, true).lineStyle(2, 0xe8fbff, 0.8).strokePoints(p, true);
+      const [x, y] = hexToPixel(m.slot[0], m.slot[1], size);
+      drawTagIcon(g, s.tag, cx + x, cy + y, size * 1.1, 0x03050d);
+    }
+  }
+
   private setCardVisible(c: Card, v: boolean): void {
     c.frame?.setVisible(v);
     for (const o of [c.g, c.tag, c.name, c.rarity, c.badge, c.lines, c.progress]) o.setVisible(v);
@@ -201,6 +353,8 @@ export class PickOverlay {
     c.zone.setPosition(r.x + r.w / 2, r.y + r.h / 2).setSize(r.w, r.h);
     if (c.zone.input) c.zone.input.hitArea.setSize(r.w, r.h);
     const g = c.g.clear();
+    for (const t of [c.tag, c.rarity, c.badge, c.progress]) t.setFontSize(geo.smallSize);
+    c.lines.setFontSize(geo.lineSize);
     const stacks = w.perks[id] ?? 0;
     const prog = setProgress(this.data, tag, counts[tag] + 1);
     const line = stacks === 0 ? perkLines(this.data, id).join('\n') : upgradeLines(this.data, id, stacks).join('\n');
@@ -265,6 +419,7 @@ export class PickOverlay {
 
   hide(): void {
     this.visible = false;
+    this.bootMode = false;
     this.shownKey = '';
     this.dim.setVisible(false);
     this.blocker.disableInteractive();

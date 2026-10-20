@@ -1,6 +1,7 @@
 {
-  "startWave": 20,
-  "every": 10,
+  "startWave": 5,
+  "every": 8,
   "maxLevel": 5,
+  "firstLevelScale": 0.5,
   "perLevel": { "overload": 0.12, "cryo": 0.12, "chain": 0.12, "mining": 0.08, "firewall": 0.12 }
 }

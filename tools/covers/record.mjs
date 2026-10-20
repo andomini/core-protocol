@@ -28,9 +28,11 @@ await p.evaluate(async () => {
   const pick = () => {
     const w = b.session.world;
     if (w.phase !== 'pick') return;
+    if (w.bootOffer.length > 0) return void b.command({ type: 'pickBoot', index: Math.max(0, w.bootOffer.indexOf('arcLoader')) }); // boot: Chain first
     const i = Math.max(0, w.offer.findIndex((id) => want.includes(id)));
     b.command({ type: 'pickPerk', index: i });
   };
+  pick();
   pick();
   b.devGod = true;
   b.devLevels(7);

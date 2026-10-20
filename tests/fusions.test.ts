@@ -288,7 +288,7 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
   });
 
   it('moves are commands: a run with swaps at its picks replays to the same world', () => {
-    const opts = { seed: 12, tier: 1 };
+    const opts = { seed: 12, tier: 1, boot: false }; // protocol picks from wave 1 (a boot stands in for 1â€“3)
     const w = createWorld(D, opts);
     const log: LoggedCommand[] = [];
     const events: SimEvent[] = [];
@@ -302,7 +302,7 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
           cmds.push({ type: 'moveModule', from: [a.q, a.r], to: [b.q, b.r] });
           moves++;
         }
-        cmds.push({ type: 'pickPerk', index: 0 });
+        cmds.push(w.bootOffer.length > 0 ? { type: 'pickBoot', index: 0 } : { type: 'pickPerk', index: 0 });
       }
       for (const cmd of cmds) log.push({ tick: w.tick, cmd });
       step(w, D, cmds, events);

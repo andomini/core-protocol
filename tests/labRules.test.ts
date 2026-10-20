@@ -31,8 +31,8 @@ describe('lab parameters (RunOptions)', () => {
     let rare0 = 0;
     let rare1 = 0;
     for (let seed = 1; seed <= 300; seed++) {
-      const a = createWorld(d, { seed, tier: 1 });
-      const b = createWorld(d, { seed, tier: 1, rareMul: 2 });
+      const a = createWorld(d, { seed, tier: 1, boot: false });
+      const b = createWorld(d, { seed, tier: 1, boot: false, rareMul: 2 });
       rare0 += a.offer.filter((id) => d.perks.perks[id]!.rarity !== 'common').length;
       rare1 += b.offer.filter((id) => d.perks.perks[id]!.rarity !== 'common').length;
     }

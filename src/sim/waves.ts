@@ -3,7 +3,7 @@ import { pauseTicks, scaleForWave, waveTicks } from './economy';
 import type { SimEvent } from './events';
 import { clampValue, powInt } from './num';
 import { geneMean, mutate, resetGeneAcc } from './mutations';
-import { boostActive, enterPick, isPickWave, maxMarks, type PerkProfile, perkProfile } from './perks';
+import { boostActive, enterPick, maxMarks, pickDue, type PerkProfile, perkProfile } from './perks';
 import { chance, createStream, nextInt, pickWeighted } from './rng';
 import type { Enemy, World } from './state';
 import type { CoreStats } from './stats';
@@ -235,6 +235,6 @@ export function advanceWave(w: World, data: GameData, st: CoreStats, prof: PerkP
     events.push({ type: 'waveEnd', wave: w.wave });
     payWaveRewards(w, data, st, events);
     payStations(w, data, st, prof, events);
-    if (w.protocols && w.wave >= 2 && isPickWave(data, w.wave, w.lab.pickEvery)) enterPick(w, data, events);
+    if (w.protocols && w.wave >= 2 && pickDue(w, data, w.wave, w.lab.pickEvery)) enterPick(w, data, events);
   }
 }

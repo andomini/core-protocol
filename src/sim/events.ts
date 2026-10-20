@@ -39,6 +39,9 @@ export type SimEvent =
   | { type: 'pickOffer'; pick: number; wave: number; offer: string[]; rerolls: number }
   /** `module`: the crystal hex of the perk's module ([q, r]), when it has one. */
   | { type: 'perkPicked'; id: string; stacks: number; module: [number, number] | null }
+  // boot
+  /** The boot sector `id` was taken: its modules stand on these hexes (after their perkPicked events). */
+  | { type: 'bootPicked'; id: string; tag: Tag; modules: [number, number][] }
   /** The virus genome gained a level against `tag` (spec 2026-10-14 §C). */
   | { type: 'mutation'; tag: Tag; level: number }
   /** The breach widened at a wave start: the spawn ring is now `radius` (world px). */

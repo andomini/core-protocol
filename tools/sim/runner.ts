@@ -5,7 +5,7 @@ import type { GameData } from '../../src/sim/data';
 import type { SimEvent } from '../../src/sim/events';
 import { createWorld, type RunOptions, type World } from '../../src/sim/state';
 import { step } from '../../src/sim/step';
-import { type CrystalMode, fusionPick, makeArranger, makeBot, makePicker, type PickPolicyName, type PolicyName } from './bot';
+import { bestBoot, type CrystalMode, fusionPick, makeArranger, makeBot, makePicker, type PickPolicyName, type PolicyName } from './bot';
 import type { Tag } from '../../src/sim/perkData';
 
 export interface RunResult {
@@ -87,7 +87,8 @@ export function runBot(data: GameData, policy: PolicyName, opts: RunOptions, max
   const lastHit = new Map<number, string>();
   while (!w.dead && w.tick < maxTicks) {
     const cmds: Command[] = bot.decide(w, data);
-    if (w.phase === 'pick') {
+    if (w.phase === 'pick' && w.bootOffer.length > 0) cmds.push({ type: 'pickBoot', index: arranger ? bestBoot(w, data) : picker.boot(w, data) });
+    else if (w.phase === 'pick') {
       if (arranger) {
         const fp = fusionPick(w, data);
         cmds.push(fp.slot ? { type: 'pickPerk', index: fp.index, slot: fp.slot } : { type: 'pickPerk', index: fp.index });

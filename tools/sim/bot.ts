@@ -12,9 +12,9 @@ import { type Command, isUnlocked, quoteFor } from '../../src/sim/commands';
 import { type GameData, STAT_IDS, type StatId, type TabId } from '../../src/sim/data';
 import type { World } from '../../src/sim/state';
 import { TAGS, type Tag } from '../../src/sim/perkData';
-import { tagCounts } from '../../src/sim/perks';
+import { bootSector, tagCounts } from '../../src/sim/perks';
 import { pulseWorth } from '../../src/sim/pulse';
-import { type CrystalDiff, crystalSlots, freeSlots, fusionSteps, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
+import { type CrystalDiff, crystalDiff, crystalSlots, freeSlots, fusionSteps, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
 import { crystalRing } from '../../src/sim/territory';
 import { createStream, nextInt } from '../../src/sim/rng';
 
@@ -101,6 +101,8 @@ export function makeBot(name: PolicyName): Bot {
 //   random-pick  a uniform random card (its own seeded stream: replayable)
 //   fusion-pick  the card (and free hex) whose module raises the crystal score most (set/fusion tiers and links, see bot.json "crystal"), rarity as a tie-break; used by --crystal arrange
 //   tag:<tag>    the best card of its tag when offered (rarity first); otherwise greedy-pick
+// The run-start boot offer (boot sectors): first → sector 0; greedy-pick / random-pick → a random sector (bot RNG);
+// fusion-pick → the best crystal score (ties: offer order); tag:<tag> → its tag when offered, else sector 0.
 
 export type PickPolicyName = 'first' | 'greedy-pick' | 'random-pick' | 'fusion-pick' | `tag:${Tag}`;
 export const TAG_PICKS: PickPolicyName[] = TAGS.map((t) => `tag:${t}` as const);
@@ -112,6 +114,32 @@ export interface Picker {
   name: PickPolicyName;
   /** Index of the card to take from the open offer. */
   choose(w: World, data: GameData): number;
+  /** Index of the boot sector to take from the open boot offer. */
+  boot(w: World, data: GameData): number;
+}
+
+/** The pick command for the open pick: pickBoot while the boot offer is open, else pickPerk via `perk`. */
+export function pickCommand(w: World, data: GameData, picker: Picker, perk: () => Command): Command {
+  return w.bootOffer.length > 0 ? { type: 'pickBoot', index: picker.boot(w, data) } : perk();
+}
+
+/** The boot sector whose modules raise the crystal score most (fusion-pick); ties keep offer order. */
+export function bestBoot(w: World, data: GameData): number {
+  let best = 0;
+  let bestScore = -Infinity;
+  w.bootOffer.forEach((id, i) => {
+    const s = bootSector(data, id)!;
+    const perks = { ...w.perks };
+    for (const m of s.modules) perks[m.perk] = (perks[m.perk] ?? 0) + 1;
+    const modules = [...w.crystal, ...s.modules.map((m) => ({ q: m.slot[0], r: m.slot[1], perk: m.perk, tag: s.tag }))];
+    const rarity = s.modules.reduce((sum, m) => sum + RANK[data.perks.perks[m.perk]!.rarity], 0);
+    const score = diffScore(data, crystalDiff(w, data, modules, perks)) + CW.rarity * rarity;
+    if (score > bestScore) {
+      bestScore = score;
+      best = i;
+    }
+  });
+  return best;
 }
 
 function greedyIndex(w: World, data: GameData, filter: (id: string) => boolean = () => true): number {
@@ -131,17 +159,20 @@ function greedyIndex(w: World, data: GameData, filter: (id: string) => boolean =
 }
 
 export function makePicker(name: PickPolicyName, seed: number): Picker {
-  if (name === 'first') return { name, choose: () => 0 };
-  if (name === 'fusion-pick') return { name, choose: (w, data) => fusionPick(w, data).index };
-  if (name === 'greedy-pick') return { name, choose: (w, data) => Math.max(0, greedyIndex(w, data)) };
+  const bootRng = createStream(seed, 'bot-boot');
+  const randomBoot = (w: World) => nextInt(bootRng, w.bootOffer.length);
+  if (name === 'first') return { name, choose: () => 0, boot: () => 0 };
+  if (name === 'fusion-pick') return { name, choose: (w, data) => fusionPick(w, data).index, boot: bestBoot };
+  if (name === 'greedy-pick') return { name, choose: (w, data) => Math.max(0, greedyIndex(w, data)), boot: randomBoot };
   if (name === 'random-pick') {
     const rng = createStream(seed, 'bot-random-pick');
-    return { name, choose: (w) => nextInt(rng, w.offer.length) };
+    return { name, choose: (w) => nextInt(rng, w.offer.length), boot: randomBoot };
   }
   const tag = name.slice(4) as Tag;
   if (!TAGS.includes(tag)) throw new Error(`unknown pick policy ${name}`);
   return {
     name,
+    boot: (w, data) => Math.max(0, w.bootOffer.findIndex((id) => bootSector(data, id)?.tag === tag)),
     choose(w, data) {
       const own = greedyIndex(w, data, (id) => data.perks.perks[id]!.tag === tag);
       return own >= 0 ? own : Math.max(0, greedyIndex(w, data));

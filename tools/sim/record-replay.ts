@@ -19,6 +19,7 @@ const opts: RunOptions = {
   seed: 20261005,
   tier: 1,
   unlocked: [...STAT_IDS],
+  boot: false, // a boot stands in for the wave 1–3 picks; the golden keeps them (boot replays: tests/boot.test.ts)
   workshop: { freeUpgrade: 15, energyBonus: 40, energyPerWave: 15, health: 5, structHealth: 4, turretDamage: 3, stationIncome: 2 },
   extraPerkChoice: true,
   freeReroll: true,
@@ -42,9 +43,14 @@ let saving: { stat: (typeof STAT_IDS)[number]; count: BuyCount } | null = null;
 let starred = 0;
 let kind = 0;
 let picks = 0;
-while (w.tick < TICKS) {
+while (w.tick < TICKS && !w.dead) { // a dead world no longer ticks (the replay just idles to TICKS)
   const cmds: Command[] = [];
-  if (w.phase === 'pick') {
+  if (w.phase === 'pick' && w.bootOffer.length > 0) {
+    // Boot pick: a pickPerk while it is open (rejected), then the firewall sector if offered, else cryo, else the first.
+    const sector = (tag: string) => w.bootOffer.findIndex((id) => data.boot.sectors.find((s) => s.id === id)?.tag === tag);
+    const want = sector('firewall') >= 0 ? sector('firewall') : sector('cryo');
+    cmds.push({ type: 'pickPerk', index: 0 }, { type: 'pickBoot', index: Math.max(0, want) });
+  } else if (w.phase === 'pick') {
     // Opening pick: boost first; pick 2: an ad reroll and a bad index; pick 3: the free reroll.
     if (w.picks === 0) cmds.push({ type: 'boost' });
     if (w.picks === 1) cmds.push({ type: 'reroll', via: 'ad' }, { type: 'pickPerk', index: 9 });

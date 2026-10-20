@@ -98,7 +98,7 @@ export interface CoreState {
 }
 
 /** v3 (M3): protocols — perks, set tiers, pick phase, Keys, boost, periodic timers, slow/freeze, bounces. v6: crystal, territory, genome. */
-export const WORLD_VERSION = 8; // pulse: v8 adds the pulse fields
+export const WORLD_VERSION = 8; // v8: pulse fields + boot sector (bootOffer, boot)
 
 export type Phase = 'wave' | 'pause' | 'pick';
 
@@ -109,7 +109,7 @@ export interface World {
   tier: number;
   tick: number;
   wave: number;
-  /** `pick`: a protocol offer is open; the world does not tick until a pickPerk (resumes as `pause`). */
+  /** `pick`: a protocol offer (or the run-start boot offer) is open; the world does not tick until a pickPerk / pickBoot (resumes as `pause`). */
   phase: Phase;
   /** Ticks elapsed in the current phase (kept through a pick). */
   phaseTick: number;
@@ -155,8 +155,14 @@ export interface World {
   marks: { killed: number; jackpots: number; plan: number[] };
   /** The run's best tier per fusion pair (a link count like fusionTiers; absent = never reached): the Codex reads it at run end. */
   fusionBest: Record<string, number>;
-  /** Perk ids on offer (display order) while `phase === 'pick'`; empty otherwise. */
+  /** Perk ids on offer (display order) while `phase === 'pick'`; empty otherwise (and during the boot pick). */
   offer: string[];
+  // boot
+  /** Boot sector ids on offer (boot.json, display order) while the run-start boot pick is open; empty otherwise. */
+  bootOffer: string[];
+  // boot
+  /** The boot sector id taken this run ('' : none yet, or a run without one; snapshots allow no nulls). */
+  boot: string;
   /** Rerolls used on the open offer. */
   rerolls: number;
   /** Picks taken so far. */
@@ -222,6 +228,9 @@ export interface RunOptions {
   unlocked?: readonly string[];
   /** Protocol picks (default true). */
   protocols?: boolean;
+  // boot
+  /** Run-start boot sector pick before the wave-1 protocol pick (default true; needs protocols). */
+  boot?: boolean;
   /** Tags of the equipped cards (M5); each counts 1 toward its set. */
   cardTags?: readonly string[];
   /** Lab node: 4 cards per offer instead of 3. */
@@ -320,6 +329,8 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     marks: { killed: 0, jackpots: 0, plan: [] },
     fusionBest: {},
     offer: [],
+    bootOffer: [], // boot
+    boot: '', // boot
     rerolls: 0,
     picks: 0,
     pity: 0,
@@ -373,7 +384,7 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     });
   }
   // Card tags may already complete a set; then the wave-1 pick opens the run (spec §2.4, B1).
-  initProtocols(w, data);
+  initProtocols(w, data, opts.boot !== false);
   w.core.hp = worldStats(w, data).health;
   return w;
 }

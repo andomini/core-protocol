@@ -75,6 +75,8 @@ export function installDevHooks(game: Phaser.Game): void {
         placing: b.placingIndex >= 0,
         crystal: w.crystal.map((m) => [m.q, m.r]),
         offer: [...w.offer],
+        bootOffer: [...w.bootOffer], // boot
+        boot: w.boot, // boot
         picks: w.picks,
         perks: Object.fromEntries(Object.entries(w.perks).filter(([, n]) => n > 0)),
         setTiers: { ...w.setTiers },
@@ -140,8 +142,15 @@ export function installDevHooks(game: Phaser.Game): void {
       const free = (s: [number, number]) => freeSlots(w, b.gd).some(([q, r]) => q === s[0] && r === s[1]);
       for (const [id, slot, n] of put) for (let i = 0; i < n; i++) grantPerk(w, b.gd, id, null, i === 0 && !(id in w.perks) && free(slot) ? slot : undefined);
     },
-    /** Takes card `i` of the open protocol offer (as a card tap would). */
-    pickPerk: (i = 0) => battle()?.command({ type: 'pickPerk', index: i }),
+    /** Takes card `i` of the open protocol offer (as a card tap would: the boot sector while the boot pick is open). */
+    pickPerk: (i = 0) => {
+      const b = battle();
+      b?.command(b.session.world.bootOffer.length > 0 ? { type: 'pickBoot', index: i } : { type: 'pickPerk', index: i });
+    },
+    /** Opens a protocol pick now (outside the schedule). */
+    pickNow: () => battle()?.devPickNow(),
+    /** Takes boot sector `i` of the open boot offer. */
+    pickBoot: (i = 0) => battle()?.command({ type: 'pickBoot', index: i }),
     /** The crystal editor: `index` ≥ 0 places that offer card's module, −1 (default) arranges (as the pause menu's CRYSTAL). */
     openEditor: (index = -1) => battle()?.openEditor(index),
     closeEditor: () => battle()?.closeEditor(true),

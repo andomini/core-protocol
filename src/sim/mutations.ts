@@ -1,6 +1,6 @@
 // Virus mutations (spec 2026-10-14 §C): from `startWave`, every `every` waves the genome gains a level
 // against the build's dominant tag (the highest set count). Gene effects are folded into the perk profile
-// and the combat stats; nothing else reads the genome.
+// and the combat stats; nothing else reads the genome. The first level of a gene counts `firstLevelScale` of a level.
 
 import type { GameData } from './data';
 import type { SimEvent } from './events';
@@ -53,7 +53,19 @@ export function resetGeneAcc(w: World): void {
   w.geneTicks = 0;
 }
 
+/** The first mutation wave after `wave` (the countdown the genome strip shows). */
+export function nextMutationWave(data: GameData, wave: number): number {
+  const m = data.mutations;
+  if (wave < m.startWave) return m.startWave;
+  return m.startWave + (Math.floor((wave - m.startWave) / m.every) + 1) * m.every;
+}
+
+/** Gene levels that count for tag `t`: the first level only `firstLevelScale` of one (a softer first mutation). */
+export function geneWeight(data: GameData, level: number): number {
+  return level <= 0 ? 0 : level - 1 + data.mutations.firstLevelScale;
+}
+
 /** Share of the countered effect the virus still lets through for gene `t` (1 = no gene). */
 export function geneKeep(w: World, data: GameData, t: Tag): number {
-  return Math.max(0, 1 - data.mutations.perLevel[t] * w.genome[t]);
+  return Math.max(0, 1 - data.mutations.perLevel[t] * geneWeight(data, w.genome[t]));
 }
