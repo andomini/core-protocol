@@ -17,7 +17,7 @@ import { drawTagIcon } from '../../ui/tagIcon';
 import { offlineReward } from '../../meta/offline';
 import { settleRun } from '../../meta/runEnd';
 import { dayKey } from '../../meta/leaderboardRules';
-import { ensureMissionDay, missionRun, missionText, msToReset, nextGoals, progressText } from '../../meta/missions';
+import { ensureMissionDay, type Goal, missionRun, missionText, msToReset, nextGoals, progressText } from '../../meta/missions';
 import { buyWorkshop, masteryAt, workshopCost, workshopMax, workshopUnlocked } from '../../meta/workshop';
 import { showToast } from '../../portal/toast';
 import { services } from '../../services';
@@ -244,7 +244,8 @@ export class HomeScene extends Phaser.Scene {
     const tier = Math.min(m.tier, m.tierUnlocked);
     const td = this.gd.tiers[tier - 1]!;
     const saved = services.meta.loadRun();
-    const B = battleGeometry(this.L, this.G, !!saved);
+    const goals = nextGoals(m, this.gd, this.md);
+    const B = battleGeometry(this.L, this.G, !!saved, goals.length + m.missions.list.length);
     const r = B.card;
     this.card(r);
     const cx = r.x + r.w / 2;
@@ -299,7 +300,7 @@ export class HomeScene extends Phaser.Scene {
     const gap = row.length > 2 ? 12 : 16;
     const hw = (bw - gap * (row.length - 1)) / row.length;
     row.forEach(([label, fn, color, enabled], i) => this.btn({ x: bx + i * (hw + gap), y: by, w: hw, h: B.rowH }, label, fn, { size: f, color, enabled }));
-    this.nextPanel(B);
+    this.nextPanel(B, goals);
     // Progress summary.
     if (!B.summary) return;
     const e = labEffects(m, this.md);
@@ -323,7 +324,7 @@ export class HomeScene extends Phaser.Scene {
   private resetText: Phaser.GameObjects.Text | null = null;
 
   /** NEXT: the three nearest goals and today's missions, each a progress bar behind its text. */
-  private nextPanel(B: BattleGeometry): void {
+  private nextPanel(B: BattleGeometry, goals: Goal[]): void {
     const m = services.meta.meta;
     const p = B.next;
     const f = this.G.font;
@@ -361,7 +362,7 @@ export class HomeScene extends Phaser.Scene {
       header('NEXT', B.both ? null : '· DAILY ▸');
       y += B.nextHeader;
       const COLOR = { tier: [CYAN, '#22e5ff'], bits: [0xffc93a, BITS_CSS], keys: [0xff8be8, KEY_CSS] } as const;
-      for (const goal of nextGoals(m, this.gd, this.md)) {
+      for (const goal of goals) {
         const [col, css] = COLOR[goal.kind];
         bar(goal.label, progressText(goal.have, goal.need), goal.have, goal.need, col, css);
       }
