@@ -213,7 +213,7 @@ export class Vfx {
         const k = Math.min(1, t / 0.55);
         const ek = easeOut(k);
         const hr = it.r * (2.4 - 1.4 * ek);
-        g.lineStyle(3, it.c1, 0.4 + 0.6 * ek * (t < 0.55 ? 1 : f / 0.45));
+        g.lineStyle(3, it.c1, t < 0.55 ? 0.4 + 0.6 * ek : f / 0.45);
         hexPath(g, it.x, it.y, hr, (1 - ek) * 0.6, false);
         if (t >= 0.5) {
           const ff = 1 - (t - 0.5) / 0.5;
