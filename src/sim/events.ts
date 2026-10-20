@@ -63,5 +63,7 @@ export type SimEvent =
   | { type: 'immunity'; untilTick: number }
   | { type: 'buy'; stat: StatId; levels: number; level: number; cost: number; free: boolean }
   | { type: 'buyRejected'; stat: string; reason: BuyRejectReason }
+  /** pulse: the core fired its Pulse (tag null: the plain ring); `energy`/`bits` paid by a mining harvest, `shield` added by firewall. */
+  | { type: 'pulse'; tag: Tag | null; x: number; y: number; radius: number; targets: number; energy: number; bits: number; shield: number }
   /** `bonusBits`: the run-end Bits bonus (💰 4-set) added at death. */
   | { type: 'death'; wave: number; tick: number; bonusBits: number };

@@ -1,0 +1,14 @@
+{
+  "cooldownSec": 50,
+  "radiusRangeMul": 0.4,
+  "minCount": 1,
+  "tierPower": 0.25,
+  "tierCooldown": 0.1,
+  "autoPulse": { "minTargets": 3 },
+  "none": { "damageMul": 0.5, "knockback": 20 },
+  "overload": { "damageMul": 0.5 },
+  "cryo": { "damageMul": 0.5, "freezeSec": 3 },
+  "chain": { "damageMul": 2.5, "maxTargets": 16 },
+  "mining": { "damageMul": 0.5, "energyMul": 2, "bitsMul": 2 },
+  "firewall": { "damageMul": 0.5, "shieldFrac": 0.4, "shieldCapFrac": 0.6, "knockback": 30 }
+}

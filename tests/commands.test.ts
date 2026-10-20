@@ -138,3 +138,23 @@ describe('Free Upgrade', () => {
     expect(buyer.enemies).toEqual(plain.enemies);
   });
 });
+
+describe('pulse command', () => {
+  it('fires in a batch with a buy, and a refused one (cooldown) changes nothing', () => {
+    const w = rich(100);
+    const ev = apply(w, { type: 'pulse' }, { type: 'buy', stat: 'damage', count: 1 });
+    expect(ofType(ev, 'pulse')).toHaveLength(1);
+    expect(w.levels.damage).toBe(1);
+    const before = JSON.stringify(w);
+    const again = apply(w, { type: 'pulse' });
+    expect(ofType(again, 'commandRejected')).toEqual([{ type: 'commandRejected', cmd: 'pulse', reason: 'cooldown' }]);
+    expect(JSON.stringify(w)).toBe(before);
+  });
+
+  it('does not touch the combat or spawn streams', () => {
+    const a = rich(0);
+    const b = rich(0);
+    apply(b, { type: 'pulse' });
+    expect(b.rng).toEqual(a.rng);
+  });
+});

@@ -39,4 +39,11 @@ describe('game data', () => {
   it('rejects a basic enemy that cannot spawn on wave 1', () => {
     expect(() => testData({ enemies: { basic: { firstWave: 2 } } })).toThrow(/basic/);
   });
+
+  // pulse
+  it('pulse data: defaults valid, a bad value names its field', () => {
+    expect(DEFAULT_DATA.pulse.cooldownSec).toBeGreaterThan(0);
+    expect(() => testData({ pulse: { cooldownSec: 0 } })).toThrow(/pulse\.cooldownSec/);
+    expect(() => testData({ pulse: { cryo: { freezeSec: -1 } } })).toThrow(/pulse\.cryo\.freezeSec/);
+  });
 });

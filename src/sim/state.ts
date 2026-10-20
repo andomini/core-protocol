@@ -98,12 +98,12 @@ export interface CoreState {
 }
 
 /** v3 (M3): protocols — perks, set tiers, pick phase, Keys, boost, periodic timers, slow/freeze, bounces. v6: crystal, territory, genome. */
-export const WORLD_VERSION = 7;
+export const WORLD_VERSION = 8; // pulse: v8 adds the pulse fields
 
 export type Phase = 'wave' | 'pause' | 'pick';
 
 export interface World {
-  v: 7;
+  v: 8;
   seed: number;
   /** 1-based index into GameData.tiers. */
   tier: number;
@@ -201,6 +201,15 @@ export interface World {
   structs: Struct[];
   /** Ice Wall ring radius for this wave, set at the wave start (0 before the first wave). */
   wallR: number;
+  // pulse (uniqueness plan item 4, src/sim/pulse.ts)
+  /** The Pulse is ready from this tick on. */
+  pulseReadyTick: number;
+  /** Pulses fired this run. */
+  pulseCount: number;
+  /** The tag of the last pulse (its cooldown, for the HUD ring); 'none': the plain pulse or none yet (no null in the World). */
+  pulseLastTag: Tag | 'none';
+  /** Lab node autoPulse: the sim fires the pulse by itself. */
+  pulseAuto: boolean;
   /** Separate streams so purchases (upgrades) never perturb combat or spawns. */
   rng: { spawn: RngState; combat: RngState; upgrades: RngState };
 }
@@ -231,6 +240,8 @@ export interface RunOptions {
   cards?: readonly CardInRun[];
   /** Workshop mastery (meta): × on a stat's value for the whole run, resolved by the meta layer. */
   workshopMul?: Partial<Record<StatId, number>>;
+  /** pulse: lab node autoPulse. */
+  autoPulse?: boolean;
   /** Carried with the run for the meta layer (Bits multiplier, Fast Boot, Second Wind); the sim ignores it. */
   metaBonus?: { bitsMul: number; fastBootWaves: number; secondWind: number };
 }
@@ -277,7 +288,7 @@ export function createWorld(data: GameData, opts: RunOptions): World {
   for (const t of TAGS) setTiers[t] = 0;
   const cardTags = (opts.cardTags ?? []).filter((t): t is Tag => (TAGS as readonly string[]).includes(t));
   const w: World = {
-    v: 7,
+    v: 8,
     seed: opts.seed,
     tier: opts.tier,
     tick: 0,
@@ -342,6 +353,11 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     nests: [],
     structs: [],
     wallR: 0,
+    // pulse
+    pulseReadyTick: 0,
+    pulseCount: 0,
+    pulseLastTag: 'none',
+    pulseAuto: opts.autoPulse === true,
     rng: { spawn: createStream(opts.seed, 'spawn'), combat: createStream(opts.seed, 'combat'), upgrades: createStream(opts.seed, 'upgrades') },
   };
   // Workshop mastery multipliers: one `mul` modifier per stat, canonical order.

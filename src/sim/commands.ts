@@ -5,6 +5,7 @@ import { type GameData, STAT_IDS, type StatId } from './data';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
 import { fusionStructure, moveCrystalModule, pickPerk, type ProtocolReject, rerollOffer, structureBuilt, structureFusionNames, takeBoost } from './perks';
+import { pulseCommand } from './pulse'; // pulse
 import { chance } from './rng';
 import { quoteBuy, type BuyQuote } from './stats';
 import { type World, worldStats } from './state';
@@ -22,7 +23,9 @@ export type Command =
   /** Rewarded boost: × Energy for the next waves (pick screen only, with a cooldown). */
   | { type: 'boost' }
   /** Rewarded revive after death: once per run, part of the HP back, nearby viruses purged. */
-  | { type: 'revive'; hp?: number };
+  | { type: 'revive'; hp?: number }
+  /** pulse: the core's Pulse ring (src/sim/pulse.ts); rejected with `cooldown` while it recharges. */
+  | { type: 'pulse' };
 
 export interface LoggedCommand {
   /** World tick before the step that applies it (applied first thing in that step). */
@@ -138,6 +141,7 @@ export function applyCommands(w: World, data: GameData, cmds: readonly Command[]
       protocol(events, 'moveModule', moveCrystalModule(w, data, m.from, m.to, events));
     } else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
     else if (c.type === 'boost') protocol(events, 'boost', takeBoost(w, data, events));
+    else if (c.type === 'pulse') protocol(events, 'pulse', pulseCommand(w, data, events)); // pulse
     else if (c.type === 'revive') protocol(events, 'revive', revive(w, data, (cmd as { hp?: unknown }).hp, events));
     else if (typeof c.stat === 'string') reject(events, c.stat, 'unknown');
     else events.push({ type: 'commandRejected', cmd: String(c.type), reason: 'unknown' });

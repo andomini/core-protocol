@@ -22,6 +22,7 @@ export function buildRunOptions(m: MetaState, _data: GameData, md: MetaData, tie
     rareMul: e.rareMul,
     maxLevelBonus: e.maxLevelBonus,
     startEnergy: e.startEnergy + b.startEnergy,
+    autoPulse: e.autoPulse || undefined, // pulse
     cardTags: lo.cardTags,
     cards: lo.cards,
     workshopMul: masteryMuls(m, md),

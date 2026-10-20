@@ -6,6 +6,12 @@ import { restore, snapshot } from '../src/sim/snapshot';
 import { createWorld, worldStats } from '../src/sim/state';
 import { step } from '../src/sim/step';
 import { isBossWave, spawnEnemy } from '../src/sim/waves';
+import { labEffects } from '../src/meta/labs';
+import { DEFAULT_META_DATA } from '../src/meta/metaData';
+import { buildRunOptions } from '../src/meta/runOptions';
+import { defaultMeta } from '../src/meta/state';
+import { DEFAULT_DATA } from '../src/sim/data';
+import { labEffectText } from '../src/ui/labText';
 import { ofType, stepN, testData } from './helpers';
 
 describe('lab parameters (RunOptions)', () => {
@@ -139,7 +145,25 @@ describe('revive', () => {
   it('the World round-trips through a snapshot with the lab fields', () => {
     const d = testData();
     const w = createWorld(d, { seed: 3, tier: 1, pickEvery: 4, rareMul: 1.5, maxLevelBonus: { range: 10 }, startEnergy: 10 });
-    expect(w.v).toBe(7);
+    expect(w.v).toBe(8);
     expect(JSON.stringify(restore(snapshot(w)))).toBe(JSON.stringify(w));
   });
 });
+
+// pulse
+describe('autoPulse lab node', () => {
+  it('owning the node turns on world.pulseAuto through labEffects → RunOptions; labText describes it', () => {
+    const node = DEFAULT_META_DATA.labs.nodes.find((n) => n.effect.type === 'autoPulse');
+    expect(node).toBeDefined();
+    const m = defaultMeta();
+    expect(labEffects(m, DEFAULT_META_DATA).autoPulse).toBe(false);
+    expect(createWorld(DEFAULT_DATA, buildRunOptions(m, DEFAULT_DATA, DEFAULT_META_DATA, 1, 1)).pulseAuto).toBe(false);
+    m.labs.push(node!.id);
+    expect(labEffects(m, DEFAULT_META_DATA).autoPulse).toBe(true);
+    const o = buildRunOptions(m, DEFAULT_DATA, DEFAULT_META_DATA, 1, 1);
+    expect(o.autoPulse).toBe(true);
+    expect(createWorld(DEFAULT_DATA, o).pulseAuto).toBe(true);
+    expect(labEffectText(DEFAULT_DATA, node!.effect)).toMatch(/Pulse/);
+  });
+});
+

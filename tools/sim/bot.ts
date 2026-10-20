@@ -1,7 +1,8 @@
 // Bot policies for headless balance runs (spec §6). Tools may use floats freely; they only issue
 // commands, exactly like the UI, so a bot run is replayable from its log.
 //   none         never buys (baseline)
-//   greedy       buys the cheapest affordable useful upgrade (×1), as a sensible first-time player would
+//   greedy       buys the cheapest affordable useful upgrade (×1), as a sensible first-time player would; fires the Pulse when
+//                ready and the autoPulse crowd (pulse.json) is in its ring (so do atk-first and def-first)
 //                (BUILD rows count once their structure stands: turret/mine as ATK, structure HP/regen as DEF, station income as UTIL)
 //   atk-first    greedy, but ATK prices count 4× cheaper (tools/sim/bot.json)
 //   def-first    the same for DEF
@@ -12,6 +13,7 @@ import { type GameData, STAT_IDS, type StatId, type TabId } from '../../src/sim/
 import type { World } from '../../src/sim/state';
 import { TAGS, type Tag } from '../../src/sim/perkData';
 import { tagCounts } from '../../src/sim/perks';
+import { pulseWorth } from '../../src/sim/pulse';
 import { type CrystalDiff, crystalSlots, freeSlots, fusionSteps, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
 import { crystalRing } from '../../src/sim/territory';
 import { createStream, nextInt } from '../../src/sim/rng';
@@ -51,9 +53,12 @@ function weighted(name: 'greedy' | 'atk-first' | 'def-first'): Bot {
           best = id;
         }
       }
+      // Pulse (uniqueness plan item 4): fired whenever ready with the autoPulse rule's crowd in the ring.
+      const out: Command[] = pulseWorth(w, data) ? [{ type: 'pulse' }] : [];
       // Save up for the best-value option rather than buying a worse one now.
-      if (best === null || !quoteFor(w, data, best, 1).affordable) return [];
-      return [{ type: 'buy', stat: best, count: 1 }];
+      if (best === null || !quoteFor(w, data, best, 1).affordable) return out;
+      out.push({ type: 'buy', stat: best, count: 1 });
+      return out;
     },
   };
 }

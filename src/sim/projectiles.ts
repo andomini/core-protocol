@@ -57,7 +57,8 @@ export function conditionalMul(w: World, e: Enemy, st: CoreStats, prof: PerkProf
 
 /** `bounce`: a projectile's later hits; `tesla`: the Tesla Coil card's bolt from the core. */
 /** `turret`, `mine`: the Bastion's shots and the Minefield's blasts (spec 2026-10-15); mines count as chain. */
-export type HitSource = 'shot' | 'bounce' | 'thorns' | 'lightning' | 'tesla' | 'turret' | 'mine';
+/** `pulse`: the core's Pulse ring (src/sim/pulse.ts); its chain arcs count as `lightning`. */
+export type HitSource = 'shot' | 'bounce' | 'thorns' | 'lightning' | 'tesla' | 'turret' | 'mine' | 'pulse';
 
 /**
  * Applies damage; on the killing blow pays the reward (Energy Bonus, Energy Siphon, boss multipliers, boost,
