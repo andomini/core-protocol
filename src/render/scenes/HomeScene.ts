@@ -3,7 +3,7 @@
 
 import Phaser from 'phaser';
 import { WIDGET, WIDGET_CFG } from '../widget';
-import { DEFAULT_META_DATA, type MetaData, unlockWaveFor } from '../../meta/metaData';
+import { DEFAULT_META_DATA, type MetaData } from '../../meta/metaData';
 import { buyLab, labEffects, labState } from '../../meta/labs';
 import { CARDS, canFreePack, cardDef, cardSlots, claimFreePack, equip, openPack, type PackCard, starsFor, unequip } from '../../meta/cards';
 import { cardEffectText } from '../../ui/cardText';
@@ -16,13 +16,15 @@ import { addRunToLifetime } from '../../meta/runStats';
 import { drawTagIcon } from '../../ui/tagIcon';
 import { offlineReward } from '../../meta/offline';
 import { settleRun } from '../../meta/runEnd';
+import { dayKey } from '../../meta/leaderboardRules';
+import { ensureMissionDay, missionRun, missionText, msToReset, nextGoals, progressText } from '../../meta/missions';
 import { buyWorkshop, masteryAt, workshopCost, workshopMax, workshopUnlocked } from '../../meta/workshop';
 import { showToast } from '../../portal/toast';
 import { services } from '../../services';
 import { DEFAULT_DATA, type GameData, STAT_IDS, type StatId, TAB_IDS, type TabId } from '../../sim/data';
 import { statValue } from '../../sim/stats';
 import { formatNum, formatStat, type StatFormatKind } from '../../ui/format';
-import { homeGeometry, type HomeGeometry } from '../../ui/home/homeLayout';
+import { type BattleGeometry, battleGeometry, homeGeometry, type HomeGeometry } from '../../ui/home/homeLayout';
 import { Button, panel, text } from '../../ui/kit';
 import { labEffectText } from '../../ui/labText';
 import type { Layout, Rect } from '../../ui/layout';
@@ -112,6 +114,7 @@ export class HomeScene extends Phaser.Scene {
     // the portal init: the identity may live in the CrazyGames data module.
     if (lb?.enabled) void services.portalInit.then(() => lb.prefetchStart('tier'));
     this.refresh();
+    this.time.addEvent({ delay: 1000, loop: true, callback: () => this.updateReset() });
     services.guard.gameplayStop?.();
     const starter = this.registry.get('starterReveal') as PackCard[] | undefined;
     if (starter) {
@@ -233,13 +236,16 @@ export class HomeScene extends Phaser.Scene {
   // ---- ⚔ Battle ----------------------------------------------------------------------------------------
   private battleView(): void {
     const m = services.meta.meta;
-    const c = this.G.content;
+    const day0 = m.missions.day;
+    ensureMissionDay(m, Date.now());
+    if (m.missions.day !== day0) this.save();
     const portrait = this.L.o === 'portrait';
     const f = this.G.font;
     const tier = Math.min(m.tier, m.tierUnlocked);
     const td = this.gd.tiers[tier - 1]!;
-    const cardH = portrait ? 470 : 330;
-    const r: Rect = { x: c.x, y: c.y + (portrait ? 30 : 0), w: c.w, h: cardH };
+    const saved = services.meta.loadRun();
+    const B = battleGeometry(this.L, this.G, !!saved);
+    const r = B.card;
     this.card(r);
     const cx = r.x + r.w / 2;
     this.t(cx, r.y + 26, `TIER ${tier}`, this.G.titleFont + (portrait ? 16 : 8), TEXT, { title: true, glow: '#22e5ff' }).setOrigin(0.5, 0);
@@ -248,46 +254,42 @@ export class HomeScene extends Phaser.Scene {
     this.btn({ x: r.x + 20, y: r.y + 22, w: aw, h: ah }, '◀', () => this.pickTier(tier - 1), { enabled: tier > 1, size: f + 8 });
     const nextLocked = tier >= m.tierUnlocked;
     this.btn({ x: r.x + r.w - aw - 20, y: r.y + 22, w: aw, h: ah }, '▶', () => this.pickTier(tier + 1), { enabled: !nextLocked, size: f + 8 });
-    let y = r.y + 30 + ah + (portrait ? 30 : 16);
+    let y = r.y + 30 + ah + (portrait ? 24 : 16);
     // formatNum floors below 1000 (2.5 → "2"), so multipliers keep two decimals
     const mul = (x: number): string => (x < 100 ? String(Math.round(x * 100) / 100) : formatNum(x));
     this.t(cx, y, `Enemy HP ×${mul(td.hpMul)} · Bits ×${mul(td.bitsMul)}`, f, TEXT_DIM).setOrigin(0.5, 0);
-    y += f + 14;
+    y += f + 12;
     this.t(cx, y, td.condition ? `⚠ ${td.condition}` : 'No special conditions', f, td.condition ? '#ffb03b' : TEXT_DIM).setOrigin(0.5, 0);
-    y += f + 14;
+    y += f + 12;
     this.t(cx, y, `Best wave: ${m.best[String(tier)] ?? 0}`, f + 4, '#e8fbff').setOrigin(0.5, 0);
-    y += f + 26;
-    // Milestones.
+    y += f + 20;
+    // Milestones (the tier unlock wave is in the NEXT panel).
     const ms = this.md.milestones;
     const mw = (r.w - 60) / ms.waves.length;
+    const mh = Math.min(portrait ? 86 : 60, r.y + r.h - 14 - y);
     const g = this.add.graphics().setDepth(3);
     this.view.push(g);
     ms.waves.forEach((w, i) => {
       const done = m.milestones.includes(`${tier}:${w}`);
       const x = r.x + 30 + i * mw;
-      g.fillStyle(done ? 0x2bffb0 : 0x22e5ff, done ? 0.25 : 0.06).fillRoundedRect(x + 4, y, mw - 8, portrait ? 86 : 60, 8);
-      g.lineStyle(2, done ? 0x2bffb0 : LOCKED, 0.9).strokeRoundedRect(x + 4, y, mw - 8, portrait ? 86 : 60, 8);
-      this.t(x + mw / 2, y + 6, `W${w}`, f, done ? '#2bffb0' : TEXT).setOrigin(0.5, 0);
-      this.t(x + mw / 2, y + 8 + f, `+${ms.keys[i]! + (tier - 1) * ms.keysPerTier}`, f, KEY_CSS).setOrigin(0.5, 0);
+      g.fillStyle(done ? 0x2bffb0 : 0x22e5ff, done ? 0.25 : 0.06).fillRoundedRect(x + 4, y, mw - 8, mh, 8);
+      g.lineStyle(2, done ? 0x2bffb0 : LOCKED, 0.9).strokeRoundedRect(x + 4, y, mw - 8, mh, 8);
+      this.t(x + mw / 2, y + 4, `W${w}`, f, done ? '#2bffb0' : TEXT).setOrigin(0.5, 0);
+      this.t(x + mw / 2, y + 4 + f, `+${ms.keys[i]! + (tier - 1) * ms.keysPerTier}`, f, KEY_CSS).setOrigin(0.5, 0);
     });
-    if (nextLocked && tier < this.gd.tiers.length) {
-      this.t(cx, r.y + r.h - f - 18, `Reach wave ${unlockWaveFor(this.md, tier)} to unlock tier ${tier + 1}`, f, TEXT_DIM).setOrigin(0.5, 0);
-    }
     // Run buttons.
-    const saved = services.meta.loadRun();
-    const bw = portrait ? 560 : 420;
-    const bh = portrait ? 120 : 80;
-    let by = r.y + r.h + (portrait ? 50 : 26);
+    const bw = B.btnW;
+    const bx = B.btnX - bw / 2;
+    let by = B.btnY;
     if (saved) {
-      this.btn({ x: cx - bw / 2, y: by, w: bw, h: bh }, `CONTINUE · T${saved.world.tier} W${saved.world.wave}`, () => this.continueRun(), { size: this.G.big, edge: 0x2bffb0, fill: 0x063a2a, color: '#2bffb0' });
-      by += bh + 20;
-      this.btn({ x: cx - bw / 2, y: by, w: bw, h: portrait ? 90 : 60 }, 'ABANDON RUN', () => this.abandonRun(), { edge: 0xff3b5c, fill: 0x2a0610, color: '#ff8a9b' });
+      this.btn({ x: bx, y: by, w: bw, h: B.btnH }, `CONTINUE · T${saved.world.tier} W${saved.world.wave}`, () => this.continueRun(), { size: this.G.big, edge: 0x2bffb0, fill: 0x063a2a, color: '#2bffb0' });
+      by += B.btnH + B.gap;
+      this.btn({ x: bx, y: by, w: bw, h: B.smallH }, 'ABANDON RUN', () => this.abandonRun(), { edge: 0xff3b5c, fill: 0x2a0610, color: '#ff8a9b' });
+      by += B.smallH + B.gap;
     } else {
-      this.btn({ x: cx - bw / 2, y: by, w: bw, h: bh }, 'START RUN', () => this.startRun(tier), { size: this.G.big + 6, edge: 0x2bffb0, fill: 0x063a2a, color: '#2bffb0' });
-      by += bh + 20;
+      this.btn({ x: bx, y: by, w: bw, h: B.btnH }, 'START RUN', () => this.startRun(tier), { size: this.G.big + 6, edge: 0x2bffb0, fill: 0x063a2a, color: '#2bffb0' });
+      by += B.btnH + B.gap;
     }
-    const sh = portrait ? 76 : 50;
-    const sy = by + (saved ? (portrait ? 90 + 20 : 60 + 20) : 0);
     // With leaderboards: DAILY (today's challenge, not over a saved run) and RANKS join the row.
     const row: [string, () => void, string, boolean][] = [
       ['STATS', () => this.openStats(), '#22e5ff', true],
@@ -296,8 +298,10 @@ export class HomeScene extends Phaser.Scene {
     if (this.lbPanel) row.push(['DAILY', () => this.startDaily(), '#2bffb0', !saved], ['RANKS', () => this.openRanks(), '#ff8be8', true]);
     const gap = row.length > 2 ? 12 : 16;
     const hw = (bw - gap * (row.length - 1)) / row.length;
-    row.forEach(([label, fn, color, enabled], i) => this.btn({ x: cx - bw / 2 + i * (hw + gap), y: sy, w: hw, h: sh }, label, fn, { size: f, color, enabled }));
+    row.forEach(([label, fn, color, enabled], i) => this.btn({ x: bx + i * (hw + gap), y: by, w: hw, h: B.rowH }, label, fn, { size: f, color, enabled }));
+    this.nextPanel(B);
     // Progress summary.
+    if (!B.summary) return;
     const e = labEffects(m, this.md);
     const wsLevels = Object.values(m.workshop).reduce((a, b) => a + (b ?? 0), 0);
     const summary = [
@@ -305,12 +309,99 @@ export class HomeScene extends Phaser.Scene {
       `Labs ${m.labs.length}/${this.md.labs.nodes.length} · Speeds ${e.speeds.map((s) => `×${s}`).join(' ')}`,
       `Offline cache ${e.offlineCapHours}h · Bits ×${e.bitsMul.toFixed(2)}`,
     ];
+    const sr = B.summary;
     if (portrait) {
-      const sr: Rect = { x: c.x, y: c.y + c.h - 3 * (f + 16) - 40, w: c.w, h: 3 * (f + 16) + 30 };
       this.card(sr, 0x1f6bff, 0.7);
       summary.forEach((s, i) => this.t(sr.x + 24, sr.y + 18 + i * (f + 16), s, f, TEXT_DIM));
     } else {
-      this.t(cx, c.y + c.h - f - 4, summary.join('   ·   '), f - 2 >= this.L.minFont ? f - 2 : f, TEXT_DIM).setOrigin(0.5, 0);
+      this.t(sr.x + sr.w / 2, sr.y, summary.join('   ·   '), f - 2 >= this.L.minFont ? f - 2 : f, TEXT_DIM).setOrigin(0.5, 0);
+    }
+  }
+
+  /** Which NEXT section a short phone shows (both fit elsewhere). */
+  private nextPane: 'next' | 'daily' = 'next';
+  private resetText: Phaser.GameObjects.Text | null = null;
+
+  /** NEXT: the three nearest goals and today's missions, each a progress bar behind its text. */
+  private nextPanel(B: BattleGeometry): void {
+    const m = services.meta.meta;
+    const p = B.next;
+    const f = this.G.font;
+    this.card(p, 0x1f6bff, 0.75);
+    const g = this.add.graphics().setDepth(3);
+    this.view.push(g);
+    const x0 = p.x + 16;
+    const w = p.w - 32;
+    let y = p.y + 12;
+    const bar = (label: string, right: string, have: number, need: number, color: number, css: string, done = false): void => {
+      const fr = done ? 1 : need > 0 ? Math.max(0, Math.min(1, have / need)) : 0;
+      g.fillStyle(color, 0.08).fillRoundedRect(x0, y, w, B.nextRowH, 6);
+      if (fr > 0) g.fillStyle(color, done ? 0.3 : 0.22).fillRoundedRect(x0, y, Math.max(12, w * fr), B.nextRowH, 6);
+      g.lineStyle(2, color, 0.5).strokeRoundedRect(x0, y, w, B.nextRowH, 6);
+      const ty = y + (B.nextRowH - f) / 2 - 2;
+      const rt = this.t(x0 + w - 12, ty, right, f, css).setOrigin(1, 0);
+      this.fitText(this.t(x0 + 12, ty, label, f, done ? TEXT_DIM : TEXT), w - 36 - rt.width);
+      y += B.nextRowH + 6;
+    };
+    const header = (label: string, other: string | null): Phaser.GameObjects.Text => {
+      const h = this.t(x0, y + 2, label, f + (this.L.o === 'portrait' ? 0 : 2), '#22e5ff', { title: true });
+      if (other) {
+        const o = this.t(x0 + h.width + 24, y + 2, other, f, TEXT_DIM);
+        this.hit({ x: x0, y, w: h.width + o.width + 40, h: B.nextHeader }, () => {
+          this.nextPane = this.nextPane === 'next' ? 'daily' : 'next';
+          this.refresh();
+        });
+      }
+      return h;
+    };
+    const showNext = B.both || this.nextPane === 'next';
+    const showDaily = B.both || this.nextPane === 'daily';
+    this.resetText = null;
+    if (showNext) {
+      header('NEXT', B.both ? null : '· DAILY ▸');
+      y += B.nextHeader;
+      const COLOR = { tier: [CYAN, '#22e5ff'], bits: [0xffc93a, BITS_CSS], keys: [0xff8be8, KEY_CSS] } as const;
+      for (const goal of nextGoals(m, this.gd, this.md)) {
+        const [col, css] = COLOR[goal.kind];
+        bar(goal.label, progressText(goal.have, goal.need), goal.have, goal.need, col, css);
+      }
+    }
+    if (showDaily) {
+      if (showNext) y += 6;
+      header('DAILY', B.both ? null : '· NEXT ▸');
+      this.resetText = this.t(x0 + w, y + 2, '', f, TEXT_DIM).setOrigin(1, 0);
+      this.updateReset();
+      y += B.nextHeader;
+      const s = m.missions;
+      s.list.forEach((dm, i) => {
+        const have = s.progress[i] ?? 0;
+        const done = s.claimed[i] === true;
+        const right = done ? `✓ +${dm.reward}` : `${progressText(have, dm.target)} · +${dm.reward}`;
+        bar(missionText(dm, this.gd), right, have, dm.target, done ? 0x2bffb0 : 0xff8be8, done ? '#2bffb0' : KEY_CSS, done);
+      });
+    }
+  }
+
+  /** The daily reset countdown; a new UTC day rebuilds the view with fresh missions. */
+  private updateReset(): void {
+    const now = Date.now();
+    if (this.tab === 'battle' && services.meta.meta.missions.day !== dayKey(now)) {
+      this.refresh();
+      return;
+    }
+    if (!this.resetText?.active) return;
+    const s = Math.floor(msToReset(now) / 1000);
+    const h = Math.floor(s / 3600);
+    const mm = Math.floor((s % 3600) / 60);
+    this.resetText.setText(`resets in ${h > 0 ? `${h}h ${mm}m` : `${mm}m ${s % 60}s`}`);
+  }
+
+  /** Shortens a one-line text with an ellipsis until it is at most `maxW` wide (fonts never go below minFont). */
+  private fitText(o: Phaser.GameObjects.Text, maxW: number): void {
+    let s = o.text;
+    while (o.width > maxW && s.length > 4) {
+      s = s.slice(0, -1);
+      o.setText(`${s.trimEnd()}…`);
     }
   }
 
@@ -381,7 +472,8 @@ export class HomeScene extends Phaser.Scene {
     if (saved) {
       const w = saved.world;
       const m = services.meta.meta;
-      const st = settleRun(m, this.gd, this.md, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: saved.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest });
+      const st = settleRun(m, this.gd, this.md, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: saved.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest, missions: missionRun(w, this.gd, saved.stats), now: Date.now() });
+      if (st.missionKeys) showToast(`Daily mission done: +${st.missionKeys} Keys`, 4000);
       addRunToLifetime(m.lifetime, saved.stats, {
         waves: w.wave,
         simTicks: w.tick,

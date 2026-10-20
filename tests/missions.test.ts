@@ -110,7 +110,7 @@ describe('daily missions', () => {
     m.runs += 1;
     const e = applyMissions(m, run({ tier: 2, wave: 25, dominant: 'cryo' }), 0, T0);
     expect(e.every((x) => x.done)).toBe(true);
-    expect(missionText(s.list[1]!, D)).toMatch(/wave 10 with .+ as your largest set/);
+    expect(missionText(s.list[1]!, D)).toMatch(/Wave 10 with CRYO as top set/);
   });
 
   it('settleRun feeds the missions; settleDaily practice runs do not', () => {
