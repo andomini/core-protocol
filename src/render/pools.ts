@@ -18,6 +18,18 @@ export class ImagePool {
     return img.setVisible(true).setAlpha(1).setRotation(0).setScale(1).clearTint();
   }
 
+  /** Creates `n` hidden images up front so the first big wave does not allocate mid-fight. */
+  prewarm(n: number): void {
+    for (let i = this.free.length; i < n; i++) {
+      this.free.push(this.scene.add.image(0, 0, this.texture).setDepth(this.depth).setBlendMode(this.blend).setVisible(false));
+    }
+  }
+
+  /** Images waiting in the pool. */
+  get idle(): number {
+    return this.free.length;
+  }
+
   release(img: Phaser.GameObjects.Image): void {
     img.setVisible(false);
     this.free.push(img);

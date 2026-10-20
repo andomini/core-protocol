@@ -16,13 +16,27 @@ export const VIOLET = 0xa45bff;
 export const CRIMSON = 0xff2d55;
 export const WHITE = 0xffffff;
 
+/**
+ * The "sick" family for viruses: hues kept clear of the five tag colours (yellow, ice, lavender, mint, orange) so a
+ * virus never reads as one of the player's protocols. Shapes carry the kind; colour is the second cue.
+ */
 export const ENEMY_COLOR = {
   basic: MAGENTA,
-  fast: YELLOW,
-  tank: ORANGE_RED,
-  ranged: VIOLET,
+  fast: 0xc4ff3a, // acid lime
+  tank: 0xff4f6a, // infected rose
+  ranged: 0xd64bff, // orchid
   boss: CRIMSON,
 } as const;
+/** Second tone per virus: nucleus / genome / membrane highlights. */
+export const ENEMY_ACCENT = {
+  basic: 0xffb3f0,
+  fast: 0xf4ffb0,
+  tank: 0xffc2a8,
+  ranged: 0x9ff2ff,
+  boss: 0xffd0dc,
+} as const;
+/** Dark body fill behind every virus (reads against the grid under normal blending). */
+export const VIRUS_BODY = 0x14061a;
 
 export const CORE = CYAN;
 export const CORE_HIT = 0xff3b5c;

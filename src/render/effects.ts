@@ -1,12 +1,14 @@
 // Render-only juice. Never touches sim state; may use Math.random freely.
-// Pixel bursts (Phaser particle emitters, pooled internally), death glitch (offset colour copies, pooled),
-// beams / rings / muzzle flares (a fixed pool of transient records drawn into one ADD-blended Graphics).
+// Pixel bursts (Phaser particle emitters, pooled internally), virus deaths (the body swells and dissolves while 3–5 shell
+// fragments fly apart, pooled images), beams / rings / muzzle flares (a fixed pool of transient records drawn into one
+// ADD-blended Graphics).
 
 import Phaser from 'phaser';
-import type { EnemyKind } from '../sim/data';
-import { CORE, CORE_HIT, CYAN, ENEMY_COLOR, VIOLET, WHITE } from './palette';
+import { DEFAULT_DATA, type EnemyKind } from '../sim/data';
+import { CORE, CORE_HIT, CYAN, ENEMY_ACCENT, ENEMY_COLOR, WHITE } from './palette';
 import { ImagePool } from './pools';
 import { ps } from './resolution';
+import { easeOut, type Frag, fragBudget, fragments } from './virusShapes';
 import { DEPTH } from './WorldView';
 
 const enum T {
@@ -27,18 +29,32 @@ interface Transient {
   dur: number;
 }
 
-interface Glitch {
-  a: Phaser.GameObjects.Image;
-  b: Phaser.GameObjects.Image;
-  slice: Phaser.GameObjects.Image;
+/** A pooled image flying out of a death: a dissolving body copy or a shell fragment. */
+interface Piece {
+  img: Phaser.GameObjects.Image;
+  pool: ImagePool;
   x: number;
   y: number;
-  until: number;
+  dx: number;
+  dy: number;
+  rot: number;
+  spin: number;
+  s0: number;
+  s1: number;
+  a0: number;
+  /** Fragments hold their alpha and fade late; the body copy fades linearly. */
+  hold: boolean;
+  start: number;
+  dur: number;
 }
 
 const MAX_TRANSIENTS = 96;
-const MAX_GLITCH = 24;
-const GLITCH_MS = 110;
+/** Live death pieces at most (a burst past it keeps only its particles and ring). */
+export const MAX_PIECES = 160;
+const POP_MS = 200;
+const FRAG_MS = 430;
+/** Fragment size relative to the body, per kind (the frag textures are ~10 px shards at scale 1). */
+const FRAG_SIZE: Readonly<Record<EnemyKind, number>> = { basic: 0.95, fast: 0.75, tank: 1.3, ranged: 0.9, boss: 1.9 };
 
 export class Effects {
   private readonly g: Phaser.GameObjects.Graphics;
@@ -46,8 +62,10 @@ export class Effects {
   private readonly sparkEmitter: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly items: Transient[] = [];
   private live = 0;
-  private readonly glitchPool: ImagePool;
-  private readonly glitches: Glitch[] = [];
+  private readonly bodyPool: ImagePool;
+  private readonly fragPool: ImagePool;
+  private readonly pieces: Piece[] = [];
+  private readonly plan: Frag[] = [];
   private readonly flare: Phaser.GameObjects.Image;
   private flareUntil = 0;
   private lastSpark = 0;
@@ -55,7 +73,10 @@ export class Effects {
   constructor(private readonly scene: Phaser.Scene) {
     this.g = scene.add.graphics().setDepth(DEPTH.fx).setBlendMode(Phaser.BlendModes.ADD);
     for (let i = 0; i < MAX_TRANSIENTS; i++) this.items.push({ kind: T.Ring, x: 0, y: 0, x2: 0, y2: 0, r: 0, color: 0, start: 0, dur: 1 });
-    this.glitchPool = new ImagePool(scene, 'e_basic', DEPTH.fx);
+    this.bodyPool = new ImagePool(scene, 'e_basic', DEPTH.fx);
+    this.fragPool = new ImagePool(scene, 'frag_0', DEPTH.fx);
+    this.bodyPool.prewarm(16);
+    this.fragPool.prewarm(48);
     this.sparkEmitter = this.makeEmitter(WHITE, { min: 60, max: 180 }, { min: 120, max: 220 }, 0.5);
     this.flare = scene.add.image(0, 0, 'flare').setDepth(DEPTH.fx).setBlendMode(Phaser.BlendModes.ADD).setVisible(false);
   }
@@ -99,19 +120,37 @@ export class Effects {
     it.dur = dur;
   }
 
-  /** Death: pixel scatter + a short RGB-split glitch of the enemy's shape + a thin shock ring. */
+  /**
+   * Death: the capsid bursts — the body swells and dissolves, 3–5 shell fragments (10 for the boss) fly apart and spin
+   * out, a few pixels and a thin shock ring. `scale` is the body's layout scale (layout scale × ENEMY_VIS).
+   */
   death(kind: EnemyKind, texture: string, x: number, y: number, rot: number, scale: number, boss: boolean): void {
     const color = ENEMY_COLOR[kind];
-    this.emitter(color).explode(boss ? 70 : kind === 'tank' ? 22 : 12, x, y);
-    this.sparkEmitter.explode(boss ? 20 : 4, x, y);
+    this.emitter(color).explode(boss ? 40 : kind === 'tank' ? 12 : 6, x, y);
+    this.sparkEmitter.explode(boss ? 16 : 3, x, y);
     this.push(T.Ring, x, y, 0, 0, boss ? 120 : 34 * scale, color, boss ? 520 : 260);
-    if (this.glitches.length >= MAX_GLITCH) return;
     const now = this.scene.time.now;
     const k = ps(scale);
-    const a = this.glitchPool.get(texture).setTint(0x00f0ff).setRotation(rot).setScale(k).setAlpha(0.85);
-    const b = this.glitchPool.get(texture).setTint(0xff1050).setRotation(rot).setScale(k).setAlpha(0.85);
-    const slice = this.glitchPool.get('px').setTint(color).setAlpha(0.9);
-    this.glitches.push({ a, b, slice, x, y, until: now + (boss ? GLITCH_MS * 3 : GLITCH_MS) });
+    const r = DEFAULT_DATA.enemies[kind].radius * scale;
+    if (this.pieces.length < MAX_PIECES) {
+      this.piece(this.bodyPool, texture, 0xffffff, x, y, 0, 0, rot, 0, k, k * (boss ? 1.7 : 1.5), 0.9, false, now, boss ? POP_MS * 2.5 : POP_MS);
+      if (boss && this.pieces.length < MAX_PIECES) this.piece(this.bodyPool, 'e_boss_membrane', color, x, y, 0, 0, rot, 0, k, k * 2, 0.8, false, now, POP_MS * 3);
+    }
+    const n = fragBudget(this.pieces.length, MAX_PIECES, fragments(kind, rot, Math.random, this.plan));
+    const fk = k * FRAG_SIZE[kind];
+    for (let i = 0; i < n; i++) {
+      const f = this.plan[i]!;
+      const c = Math.cos(f.angle);
+      const d = Math.sin(f.angle);
+      const s0 = fk * f.size;
+      this.piece(this.fragPool, `frag_${f.variant}`, i === 0 ? ENEMY_ACCENT[kind] : color, x + c * r * 0.5, y + d * r * 0.5, c * r * f.dist, d * r * f.dist, f.angle, f.spin, s0, s0 * 0.55, 1, true, now, FRAG_MS * (boss ? 1.6 : 0.85 + Math.random() * 0.3));
+    }
+  }
+
+  private piece(pool: ImagePool, tex: string, tint: number, x: number, y: number, dx: number, dy: number, rot: number, spin: number, s0: number, s1: number, a0: number, hold: boolean, start: number, dur: number): void {
+    const img = pool.get(tex).setPosition(x, y).setRotation(rot).setScale(s0).setAlpha(a0);
+    if (tint !== 0xffffff) img.setTint(tint);
+    this.pieces.push({ img, pool, x, y, dx, dy, rot, spin, s0, s1, a0, hold, start, dur });
   }
 
   /** Small spark where a projectile lands (throttled under heavy fire). */
@@ -129,8 +168,8 @@ export class Effects {
     const d = Math.hypot(dx, dy) || 1;
     const ex = toX + (dx / d) * coreR;
     const ey = toY + (dy / d) * coreR;
-    this.push(T.Beam, fromX, fromY, ex, ey, 0, VIOLET, 160);
-    this.emitter(VIOLET).explode(5, ex, ey);
+    this.push(T.Beam, fromX, fromY, ex, ey, 0, ENEMY_COLOR.ranged, 160);
+    this.emitter(ENEMY_COLOR.ranged).explode(5, ex, ey);
   }
 
   /** Red pulse on the core rim when it takes a hit. */
@@ -177,35 +216,31 @@ export class Effects {
 
   reset(): void {
     this.live = 0;
-    for (const gl of this.glitches) this.releaseGlitch(gl);
-    this.glitches.length = 0;
+    for (const p of this.pieces) p.pool.release(p.img);
+    this.pieces.length = 0;
     for (const em of this.emitters.values()) em.killAll();
     this.sparkEmitter.killAll();
     this.g.clear();
   }
 
-  private releaseGlitch(gl: Glitch): void {
-    this.glitchPool.release(gl.a);
-    this.glitchPool.release(gl.b);
-    this.glitchPool.release(gl.slice);
-  }
-
   update(): void {
     const now = this.scene.time.now;
     this.flare.setVisible(now < this.flareUntil);
-    // Glitch copies jitter every frame for ~100 ms.
-    for (let i = this.glitches.length - 1; i >= 0; i--) {
-      const gl = this.glitches[i]!;
-      if (now >= gl.until) {
-        this.releaseGlitch(gl);
-        this.glitches[i] = this.glitches[this.glitches.length - 1]!;
-        this.glitches.pop();
+    for (let i = this.pieces.length - 1; i >= 0; i--) {
+      const p = this.pieces[i]!;
+      const t = (now - p.start) / p.dur;
+      if (t >= 1) {
+        p.pool.release(p.img);
+        this.pieces[i] = this.pieces[this.pieces.length - 1]!;
+        this.pieces.pop();
         continue;
       }
-      const j = 3 + Math.random() * 6;
-      gl.a.setPosition(gl.x - j, gl.y + (Math.random() - 0.5) * 3);
-      gl.b.setPosition(gl.x + j, gl.y + (Math.random() - 0.5) * 3);
-      gl.slice.setPosition(gl.x + (Math.random() - 0.5) * 10, gl.y + (Math.random() - 0.5) * 16).setScale(ps(2.4 + Math.random() * 3), ps(0.25));
+      const e = easeOut(t);
+      p.img
+        .setPosition(p.x + p.dx * e, p.y + p.dy * e)
+        .setRotation(p.rot + p.spin * t)
+        .setScale(p.s0 + (p.s1 - p.s0) * e)
+        .setAlpha(p.a0 * (p.hold ? 1 - t * t * t : 1 - t));
     }
     const g = this.g.clear();
     let n = 0;

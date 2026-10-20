@@ -1,13 +1,14 @@
 // Procedural neon textures, baked once at boot on 2D canvases at the render scale RS (crisp on HiDPI).
 // Glow comes from canvas shadowBlur at bake time — never per-object preFX at runtime (too slow on phones).
-// Images using these textures are scaled by ps() and drawn with ADD blending.
+// Images using these textures are scaled by ps() and drawn with ADD blending (viruses: NORMAL, see WorldView).
 
 import Phaser from 'phaser';
 import { type EnemyKind, type GameData, STAT_IDS, type StatId } from '../sim/data';
 import {
-  KEY, BITS, CYAN, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, LOCKED, PANEL_EDGE, PANEL_FILL, TAB_COLOR, TRACER, WHITE,
+  KEY, BITS, CYAN, ENEMY_ACCENT, ENEMY_COLOR, ENERGY, GRID, GRID_MAJOR, HP_OK, LOCKED, PANEL_EDGE, PANEL_FILL, TAB_COLOR, TRACER, VIRUS_BODY, WHITE,
 } from './palette';
 import { RS } from './resolution';
+import { FRAMES, texKey } from './virusShapes';
 
 type Ctx = CanvasRenderingContext2D;
 type Pt = [number, number];
@@ -92,59 +93,318 @@ function shapeTexture(scene: Phaser.Scene, key: string, r: number, draw: (ctx: C
   bake(scene, key, size, size, (ctx) => draw(ctx, size / 2));
 }
 
-/** Enemy textures are baked at their data radius: render scale = ps(layout scale). */
+/** Closed smooth outline through `pts` (quadratic curves via edge midpoints). */
+function smooth(ctx: Ctx, pts: readonly Pt[]): void {
+  const n = pts.length;
+  ctx.beginPath();
+  ctx.moveTo((pts[n - 1]![0] + pts[0]![0]) / 2, (pts[n - 1]![1] + pts[0]![1]) / 2);
+  for (let i = 0; i < n; i++) {
+    const [x, y] = pts[i]!;
+    const [nx, ny] = pts[(i + 1) % n]!;
+    ctx.quadraticCurveTo(x, y, (x + nx) / 2, (y + ny) / 2);
+  }
+  ctx.closePath();
+}
+
+/**
+ * A virus body: an opaque dark fill (piles stay readable under normal blending), a rim-lit gradient in the body colour,
+ * then the glowing outline. `path` must build the closed outline from scratch (beginPath included).
+ */
+function body(ctx: Ctx, cx: number, cy: number, r: number, color: number, lw: number, path: () => void, blur = 10): void {
+  ctx.lineJoin = 'round';
+  path();
+  ctx.fillStyle = rgba(VIRUS_BODY, 0.82);
+  ctx.fill();
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, rgba(color, 0.1));
+  g.addColorStop(0.65, rgba(color, 0.2));
+  g.addColorStop(1, rgba(color, 0.5));
+  ctx.fillStyle = g;
+  path();
+  ctx.fill();
+  ctx.shadowColor = rgba(color, 0.9);
+  ctx.shadowBlur = blur * 1.6 * RS;
+  ctx.strokeStyle = rgba(color, 0.3);
+  ctx.lineWidth = lw * 2.8;
+  path();
+  ctx.stroke();
+  ctx.shadowBlur = blur * RS;
+  ctx.strokeStyle = rgba(color, 1);
+  ctx.lineWidth = lw;
+  path();
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = rgba(WHITE, 0.75);
+  ctx.lineWidth = Math.max(0.8, lw * 0.34);
+  path();
+  ctx.stroke();
+}
+
+/** A neon open stroke whose alpha fades from `a0` at the first point to `a1` at the last (flagella). */
+function fadeStroke(ctx: Ctx, pts: readonly Pt[], color: number, lw: number, a0: number, a1: number): void {
+  const [x0, y0] = pts[0]!;
+  const [x1, y1] = pts[pts.length - 1]!;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const layers: [number, number, number, number][] = [[lw * 2.6, 0.35, 8, color], [lw, 1, 5, color], [Math.max(0.7, lw * 0.35), 0.8, 0, WHITE]];
+  for (const [w, k, blur, col] of layers) {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, rgba(col, a0 * k));
+    g.addColorStop(1, rgba(col, a1 * k));
+    ctx.shadowColor = rgba(color, 1);
+    ctx.shadowBlur = blur * RS;
+    ctx.strokeStyle = g;
+    ctx.lineWidth = w;
+    ctx.beginPath();
+    pts.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+}
+
+/** Spike ring (peplomers): `n` stalks from `r0` to `r1`, each with a club of radius `club` at the tip. */
+function spikes(ctx: Ctx, c: number, n: number, r0: number, r1: number, club: number, color: number, rot = 0, lw = 2): void {
+  glow(ctx, color, lw, () => {
+    for (let i = 0; i < n; i++) {
+      const a = rot + (i / n) * TAU;
+      ctx.moveTo(c + Math.cos(a) * r0, c + Math.sin(a) * r0);
+      ctx.lineTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1);
+    }
+  });
+  for (let i = 0; i < n; i++) {
+    const a = rot + (i / n) * TAU;
+    dot(ctx, c + Math.cos(a) * (r1 + club * 0.5), c + Math.sin(a) * (r1 + club * 0.5), club, color, 6);
+  }
+}
+
+/**
+ * Virus bodies (uniqueness plan item 2; notes in 2026-10-20-uniqueness-notes-a2.md): baked once at the data radius and
+ * drawn at ps(layout scale × ENEMY_VIS). Directional bodies (fast, ranged, boss head) face +x, the heading to the core.
+ */
 function enemies(scene: Phaser.Scene, data: GameData): void {
   const r = (k: EnemyKind): number => data.enemies[k].radius;
   const C = ENEMY_COLOR;
-  shapeTexture(scene, 'e_basic', r('basic') * 1.25, (ctx, c) => {
-    const h = r('basic') * 0.92;
-    neon(ctx, [[c - h, c - h], [c + h, c - h], [c + h, c + h], [c - h, c + h]], C.basic, 3.2);
-    const i = h * 0.42;
-    neon(ctx, [[c - i, c - i], [c + i, c - i], [c + i, c + i], [c - i, c + i]], C.basic, 1.6, 0.35, 6);
-  });
-  shapeTexture(scene, 'e_fast', r('fast') * 2.2, (ctx, c) => {
-    const pts = regular(c, c, r('fast') * 1.2, 3, 0);
-    // Speed streaks trailing behind (the texture points +x).
-    const rf = r('fast');
-    ctx.lineCap = 'round';
-    for (const [dy, len, a] of [[-rf * 0.5, rf * 1.1, 0.55], [rf * 0.5, rf * 1.1, 0.55], [0, rf * 0.7, 0.35]] as const) {
-      const g = ctx.createLinearGradient(c - rf * 0.7 - len, 0, c - rf * 0.5, 0);
-      g.addColorStop(0, rgba(C.fast, 0));
-      g.addColorStop(1, rgba(C.fast, a));
-      ctx.strokeStyle = g;
-      ctx.lineWidth = 2;
+  const A = ENEMY_ACCENT;
+
+  // basic: a round capsid with club-tipped spikes (the corona silhouette) and a ring of genome beads inside (beads, not a
+  // curl: a curl reads as a digit at this size).
+  const rb = r('basic');
+  shapeTexture(scene, texKey('basic'), rb * 1.3, (ctx, c) => {
+    const R = rb * 0.7;
+    spikes(ctx, c, 9, R * 0.92, rb * 1.08, 2.4, C.basic, 0.2);
+    body(ctx, c, c, R, C.basic, 2.6, () => {
       ctx.beginPath();
-      ctx.moveTo(c - rf * 0.7 - len, c + dy);
-      ctx.lineTo(c - rf * 0.6, c + dy);
+      ctx.arc(c, c, R, 0, TAU);
+    });
+    ctx.strokeStyle = rgba(A.basic, 0.35);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(c, c, R * 0.5, 0, TAU);
+    ctx.stroke();
+    for (const [x, y] of regular(c, c, R * 0.5, 5, 0.5)) dot(ctx, x, y, 1.5, A.basic, 4);
+  });
+
+  // fast: a comet body (head toward +x) with three flagella beating behind it; one texture per beat frame.
+  const rf = r('fast');
+  for (let f = 0; f < FRAMES.fast; f++) {
+    shapeTexture(scene, texKey('fast', f), rf * 2.3, (ctx, c) => {
+      const hx = c + rf * 0.35;
+      const hr = rf * 0.62;
+      const tail = c - rf * 0.95;
+      const phase = (f / FRAMES.fast) * TAU;
+      const strands: [number, number, number][] = [[-0.24, 0.32, 0], [0, 0.22, 2.1], [0.24, 0.32, 4.2]];
+      for (const [y0, amp, off] of strands) {
+        const pts: Pt[] = [];
+        for (let i = 0; i <= 14; i++) {
+          const t = i / 14;
+          const x = tail + rf * 0.15 - t * rf * 1.25;
+          pts.push([x, c + y0 * rf * (1 + t * 1.6) + Math.sin(t * 7.5 - phase - off) * amp * rf * t]);
+        }
+        fadeStroke(ctx, pts, C.fast, 1.6, 1, 0.12);
+      }
+      const a0 = -Math.PI * 0.62;
+      const outline = (): void => {
+        ctx.beginPath();
+        ctx.arc(hx, c, hr, a0, -a0);
+        ctx.quadraticCurveTo(hx - hr * 0.9, c + hr * 0.75, tail, c);
+        ctx.quadraticCurveTo(hx - hr * 0.9, c - hr * 0.75, hx + Math.cos(a0) * hr, c + Math.sin(a0) * hr);
+        ctx.closePath();
+      };
+      body(ctx, hx, c, hr * 1.2, C.fast, 2.4, outline, 9);
+      dot(ctx, hx + hr * 0.1, c, 2.3, A.fast, 6);
+    });
+  }
+
+  // tank: an icosahedral shell seen vertex-on (hex outline, inner triangle, ten shaded facets) with fibre knobs on the
+  // six outer vertices (adenovirus), an inner hull line and rivets: heavy and armoured.
+  const rt = r('tank');
+  shapeTexture(scene, texKey('tank'), rt * 1.3, (ctx, c) => {
+    const R = rt * 0.86;
+    const V = regular(c, c, R, 6, -Math.PI / 2);
+    const T = regular(c, c, R * 0.5, 3, -Math.PI / 2);
+    spikes(ctx, c, 6, R * 1.02, rt * 1.14, 3, C.tank, -Math.PI / 2, 2.4);
+    body(ctx, c, c, R, C.tank, 4.4, () => poly(ctx, V), 12);
+    // Facets: each outer edge to its inner vertex, the three wedges between inner edges, and the centre triangle.
+    // Outer vertex i (from the top, clockwise) sees inner vertex NEAR[i]; vertex 2j+1 sits between inner j and j+1.
+    const NEAR = [0, 0, 1, 1, 2, 2];
+    const facets: Pt[][] = [];
+    for (let i = 0; i < 6; i++) facets.push([V[i]!, V[(i + 1) % 6]!, T[i % 2 === 0 ? NEAR[i]! : NEAR[(i + 1) % 6]!]!]);
+    for (let j = 0; j < 3; j++) facets.push([T[j]!, T[(j + 1) % 3]!, V[2 * j + 1]!]);
+    facets.push([T[0]!, T[1]!, T[2]!]);
+    for (const f of facets) {
+      const mx = (f[0]![0] + f[1]![0] + f[2]![0]) / 3 - c;
+      const my = (f[0]![1] + f[1]![1] + f[2]![1]) / 3 - c;
+      // Light from the upper left.
+      const lit = Math.max(0, (-mx - my) / (R * 0.9));
+      poly(ctx, f);
+      ctx.fillStyle = rgba(C.tank, 0.1 + 0.42 * lit);
+      ctx.fill();
+      ctx.strokeStyle = rgba(A.tank, 0.7);
+      ctx.lineWidth = 1.5;
       ctx.stroke();
     }
-    neon(ctx, pts, C.fast, 3);
-    dot(ctx, c - r('fast') * 0.1, c, 2.2, C.fast, 6);
+    ctx.strokeStyle = rgba(A.tank, 0.55);
+    ctx.lineWidth = 1;
+    poly(ctx, regular(c, c, R * 0.82, 6, -Math.PI / 2));
+    ctx.stroke();
+    for (const [x, y] of T) dot(ctx, x, y, 1.8, A.tank, 5);
   });
-  shapeTexture(scene, 'e_tank', r('tank') * 1.25, (ctx, c) => {
-    const h = r('tank') * 0.95;
-    neon(ctx, [[c - h, c - h], [c + h, c - h], [c + h, c + h], [c - h, c + h]], C.tank, 3.4, 0.14);
-    const i = h * 0.62;
-    neon(ctx, [[c - i, c - i], [c + i, c - i], [c + i, c + i], [c - i, c + i]], C.tank, 2, 0.12, 6);
-    neon(ctx, regular(c, c, h * 0.42, 4, 0), C.tank, 1.6, 0.4, 6);
-  });
-  shapeTexture(scene, 'e_ranged', r('ranged') * 1.4, (ctx, c) => {
-    const rr = r('ranged');
-    neon(ctx, [[c + rr * 1.3, c], [c, c - rr * 0.9], [c - rr * 1.3, c], [c, c + rr * 0.9]], C.ranged, 3);
-    neon(ctx, [[c + rr * 0.6, c], [c, c - rr * 0.42], [c - rr * 0.6, c], [c, c + rr * 0.42]], C.ranged, 1.4, 0.3, 6);
-    dot(ctx, c, c, 3, C.ranged, 8);
-  });
+
+  // ranged: a bacteriophage — hexagonal head away from the core, ringed tail sheath, baseplate, six legs toward +x.
+  const rr = r('ranged');
+  for (let f = 0; f < FRAMES.ranged; f++) {
+    shapeTexture(scene, texKey('ranged', f), rr * 1.55, (ctx, c) => {
+      const X = (k: number): number => c + k * rr;
+      // Legs (behind the baseplate): [base x, base y, knee x, knee y, foot x, foot y], mirrored in y.
+      const legs: [number, number, number, number, number, number][] =
+        f === 1
+          ? [[0.62, 0.28, 0.82, 0.78, 1.32, 0.66], [0.64, 0.12, 1.0, 0.44, 1.4, 0.3]]
+          : [[0.62, 0.28, 0.72, 0.88, 1.22, 0.98], [0.64, 0.12, 0.92, 0.52, 1.36, 0.5]];
+      glow(ctx, C.ranged, 1.7, () => {
+        for (const [bx, by, kx, ky, fx, fy] of legs) {
+          for (const s of [-1, 1]) {
+            ctx.moveTo(X(bx), X(by * s));
+            ctx.lineTo(X(kx), X(ky * s));
+            ctx.lineTo(X(fx), X(fy * s));
+          }
+        }
+      });
+      body(ctx, c, c, rr * 0.4, C.ranged, 1.8, () => poly(ctx, [[X(-0.12), X(-0.14)], [X(0.58), X(-0.14)], [X(0.58), X(0.14)], [X(-0.12), X(0.14)]]), 6);
+      glow(ctx, A.ranged, 1, () => {
+        for (const k of [0.06, 0.22, 0.38]) {
+          ctx.moveTo(X(k), X(-0.14));
+          ctx.lineTo(X(k), X(0.14));
+        }
+      });
+      glow(ctx, C.ranged, 2.4, () => {
+        ctx.moveTo(X(0.64), X(-0.34));
+        ctx.lineTo(X(0.64), X(0.34));
+        ctx.moveTo(X(-0.16), X(-0.24));
+        ctx.lineTo(X(-0.16), X(0.24));
+      });
+      const head: Pt[] = regular(0, 0, 1, 6, 0).map(([x, y]) => [X(-0.78 + x * 0.6), X(y * 0.56)] as Pt);
+      body(ctx, X(-0.78), c, rr * 0.62, C.ranged, 2.4, () => poly(ctx, head), 9);
+      glow(ctx, A.ranged, 1.2, () => {
+        ctx.moveTo(X(-1.05), X(-0.08));
+        ctx.bezierCurveTo(X(-0.95), X(-0.38), X(-0.62), X(-0.38), X(-0.6), X(-0.06));
+        ctx.bezierCurveTo(X(-0.58), X(0.3), X(-0.9), X(0.32), X(-0.88), X(0.06));
+      });
+    });
+  }
+
+  // boss: a big spiked capsid around a glowing nucleus with a coiled genome; its lipid envelope (`e_boss_membrane`) is a
+  // separate image so it can breathe. The trailing segments are budding progeny virions (`e_boss_seg`).
   const br = r('boss');
-  shapeTexture(scene, 'e_boss_head', br * 1.15, (ctx, c) => {
-    neon(ctx, regular(c, c, br, 6, 0), C.boss, 3.6, 0.18, 14);
-    neon(ctx, regular(c, c, br * 0.62, 6, 0), C.boss, 2, 0.1, 8);
-    // Eyes face +x (the head is rotated toward the core).
-    dot(ctx, c + br * 0.38, c - br * 0.3, 4.5, 0xffe0ea, 10);
-    dot(ctx, c + br * 0.38, c + br * 0.3, 4.5, 0xffe0ea, 10);
+  shapeTexture(scene, texKey('boss'), br * 1.15, (ctx, c) => {
+    const R = br * 0.6;
+    spikes(ctx, c, 16, R * 0.95, br * 0.8, 3.2, C.boss, 0.1, 2.4);
+    body(ctx, c, c, R, C.boss, 3.4, () => poly(ctx, regular(c, c, R, 20, 0)), 12);
+    const g = ctx.createRadialGradient(c, c, 0, c, c, R * 0.55);
+    g.addColorStop(0, rgba(WHITE, 0.9));
+    g.addColorStop(0.35, rgba(A.boss, 0.6));
+    g.addColorStop(1, rgba(C.boss, 0));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(c, c, R * 0.55, 0, TAU);
+    ctx.fill();
+    glow(ctx, A.boss, 1.6, () => {
+      for (let i = 0; i <= 60; i++) {
+        const t = i / 60;
+        const a = t * TAU * 2.2;
+        const rad = R * (0.12 + 0.6 * t);
+        if (i === 0) ctx.moveTo(c + Math.cos(a) * rad, c + Math.sin(a) * rad);
+        else ctx.lineTo(c + Math.cos(a) * rad, c + Math.sin(a) * rad);
+      }
+    });
+  });
+  shapeTexture(scene, 'e_boss_membrane', br * 1.15, (ctx, c) => {
+    const lobe = (k: number): Pt[] =>
+      Array.from({ length: 56 }, (_, i) => {
+        const a = (i / 56) * TAU;
+        const rad = br * (k + 0.045 * Math.sin(a * 7) + 0.025 * Math.sin(a * 3 + 1));
+        return [c + Math.cos(a) * rad, c + Math.sin(a) * rad] as Pt;
+      });
+    const outer = lobe(0.98);
+    const inner = lobe(0.88);
+    // The bilayer: a translucent band between two glowing lines, glycoprotein knobs on the lobes.
+    smooth(ctx, outer);
+    ctx.fillStyle = rgba(C.boss, 0.16);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'destination-out';
+    smooth(ctx, inner);
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    smooth(ctx, inner);
+    ctx.fillStyle = rgba(C.boss, 0.05);
+    ctx.fill();
+    const lines: [Pt[], number, number][] = [[outer, 2.6, 1], [inner, 1.4, 0.7]];
+    for (const [pts, lw, a] of lines) {
+      ctx.shadowColor = rgba(C.boss, 1);
+      ctx.shadowBlur = 10 * RS;
+      ctx.strokeStyle = rgba(C.boss, a);
+      ctx.lineWidth = lw;
+      smooth(ctx, pts);
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 7; i++) {
+      const a = ((i + 0.25) / 7) * TAU;
+      dot(ctx, c + Math.cos(a) * br * 1.02, c + Math.sin(a) * br * 1.02, 2.6, A.boss, 7);
+    }
   });
   shapeTexture(scene, 'e_boss_seg', br * 1.05, (ctx, c) => {
-    neon(ctx, regular(c, c, br * 0.92, 6, Math.PI / 6), C.boss, 3, 0.12, 12);
-    neon(ctx, regular(c, c, br * 0.4, 6, Math.PI / 6), 0xff5fa2, 1.8, 0.35, 8);
+    const R = br * 0.6;
+    ctx.strokeStyle = rgba(C.boss, 0.55);
+    ctx.lineWidth = 1.6;
+    ctx.shadowColor = rgba(C.boss, 1);
+    ctx.shadowBlur = 8 * RS;
+    ctx.beginPath();
+    ctx.arc(c, c, br * 0.86, 0, TAU);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    spikes(ctx, c, 8, R * 0.95, br * 0.76, 2.6, C.boss, 0);
+    body(ctx, c, c, R, C.boss, 3, () => poly(ctx, regular(c, c, R, 6, Math.PI / 6)), 10);
+    dot(ctx, c, c, R * 0.22, A.boss, 10);
+  });
+}
+
+/** Death fragments (`frag_<v>`, baked white, tinted per kind): a shell arc with a spike, a plate, a droplet. */
+function fragmentTextures(scene: Phaser.Scene): void {
+  const S = 40;
+  const c = S / 2;
+  bake(scene, 'frag_0', S, S, (ctx) => {
+    glow(ctx, WHITE, 2.4, () => ctx.arc(c - 6, c, 10, -0.75, 0.75));
+    glow(ctx, WHITE, 1.6, () => {
+      ctx.moveTo(c + 4, c);
+      ctx.lineTo(c + 9, c);
+    });
+    dot(ctx, c + 10, c, 2, WHITE, 5);
+  });
+  bake(scene, 'frag_1', S, S, (ctx) => neon(ctx, [[c - 6, c - 6], [c + 7, c - 1], [c - 3, c + 7]], WHITE, 1.8, 0.35, 7));
+  bake(scene, 'frag_2', S, S, (ctx) => {
+    dot(ctx, c, c, 3.4, WHITE, 8);
+    dot(ctx, c - 5, c + 3, 1.6, WHITE, 5);
   });
 }
 
@@ -656,6 +916,7 @@ export function bakePanel(scene: Phaser.Scene, key: string, w: number, h: number
 export function generateTextures(scene: Phaser.Scene, data: GameData): void {
   background(scene);
   enemies(scene, data);
+  fragmentTextures(scene);
   core(scene, data);
   fx(scene);
   structures(scene, data);
