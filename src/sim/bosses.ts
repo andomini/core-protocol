@@ -48,6 +48,8 @@ export function applyBoss(w: World, data: GameData, e: Enemy, events: SimEvent[]
     const sec = b.attackInterval ?? data.enemies.boss.attackInterval;
     e.attackIntervalTicks = (sec * data.config.tickHz) / (e.standoff > 0 ? (tier.rangedRateMul ?? 1) : 1);
   }
+  // A telegraphed shot (Artillery): the first one also waits a full interval at its post, so it is always warned.
+  if (b.shotWarn !== undefined) e.attackCd = e.attackIntervalTicks;
   e.boss = id;
   e.bt = 0;
   if (finale) e.finale = true;
