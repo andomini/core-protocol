@@ -17,6 +17,8 @@ export type Sfx =
   | 'death' | 'click' | 'heartbeat' | 'wave' | 'zap' | 'freeze' | 'set' | 'pack'
   // verbs (uniqueness plan item 14)
   | 'boot' | 'fusion' | 'mutation' | 'mission'
+  // tier bosses (c1): a telegraph beep before a shield or a shot
+  | 'bossWarn'
   | 'pulse' | 'pulseOverload' | 'pulseCryo' | 'pulseChain' | 'pulseMining' | 'pulseFirewall';
 
 export type Family = 'player' | 'virus' | 'ui';
@@ -137,6 +139,12 @@ export const VOICES: Readonly<Record<Sfx, VoiceDef>> = {
     { wave: 'sawtooth', f0: 220, f1: 30, dur: 0.9, vol: 0.12, filter: LP(2400, 120, 2) },
     { wave: 'noise', f0: 0, f1: 0, dur: 0.7, vol: 0.1, filter: LP(2200, 120) },
     { wave: 'sine', f0: 70, f1: 30, dur: 0.8, vol: 0.14 },
+  ] },
+  // c1: a tier boss telegraphs (shield coming, artillery aiming): two hard square blips, readable over the battle.
+  bossWarn: { family: 'virus', prio: 2, gap: 350, layers: [
+    { wave: 'square', f0: 880, f1: 860, dur: 0.07, vol: 0.06, filter: LP(3000, 1800) },
+    { wave: 'square', f0: 880, f1: 860, dur: 0.07, vol: 0.06, delay: 0.11, filter: LP(3000, 1800) },
+    { wave: 'sine', f0: 110, f1: 90, dur: 0.2, vol: 0.08 },
   ] },
   mutation: { family: 'virus', prio: 2, gap: 600, layers: [
     // Two detuned saws drift apart (a warped tritone), the filter closes, a sub sinks under it.
@@ -344,13 +352,17 @@ export function musicPlan(wave: number, boss: boolean): MusicPlan {
   return { layer2: Math.max(b.layer2, BOSS.layer2), cutoff: Math.min(8000, b.cutoff * BOSS.cutoffMul), stepS: b.stepS * BOSS.stepMul };
 }
 
-export type Sting = 'boot' | 'death';
+export type Sting = 'boot' | 'death' | 'boss' | 'finale';
 
 /** Stingers: [freq, start (s), dur (s), shape] notes through the music bus. */
 export const STINGS: Readonly<Record<Sting, readonly [number, number, number, OscillatorType][]>> = {
   // Run start: a fast rising Am arpeggio landing on a held A5.
   boot: [[N.A3, 0, 0.12, 'square'], [N.E4, 0.07, 0.12, 'square'], [N.A4, 0.14, 0.12, 'square'], [N.C5, 0.21, 0.12, 'square'], [N.E5, 0.28, 0.14, 'square'], [N.A5, 0.35, 0.6, 'triangle'], [110, 0, 0.5, 'triangle']],
   // Death: a falling minor line into a low drone.
+  // c1 boss entrance: a menacing low chromatic crawl over a sub drone.
+  boss: [[110, 0, 0.25, 'sawtooth'], [116.5, 0.25, 0.25, 'sawtooth'], [110, 0.5, 0.25, 'sawtooth'], [103.8, 0.75, 0.6, 'sawtooth'], [55, 0, 1.4, 'triangle']],
+  // c1 FINALE boss down, next tier unlocked: a bright A major climb onto a held A5.
+  finale: [[N.A4, 0, 0.14, 'square'], [554.4, 0.1, 0.14, 'square'], [N.E5, 0.2, 0.14, 'square'], [N.A5, 0.3, 0.9, 'triangle'], [N.A3, 0, 1.2, 'triangle']],
   death: [[N.E5, 0, 0.3, 'sawtooth'], [N.C5, 0.22, 0.3, 'sawtooth'], [N.A4, 0.44, 0.35, 'sawtooth'], [207.7, 0.7, 1.2, 'sawtooth'], [55, 0.7, 1.6, 'triangle']],
 };
 
