@@ -6,6 +6,7 @@
 
 import Phaser from 'phaser';
 import { CYAN, ENERGY, ENERGY_CSS, LOCKED, PANEL_FILL, RARITY_COLOR, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM } from '../render/palette';
+import { CardFx, SlideIn } from '../render/vfx';
 import { DEPTH } from '../render/WorldView';
 import type { BootSector, GameData } from '../sim/data';
 import { hexDist, hexToPixel, isNeighbour, ring } from '../sim/hex';
@@ -41,6 +42,8 @@ interface Card {
 }
 
 const D = DEPTH.overlay - 2;
+/** Card reveal (vfx): slide distance (px), per-card stagger and slide time (ms); all done well inside 450 ms. */
+const REVEAL = { dy: 28, stagger: 55, ms: 240 } as const;
 
 export class PickOverlay {
   visible = false;
@@ -60,6 +63,9 @@ export class PickOverlay {
   /** The open pick is the boot pick (cards are boot sectors). */
   private bootMode = false;
   private readonly g0: PickGeometry;
+  /** Reveal animation per card, and the rarity flash / boot glow layer (src/render/vfx.ts). */
+  private readonly slides: SlideIn[] = [];
+  private readonly cfx: CardFx;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -77,7 +83,11 @@ export class PickOverlay {
     this.g0 = g0;
     this.title = text(scene, L.w / 2, g0.headerY, '', g0.titleSize, { font: 'title', weight: '900', glow: '#22e5ff', blur: 16 }).setOrigin(0.5).setDepth(D + 0.3);
     this.sub = text(scene, L.w / 2, g0.subY, '', g0.subSize, { color: TEXT_DIM }).setOrigin(0.5).setDepth(D + 0.3);
-    for (let i = 0; i < data.perks.offer.sizeLab; i++) this.cards.push(this.makeCard(i));
+    for (let i = 0; i < data.perks.offer.sizeLab; i++) {
+      this.cards.push(this.makeCard(i));
+      this.slides.push(new SlideIn(scene));
+    }
+    this.cfx = new CardFx(scene, D + 0.25);
     const btnFont = L.o === 'portrait' ? 30 : 20;
     this.rerollBtn = new Button(scene, g0.reroll, 'REROLL', btnFont, D + 0.4, () => this.guard(() => this.h.reroll()), { font: 'title', edge: CYAN, fill: 0x062a3a, lw: 2.5, blur: 12 });
     this.boostBtn = new Button(scene, g0.boost, 'BOOST', btnFont, D + 0.4, () => this.guard(() => this.h.boost()), { font: 'title', edge: ENERGY, fill: 0x2a2306, lw: 2.5, blur: 12, textColor: ENERGY_CSS, glow: ENERGY_CSS });
@@ -135,6 +145,7 @@ export class PickOverlay {
     const key = `${w.picks}:${w.rerolls}:${w.offer.join(',')}:${w.boost.from}`;
     if (this.visible && key === this.shownKey) return;
     const fresh = !this.visible || !this.shownKey.startsWith(`${w.picks}:`);
+    this.stopReveal();
     this.shownKey = key;
     this.visible = true;
     this.bootMode = false;
@@ -173,15 +184,31 @@ export class PickOverlay {
     this.boostBtn.label.setAlpha(canBoost ? 1 : 0.45);
     if (!canBoost) this.boostBtn.zone.disableInteractive();
     if (fresh) {
-      const targets: Phaser.GameObjects.GameObject[] = [];
+      // vfx: cards slide in staggered; rare / epic cards flash in their rarity colour as they land.
       for (let i = 0; i < this.n; i++) {
         const c = this.cards[i]!;
-        targets.push(c.g, c.tag, c.name, c.rarity, c.badge, c.lines, c.progress);
-        if (c.frame) targets.push(c.frame);
+        this.reveal(i);
+        const rarity = this.data.perks.perks[w.offer[i]!]!.rarity;
+        if (rarity === 'rare' || rarity === 'epic') this.cfx.flash(c.r, RARITY_COLOR[rarity], i * REVEAL.stagger + REVEAL.ms * 0.6, rarity === 'epic');
       }
-      this.scene.tweens.add({ targets, alpha: { from: 0, to: 1 }, duration: 260 });
       this.scene.tweens.add({ targets: [this.dim, this.title, this.sub], alpha: { from: 0, to: 1 }, duration: 200 });
     }
+  }
+
+  // vfx
+  /** Card `i` slides in (after the others before it). */
+  private reveal(i: number): void {
+    const c = this.cards[i]!;
+    const objs: (Phaser.GameObjects.Graphics | Phaser.GameObjects.Text | Phaser.GameObjects.Image)[] = [c.g, c.tag, c.name, c.rarity, c.badge, c.lines, c.progress];
+    if (c.frame) objs.push(c.frame);
+    this.slides[i]!.start(objs, REVEAL.dy, i * REVEAL.stagger, REVEAL.ms);
+  }
+
+  // vfx
+  /** Ends any running reveal (objects back at their layout positions) and clears the flashes. */
+  private stopReveal(): void {
+    for (const s of this.slides) s.finish();
+    this.cfx.clear();
   }
 
   // boot
@@ -190,6 +217,7 @@ export class PickOverlay {
     const key = `boot:${w.bootOffer.join(',')}`;
     if (this.visible && key === this.shownKey) return;
     const fresh = !this.visible || !this.bootMode;
+    this.stopReveal();
     this.shownKey = key;
     this.visible = true;
     this.bootMode = true;
@@ -213,16 +241,18 @@ export class PickOverlay {
     }
     this.rerollBtn.setVisible(false);
     this.boostBtn.setVisible(false);
-    if (fresh) {
-      const targets: Phaser.GameObjects.GameObject[] = [];
-      for (let i = 0; i < this.n; i++) {
-        const c = this.cards[i]!;
-        targets.push(c.g, c.tag, c.name, c.rarity, c.badge, c.lines, c.progress);
-        if (c.frame) targets.push(c.frame);
+    // vfx: the sector cards slide in, flash and keep a breathing glow in their tag colour.
+    for (let i = 0; i < this.n; i++) {
+      const c = this.cards[i]!;
+      const tc = TAG_COLOR[bootSector(this.data, w.bootOffer[i]!)?.tag ?? 'overload'];
+      const at = fresh ? i * REVEAL.stagger + REVEAL.ms * 0.6 : 0;
+      if (fresh) {
+        this.reveal(i);
+        this.cfx.flash(c.r, tc, at, false);
       }
-      this.scene.tweens.add({ targets, alpha: { from: 0, to: 1 }, duration: 320 });
-      this.scene.tweens.add({ targets: [this.dim, this.title, this.sub], alpha: { from: 0, to: 1 }, duration: 220 });
+      this.cfx.glow(c.r, tc, at);
     }
+    if (fresh) this.scene.tweens.add({ targets: [this.dim, this.title, this.sub], alpha: { from: 0, to: 1 }, duration: 220 });
   }
 
   // boot
@@ -418,6 +448,7 @@ export class PickOverlay {
   }
 
   hide(): void {
+    this.stopReveal();
     this.visible = false;
     this.bootMode = false;
     this.shownKey = '';
