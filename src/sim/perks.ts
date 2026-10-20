@@ -10,6 +10,7 @@ import { type CrystalShape, crystalTagCounts, crystalShape, freeSlots, fusionEff
 import { geneKeep } from './mutations';
 import { clampValue, powInt } from './num';
 import { ownedShare } from './territory';
+import { applyStructLevels } from './structLevels'; // C4
 import { type Effect, FREEZE_ALL_MAX_SHARE, fusionKeys, MARK_FIELDS, type MarkValues, RARITIES, type Rarity, RULE_IDS, type Rules, type StructureKind, type StructureValues, TAGS, type Tag } from './perkData';
 import { createStream, nextInt, pickWeighted } from './rng';
 import type { World } from './state';
@@ -693,6 +694,7 @@ export function fusionStructure(w: World, data: GameData, kind: StructureKind): 
       for (const e of data.sets.fusions[key]!.tiers[String(t)]!) if (e.type === 'structure' && e.kind === kind) foldStructure(into, e);
     }
   }
+  applyStructLevels(w, data, into); // C4
   return into[kind];
 }
 
@@ -834,6 +836,7 @@ export function perkProfile(w: World, data: GameData): PerkProfile {
     }
   }
   for (const c of w.cards) c.effects.forEach((e, i) => fold(e, 1, `card:${c.id}:${i}`));
+  applyStructLevels(w, data, p.structures); // C4: bought structure levels on top of the ladders
   // Bounty Marks × Bastion (spec 2026-10-16 synergies): both at II or more → turrets prefer the Marked target.
   if (p.mark !== null && p.structures.turret !== undefined) {
     const ii = data.sets.fusionTiers[1] ?? Infinity;

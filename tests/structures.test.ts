@@ -15,6 +15,9 @@ import { scaleForWave, spawnEnemy } from '../src/sim/waves';
 import { farMul, terrainFor } from '../src/sim/territory';
 import { effectLine } from '../src/ui/perkText';
 import { ofType, type StatBases, stepN, testData } from './helpers';
+import { DEFAULT_DATA, type GameData, validateData } from '../src/sim/data';
+import type { StructureKind } from '../src/sim/perkData';
+import { structLevel, structUpgradeCost } from '../src/sim/structLevels';
 
 // No random spawns, a core that does not shoot or heal: only the viruses the test places.
 function setup(tier: 0 | 1 | 3 | 5, core: StatBases = {}) {
@@ -1084,3 +1087,100 @@ function untilWaveEnd(w: World, data: ReturnType<typeof testData>, n: number): S
   }
   throw new Error('wave did not end');
 }
+
+// C4 (uniqueness plan phase 3): structure upgrades, per kind, bought with Energy.
+describe('structures: upgrades (C4)', () => {
+  const T = 'overload+firewall'; // Bastion: turrets
+  function built(energy = 1e6) {
+    const { data, w } = setup(1); // Ice Wall at I
+    w.fusionTiers[T] = 1;
+    w.energy = energy;
+    return { data, w };
+  }
+  const up = (w: World, data: GameData, kind: StructureKind) => {
+    const ev: SimEvent[] = [];
+    applyCommands(w, data, [{ type: 'upgradeStruct', kind }], ev);
+    return ev;
+  };
+
+  it('the cost ladder is ceil(cost · costGrowth^L) up to max, then Infinity', () => {
+    const data = testData();
+    const u = data.structures.upgrades!.turret!;
+    for (let L = 0; L < u.max; L++) expect(structUpgradeCost(data, 'turret', L)).toBe(Math.ceil(u.cost * powInt(u.costGrowth, L)));
+    expect(structUpgradeCost(data, 'turret', u.max)).toBe(Infinity);
+    for (let L = 1; L < u.max; L++) expect(structUpgradeCost(data, 'turret', L)).toBeGreaterThan(structUpgradeCost(data, 'turret', L - 1));
+  });
+
+  it('levels fold into the values the sim, the renderer and the HUD read; atMax adds the extra target', () => {
+    const { data, w } = built();
+    const base = fusionStructure(w, data, 'turret')!;
+    const wall0 = fusionStructure(w, data, 'wall')!;
+    const u = data.structures.upgrades!.turret!;
+    w.structLevels = { turret: 2, wall: 1 };
+    const v = fusionStructure(w, data, 'turret')!;
+    expect(v.dmgFrac).toBeCloseTo(base.dmgFrac! * (1 + u.perLevel.dmgFrac! * 2), 12);
+    expect(v.targets).toBe(base.targets);
+    expect(perkProfile(w, data).structures.turret).toEqual(v);
+    expect(fusionStructure(w, data, 'wall')!.hpFrac).toBeCloseTo(wall0.hpFrac! * (1 + data.structures.upgrades!.wall!.perLevel.hpFrac!), 12);
+    w.structLevels = { turret: u.max };
+    expect(fusionStructure(w, data, 'turret')!.targets).toBe(base.targets! + u.atMax!.targets!);
+    // A level on an unbuilt kind changes nothing; a bad saved level reads as the nearest valid one.
+    w.structLevels = { mine: 3, turret: 99 };
+    expect(fusionStructure(w, data, 'mine')).toBeUndefined();
+    expect(structLevel(w, data, 'turret')).toBe(u.max);
+    w.structLevels = { turret: -2 };
+    expect(fusionStructure(w, data, 'turret')).toEqual(base);
+  });
+
+  it('upgradeStruct: Energy goes, the level rises, a structUpgrade event; rejects when nothing is built, Energy is short, maxed, dead or unknown', () => {
+    const { data, w } = built(0);
+    expect(ofType(up(w, data, 'mine'), 'structUpgradeRejected')[0]!.reason).toBe('locked');
+    expect(ofType(up(w, data, 'turret'), 'structUpgradeRejected')[0]!.reason).toBe('funds');
+    expect(w.structLevels).toBeUndefined();
+    const c0 = structUpgradeCost(data, 'turret', 0);
+    w.energy = c0 + 5;
+    expect(ofType(up(w, data, 'turret'), 'structUpgrade')).toEqual([{ type: 'structUpgrade', kind: 'turret', level: 1, cost: c0 }]);
+    expect(w.energy).toBe(5);
+    expect(w.structLevels).toEqual({ turret: 1 });
+    w.energy = 1e9;
+    for (let i = 1; i < data.structures.upgrades!.turret!.max; i++) up(w, data, 'turret');
+    expect(ofType(up(w, data, 'turret'), 'structUpgradeRejected')[0]!.reason).toBe('maxed');
+    expect(ofType(up(w, data, 'bogus' as StructureKind), 'structUpgradeRejected')[0]!.reason).toBe('unknown');
+    w.dead = true;
+    expect(ofType(up(w, data, 'wall'), 'structUpgradeRejected')[0]!.reason).toBe('dead');
+  });
+
+  it('deterministic, and a snapshot round trip keeps the levels (present and absent)', () => {
+    const run = (levels: boolean) => {
+      const { data, w } = built();
+      if (levels) {
+        up(w, data, 'turret');
+        up(w, data, 'wall');
+      }
+      const a = restore(snapshot(w));
+      expect(a.structLevels).toEqual(levels ? { turret: 1, wall: 1 } : undefined);
+      stepN(w, data, 300);
+      stepN(a, data, 300);
+      expect(hashWorld(a)).toBe(hashWorld(w));
+      return hashWorld(w);
+    };
+    expect(run(true)).toBe(run(true));
+    expect(run(false)).toBe(run(false));
+    expect(run(true)).not.toBe(run(false));
+  });
+
+  it('data: unknown kinds and fields, perLevel on a whole-number field, a shrink to 0 and a falling curve are rejected', () => {
+    const bad = (u: Record<string, unknown>) => () => {
+      const d = structuredClone(DEFAULT_DATA);
+      (d.structures as { upgrades: unknown }).upgrades = u;
+      validateData(d);
+    };
+    expect(bad({ turret: { max: 3, cost: 10, costGrowth: 1.5, perLevel: { dmgFrac: 0.1 } } })).not.toThrow();
+    expect(bad({ tower: { max: 3, cost: 10, costGrowth: 1.5, perLevel: {} } })).toThrow(/unknown structure kind/);
+    expect(bad({ turret: { max: 3, cost: 10, costGrowth: 1.5, perLevel: { blast: 0.1 } } })).toThrow(/not a turret field/);
+    expect(bad({ turret: { max: 3, cost: 10, costGrowth: 1.5, perLevel: { targets: 0.1 } } })).toThrow(/whole-number/);
+    expect(bad({ wall: { max: 5, cost: 10, costGrowth: 1.5, perLevel: { regrowSec: -0.2 } } })).toThrow(/1 \+ frac/);
+    expect(bad({ turret: { max: 3, cost: 10, costGrowth: 0.9, perLevel: { dmgFrac: 0.1 } } })).toThrow(/costGrowth/);
+    expect(bad({ turret: { max: 3, cost: 10, costGrowth: 1.5, perLevel: { dmgFrac: 0.1 }, atMax: { targets: 0.5 } } })).toThrow(/atMax/);
+  });
+});

@@ -2,5 +2,11 @@
   "wall": { "minRadius": 240, "ringStep": 12, "rangeMargin": 32, "segments": 6, "contestDist": 60 },
   "turret": { "muzzle": 10, "shotSec": 1 },
   "mine": { "trigger": 24, "band": [30, 70] },
-  "station": { "inset": 34, "radius": 18, "aggro": 80 }
+  "station": { "inset": 34, "radius": 18, "aggro": 80 },
+  "upgrades": {
+    "turret": { "max": 5, "cost": 30, "costGrowth": 1.7, "perLevel": { "dmgFrac": 0.12 }, "atMax": { "targets": 1 } },
+    "wall": { "max": 5, "cost": 30, "costGrowth": 1.7, "perLevel": { "hpFrac": 0.15, "regrowSec": -0.08 } },
+    "mine": { "max": 5, "cost": 30, "costGrowth": 1.7, "perLevel": { "blast": 0.08 }, "atMax": { "perWave": 1 } },
+    "station": { "max": 5, "cost": 30, "costGrowth": 1.7, "perLevel": { "energy": 0.1, "streakMax": 0.1 } }
+  }
 }

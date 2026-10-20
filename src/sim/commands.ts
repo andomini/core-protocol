@@ -6,7 +6,9 @@ import type { SimEvent } from './events';
 import { clampValue } from './num';
 import { fusionStructure, moveCrystalModule, pickBoot, pickPerk, type ProtocolReject, rerollOffer, structureBuilt, structureFusionNames, takeBoost } from './perks';
 import { pulseCommand } from './pulse'; // pulse
+import { STRUCTURE_KINDS, type StructureKind } from './perkData'; // C4
 import { chance } from './rng';
+import { structLevel, structUpgradeCost, structUpgradeDef } from './structLevels'; // C4
 import { quoteBuy, type BuyQuote } from './stats';
 import { type World, worldStats } from './state';
 
@@ -28,7 +30,9 @@ export type Command =
   /** Rewarded revive after death: once per run, part of the HP back, nearby viruses purged. */
   | { type: 'revive'; hp?: number }
   /** pulse: the core's Pulse ring (src/sim/pulse.ts); rejected with `cooldown` while it recharges. */
-  | { type: 'pulse' };
+  | { type: 'pulse' }
+  /** C4: buys the next upgrade level of a structure kind (src/sim/structLevels.ts) with Energy; levels are per kind. */
+  | { type: 'upgradeStruct'; kind: StructureKind };
 
 export interface LoggedCommand {
   /** World tick before the step that applies it (applied first thing in that step). */
@@ -129,6 +133,24 @@ function revive(w: World, data: GameData, hp: unknown, events: SimEvent[]): Prot
   return null;
 }
 
+// C4: structure upgrades. No Free Upgrade roll (that stays with the stat buys, on its own stream).
+function upgradeStruct(w: World, data: GameData, kind: unknown, events: SimEvent[]): void {
+  const no = (reason: Extract<SimEvent, { type: 'structUpgradeRejected' }>['reason']) => {
+    events.push({ type: 'structUpgradeRejected', kind: String(kind), reason });
+  };
+  if (w.dead) return no('dead');
+  if (!(STRUCTURE_KINDS as readonly unknown[]).includes(kind)) return no('unknown');
+  const k = kind as StructureKind;
+  if (structUpgradeDef(data, k) === undefined || !structureBuilt(w, data, k)) return no('locked');
+  const level = structLevel(w, data, k);
+  const cost = structUpgradeCost(data, k, level);
+  if (!Number.isFinite(cost)) return no('maxed');
+  if (w.energy < cost) return no('funds');
+  w.energy = clampValue(Math.max(0, w.energy - cost));
+  w.structLevels = { ...w.structLevels, [k]: level + 1 };
+  events.push({ type: 'structUpgrade', kind: k, level: level + 1, cost });
+}
+
 function protocol(events: SimEvent[], cmd: string, r: ProtocolReject | null): void {
   if (r !== null) events.push({ type: 'commandRejected', cmd, reason: r });
 }
@@ -146,6 +168,7 @@ export function applyCommands(w: World, data: GameData, cmds: readonly Command[]
     } else if (c.type === 'reroll') protocol(events, 'reroll', rerollOffer(w, data, c.via, events));
     else if (c.type === 'boost') protocol(events, 'boost', takeBoost(w, data, events));
     else if (c.type === 'pulse') protocol(events, 'pulse', pulseCommand(w, data, events)); // pulse
+    else if (c.type === 'upgradeStruct') upgradeStruct(w, data, (cmd as { kind?: unknown }).kind, events); // C4
     else if (c.type === 'revive') protocol(events, 'revive', revive(w, data, (cmd as { hp?: unknown }).hp, events));
     else if (typeof c.stat === 'string') reject(events, c.stat, 'unknown');
     else events.push({ type: 'commandRejected', cmd: String(c.type), reason: 'unknown' });

@@ -11,7 +11,7 @@ import setsJson from '../data/sets.json';
 import statsJson from '../data/stats.json';
 import structuresJson from '../data/structures.json';
 import pulseJson from '../data/pulse.json'; // pulse
-import { type PerksData, type SetsData, STRUCTURE_KINDS, type StructureKind, TAGS, type Tag, validatePerks, validateSets } from './perkData';
+import { type PerksData, type SetsData, STRUCTURE_FIELDS, STRUCTURE_KINDS, type StructureKind, TAGS, type Tag, validatePerks, validateSets } from './perkData';
 import { hexDist, isNeighbour } from './hex'; // boot
 import tiersJson from '../data/tiers.json';
 
@@ -314,6 +314,46 @@ export interface StructuresDef {
     /** A virus not held by a wall segment turns to the nearest station within this distance. */
     aggro: number;
   };
+  /** C4: per-kind upgrade ladders bought with Energy (src/sim/structLevels.ts); a kind without one cannot be upgraded. */
+  upgrades?: Partial<Record<StructureKind, StructureUpgradeDef>>;
+}
+
+/** C4: one structure kind's upgrade ladder. Level L costs ceil(cost · costGrowth^L) Energy for the step to L + 1. */
+export interface StructureUpgradeDef {
+  max: number;
+  cost: number;
+  costGrowth: number;
+  /** Real-valued fields × (1 + frac · level); a negative frac shrinks (regrowSec), never to 0 or below at `max`. */
+  perLevel: Record<string, number>;
+  /** Added once the top level is bought (+1 target, +1 mine per wave); whole-number fields stay within their rule's max. */
+  atMax?: Record<string, number>;
+}
+
+/** C4: structure upgrade ladders: known kinds and fields, whole steps on whole-number fields, a curve that grows. */
+function validateStructUpgrades(d: GameData): void {
+  const ups = d.structures.upgrades;
+  if (ups === undefined) return;
+  check(ups !== null && typeof ups === 'object', 'structures.upgrades must be an object');
+  for (const [kind, u] of Object.entries(ups)) {
+    const at = `structures.upgrades.${kind}`;
+    check((STRUCTURE_KINDS as readonly string[]).includes(kind), `${at}: unknown structure kind`);
+    const fields = STRUCTURE_FIELDS[kind as StructureKind];
+    check(Number.isInteger(u?.max) && u!.max >= 1 && u!.max <= 50, `${at}.max must be a whole number in [1, 50]`);
+    positive(u!.cost, `${at}.cost`);
+    check(Number.isFinite(u!.costGrowth) && u!.costGrowth >= 1, `${at}.costGrowth must be a finite number ≥ 1`);
+    check(u!.perLevel !== null && typeof u!.perLevel === 'object', `${at}.perLevel must be an object`);
+    for (const [f, frac] of Object.entries(u!.perLevel)) {
+      const rule = fields[f]?.rule;
+      check(rule !== undefined, `${at}.perLevel.${f}: not a ${kind} field`);
+      check(!('max' in rule!), `${at}.perLevel.${f}: a whole-number field takes atMax, not perLevel`);
+      check(Number.isFinite(frac) && frac !== 0 && 1 + frac * u!.max > 0, `${at}.perLevel.${f} must be a non-zero number with 1 + frac·max > 0`);
+    }
+    for (const [f, add] of Object.entries(u!.atMax ?? {})) {
+      const rule = fields[f]?.rule;
+      check(rule !== undefined, `${at}.atMax.${f}: not a ${kind} field`);
+      check(Number.isFinite(add) && add > 0 && (!('max' in rule!) || Number.isInteger(add)), `${at}.atMax.${f} must be > 0 (whole on a whole-number field)`);
+    }
+  }
 }
 
 /** Pulse (uniqueness plan item 4): the core's active ring, its effect by the dominant tag (src/sim/pulse.ts). */
@@ -527,6 +567,7 @@ export function validateData(d: GameData): GameData {
   positive(d.structures.station.radius, 'structures.station.radius');
   positive(d.structures.station.aggro, 'structures.station.aggro');
   check(sw.minRadius - d.structures.station.inset > d.core.radius, 'structures.station.inset must keep stations outside the core');
+  validateStructUpgrades(d); // C4
   const mu = d.mutations;
   check(Number.isInteger(mu?.startWave) && mu.startWave >= 1, 'mutations.startWave must be a whole number ≥ 1');
   check(Number.isInteger(mu.every) && mu.every >= 1, 'mutations.every must be a whole number ≥ 1');
@@ -637,7 +678,7 @@ export const DEFAULT_DATA: GameData = validateData({
   crystal: crystalJson as CrystalDef,
   territory: territoryJson as TerritoryDef,
   mutations: mutationsJson as unknown as MutationsDef,
-  structures: structuresJson as StructuresDef,
+  structures: structuresJson as unknown as StructuresDef, // C4: the upgrades block makes the cast go through unknown
   pulse: pulseJson as PulseDef, // pulse
   boot: bootJson as unknown as BootData,
   directions: directionsJson as [number, number][],

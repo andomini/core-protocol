@@ -211,6 +211,8 @@ export interface World {
   structs: Struct[];
   /** Ice Wall ring radius for this wave, set at the wave start (0 before the first wave). */
   wallR: number;
+  /** C4: bought structure upgrade levels per kind (src/sim/structLevels.ts); missing (or a missing kind) = 0. No version bump. */
+  structLevels?: Partial<Record<StructureKind, number>>;
   // pulse (uniqueness plan item 4, src/sim/pulse.ts)
   /** The Pulse is ready from this tick on. */
   pulseReadyTick: number;
