@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_DATA } from '../src/sim/data';
 import { makeLayout, ORIENTATIONS, portraitHeight, type Rect } from '../src/ui/layout';
-import { pickGeometry } from '../src/ui/pickLayout';
+import { bootGeometry, pickGeometry } from '../src/ui/pickLayout';
 
 const inside = (r: Rect, w: number, h: number) => r.x >= 0 && r.y >= 0 && r.x + r.w <= w && r.y + r.h <= h;
 const overlap = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -20,6 +20,27 @@ describe('pick overlay geometry', () => {
           for (const s of [g.titleSize, g.subSize, g.nameSize, g.lineSize, g.smallSize]) expect(s).toBeGreaterThanOrEqual(L.minFont);
         });
       }
+    }
+  }
+});
+
+describe('boot pick geometry', () => {
+  for (const o of ORIENTATIONS) {
+    for (const aspect of o === 'portrait' ? [1280 / 720, 844 / 390] : [720 / 1280]) {
+      it(`${o} ${aspect.toFixed(2)}: ${DEFAULT_DATA.boot.offerSize} cards on screen, no overlap, the mini-crystal inside its card`, () => {
+        const L = makeLayout(o, DEFAULT_DATA, o === 'portrait' ? portraitHeight(aspect) / 720 : aspect);
+        const g = bootGeometry(L, DEFAULT_DATA.boot.offerSize);
+        for (const r of g.cards) expect(inside(r, L.w, L.h), JSON.stringify(r)).toBe(true);
+        for (let i = 0; i < g.cards.length; i++) for (let j = i + 1; j < g.cards.length; j++) expect(overlap(g.cards[i]!, g.cards[j]!)).toBe(false);
+        expect(g.headerY).toBeLessThan(g.cards[0]!.y);
+        // The crystal out to maxRing: radius ≈ (maxRing + 1) × √3 × hexSize around its centre.
+        const rad = (DEFAULT_DATA.crystal.maxRing + 1) * 1.74 * g.hexSize;
+        const c = g.cards[0]!;
+        expect(g.crystal.dx - rad).toBeGreaterThanOrEqual(0);
+        expect(g.crystal.dy - rad).toBeGreaterThanOrEqual(0);
+        expect(g.crystal.dy + rad).toBeLessThanOrEqual(c.h);
+        for (const s of [g.titleSize, g.subSize, g.nameSize, g.lineSize, g.smallSize]) expect(s).toBeGreaterThanOrEqual(L.minFont);
+      });
     }
   }
 });

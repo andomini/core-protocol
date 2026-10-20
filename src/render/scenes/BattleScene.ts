@@ -298,6 +298,7 @@ export class BattleScene extends Phaser.Scene {
     });
     this.pick = new PickOverlay(this, this.L, this.gd, {
       pick: (index) => this.choosePerk(index),
+      boot: (index) => this.command({ type: 'pickBoot', index }), // boot
       reroll: () => {
         if (this.session.world.freeRerolls > 0) this.command({ type: 'reroll', via: 'free' });
         else void this.rewarded('reroll').then((ok) => ok && this.command({ type: 'reroll', via: 'ad' }));
@@ -1053,7 +1054,7 @@ export class BattleScene extends Phaser.Scene {
       if (this.deathAt > 0 && time - this.deathAt > WIDGET_CFG.restartDelayMs && !this.secondWindPending) this.restart();
     } else if (w.phase === 'pick') {
       if (this.pickSince === 0) this.pickSince = time;
-      else if (time - this.pickSince > WIDGET_CFG.pickDelayMs && !this.session.hasPending) this.command({ type: 'pickPerk', index: autoPick(w, this.gd) });
+      else if (time - this.pickSince > WIDGET_CFG.pickDelayMs && !this.session.hasPending) this.command(w.bootOffer.length > 0 ? { type: 'pickBoot', index: 0 } : { type: 'pickPerk', index: autoPick(w, this.gd) });
     } else {
       this.pickSince = 0;
       if (this.autoBuy && !this.paused && !this.session.hasPending) {
@@ -1406,8 +1407,19 @@ export class BattleScene extends Phaser.Scene {
           this.fx.pulse(mx, my, this.gd.crystal.cellSize * L.scale * 2.5, TAG_COLOR[this.gd.perks.perks[e.id]!.tag]);
         }
         break;
+      case 'bootPicked': {
+        // boot: the sector's modules light up in the crystal.
+        const s = this.gd.boot.sectors.find((b) => b.id === e.id);
+        this.showBanner(`BOOT: ${(s?.name ?? e.id).toUpperCase()}`, TAG_CSS[e.tag], now);
+        for (const [q, r] of e.modules) {
+          const [mx, my] = this.crystal.hexScreen(q, r);
+          this.fx.pulse(mx, my, this.gd.crystal.cellSize * L.scale * 2.5, TAG_COLOR[e.tag]);
+        }
+        break;
+      }
       case 'mutation': {
         const name = this.gd.sets.tags[e.tag].name.toUpperCase();
+        this.genome.flash(e.tag);
         this.showBanner(`VIRUS MUTATED: ${name} RESIST ${e.level}`, '#ff6b8b', now);
         this.fx.pulse(L.cx, L.cy, Math.max(L.arena.w, L.arena.h) * 0.6, CRIMSON);
         sfx.play('boss');
@@ -1569,7 +1581,7 @@ export class BattleScene extends Phaser.Scene {
       const missing = this.stressCount - w.enemies.length;
       for (let i = 0; i < missing; i++) this.session.spawn(STRESS_KINDS[(w.nextId + i) % STRESS_KINDS.length]!, 1, this.onEvent);
     }
-    if (this.devAutoPick && w.phase === 'pick' && !w.dead && !this.session.hasPending) this.command({ type: 'pickPerk', index: 0 });
+    if (this.devAutoPick && w.phase === 'pick' && !w.dead && !this.session.hasPending) this.command(w.bootOffer.length > 0 ? { type: 'pickBoot', index: 0 } : { type: 'pickPerk', index: 0 });
     if (WIDGET) this.widgetTick(time);
     else this.autoBuyTick();
     if (this.secondWindPending > 0 && w.dead) {
@@ -1587,7 +1599,7 @@ export class BattleScene extends Phaser.Scene {
     this.view.draw(alpha, time);
     this.structures.draw(this.session.world, time);
     this.crystal.draw(this.session.world, sectorTags(this.session.world, this.gd), time);
-    this.genome.update(this.session.world.genome);
+    this.genome.update(this.session.world.genome, this.session.world.wave, this.gd);
     this.fx.update();
     this.hud.update(this.session.world, this.session.stats, this.speed, this.paused && !this.editor.visible && !this.fieldDrag?.moved, time, delta);
     this.upgrades.update(time);
