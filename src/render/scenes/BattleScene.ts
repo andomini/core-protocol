@@ -11,6 +11,7 @@ import { labEffects } from '../../meta/labs';
 import { DEFAULT_META_DATA } from '../../meta/metaData';
 import { buildRunOptions } from '../../meta/runOptions';
 import { enterPick } from '../../sim/perks';
+import { pulseReady } from '../../sim/pulse';
 import { fusionKeys, type StructureKind, TAGS, type Tag } from '../../sim/perkData';
 import { showToast } from '../../portal/toast';
 import { clusterCounts, freeSlots, fusionLinkCounts, fusionLinks, moduleCluster, movePreview, needsPlacement, sectorTags } from '../../sim/crystal';
@@ -51,13 +52,13 @@ import { services } from '../../services';
 import { battleData, type DevFlags, leaderboardForce, readFlags, stressTuning } from '../devFlags';
 import { Effects } from '../effects';
 import { FixedLoop } from '../loop';
-import { BG, CRIMSON, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
+import { BG, CRIMSON, CYAN, ENERGY, MARK, MARK_CSS, RARITY_CSS, TAG_COLOR, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../palette';
 import { SetTooltip } from '../../ui/SetTooltip';
 import { fusionLevel, fusionLines, fusionReachedLines, fusionTags, latticeLine, totalLines } from '../../ui/perkText';
 import { RunSession } from '../RunSession';
 import { DEPTH, ENEMY_VIS, WorldView } from '../WorldView';
 import { RS } from '../resolution';
-import { autoBuy, autoBuyOn, autoPick, loadAutoStats, saveAutoStats, setAutoBuy, setWidgetSpeed, WIDGET, WIDGET_CFG, widgetSpeed } from '../widget';
+import { autoBuy, autoBuyOn, autoPick, autoPulseCmd, loadAutoStats, saveAutoStats, setAutoBuy, setWidgetSpeed, WIDGET, WIDGET_CFG, widgetSpeed } from '../widget';
 
 const OFFLINE_TOAST_MS = 2600;
 const MAX_TICKS_PER_FRAME = 4;
@@ -270,7 +271,7 @@ export class BattleScene extends Phaser.Scene {
     this.fx = new Effects(this);
     this.numbers = new DamageNumbers(this, this.L);
     this.hints = new Hints(this, this.L, !services.meta.meta.firstRunDone && !this.flags.stress);
-    this.hud = new Hud(this, this.L, this.gd, { onSpeed: () => this.cycleSpeed(), onPause: () => this.setPaused(!this.paused) });
+    this.hud = new Hud(this, this.L, this.gd, { onSpeed: () => this.cycleSpeed(), onPause: () => this.setPaused(!this.paused), onPulse: () => this.pulse() });
     this.upgrades = new UpgradePanel(this, this.L, this.gd, {
       world: () => this.session.world,
       stats: () => this.session.stats,
@@ -316,6 +317,7 @@ export class BattleScene extends Phaser.Scene {
       // The RESET ZOOM button's own press: the field under it is not tapped.
       if (this.zoomBtn.bg.visible && this.inRect(this.zoomBtn.r, p.worldX, p.worldY)) return;
       if (this.gestureDown(p)) return;
+      if (this.coreTap(p.worldX, p.worldY)) return; // pulse
       this.fieldDown(p.worldX, p.worldY);
       this.hoverModule(p.worldX, p.worldY, true);
     });
@@ -398,7 +400,9 @@ export class BattleScene extends Phaser.Scene {
       window.removeEventListener('pagehide', this.saveOnHide);
       this.game.events.off(Phaser.Core.Events.HIDDEN, this.onHidden);
     });
-    this.input.keyboard?.on('keydown-SPACE', () => this.setPaused(!this.paused));
+    // Space fires the Pulse (uniqueness plan item 4); pause moved to P.
+    this.input.keyboard?.on('keydown-SPACE', () => this.pulse());
+    this.input.keyboard?.on('keydown-P', () => this.setPaused(!this.paused));
     this.input.keyboard?.on('keydown-S', () => this.cycleSpeed());
     if (WIDGET) {
       this.input.keyboard?.on('keydown-A', () => {
@@ -542,6 +546,7 @@ export class BattleScene extends Phaser.Scene {
         speed: { active: w.wave >= 3 && this.speed === 1, target: this.hud.speedBtn.r },
         def: { active: low && w.wave >= 2, target: def?.rect ?? null },
         chips: { active: anySet && this.chips.rect.w > 0, target: this.chips.rect },
+        pulse: { active: w.wave >= 2 && pulseReady(w) && w.enemies.length > 0, target: this.hud.pulseBtn.r },
       },
       w.dead || w.phase === 'pick' || this.paused || this.protocols.visible,
     );
@@ -699,6 +704,24 @@ export class BattleScene extends Phaser.Scene {
   /** The pick ended while its placement step was still open: close it. */
   private endPlacing(): void {
     if (this.placingIndex >= 0) this.closeEditor(false);
+  }
+
+  /** The Pulse (HUD button, Space, a tap on the core): queued once when ready; not while paused or in an overlay. */
+  private pulse(): void {
+    const w = this.session.world;
+    if (this.paused || !pulseReady(w) || this.session.hasQueued('pulse') || this.editor.visible || this.protocols.visible || this.statsPanel.visible) return;
+    this.command({ type: 'pulse' });
+  }
+
+  /** A tap on the core itself (no module under it) fires the Pulse. */
+  private coreTap(x: number, y: number): boolean {
+    const w = this.session.world;
+    const L = this.L;
+    const R = this.gd.core.radius * L.scale * 1.2;
+    if ((x - L.cx) * (x - L.cx) + (y - L.cy) * (y - L.cy) > R * R || this.crystal.moduleAt(w, x, y) >= 0) return false;
+    if (!pulseReady(w) || this.paused || w.dead || w.phase === 'pick') return false;
+    this.pulse();
+    return true;
   }
 
   /** A player command: queued for the next tick, or applied at once while the sim is not stepping. */
@@ -1060,6 +1083,7 @@ export class BattleScene extends Phaser.Scene {
         const c = autoBuy(w, this.gd, this.autoStats);
         if (c) this.command(c);
       }
+      if (!this.paused && !this.session.hasPending && autoPulseCmd(w, this.gd)) this.pulse();
     }
     if (time >= this.titleAt) {
       this.titleAt = time + WIDGET_CFG.titleEveryMs;
@@ -1340,6 +1364,10 @@ export class BattleScene extends Phaser.Scene {
         this.showBanner(`BOUNTY JACKPOT +${formatPrice(e.bits)} BITS`, MARK_CSS, now);
         break;
       }
+      case 'pulse':
+        sfx.play(e.tag === 'cryo' ? 'freeze' : 'zap');
+        this.fx.pulse(L.cx, L.cy, e.radius * L.scale, e.tag ? TAG_COLOR[e.tag] : CYAN);
+        break;
       case 'waveStart':
         this.saveRun();
         if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? battleJson.fastBootSpeed : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);

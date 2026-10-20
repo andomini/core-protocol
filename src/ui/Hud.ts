@@ -1,19 +1,22 @@
-// Battle HUD: wave number + wave/break timer bar, core HP bar with numbers, Energy, speed toggle, pause.
+// Battle HUD: wave number + wave/break timer bar, core HP bar with numbers, Energy, speed toggle, pause, and the
+// Pulse button (cooldown ring + the dominant tag's glyph; uniqueness plan item 4) in the arena's bottom-right corner.
 // Portrait: a strip above the arena. Landscape: the top of the right column.
 // Also paints the opaque backing under the upgrade panel (src/ui/UpgradePanel.ts draws the panel).
 
 import Phaser from 'phaser';
-import { BG, BREAK, CYAN, ENERGY_CSS, HP_LOW, HP_OK, MARK_CSS, PANEL_FILL, TEXT_DIM, WHITE } from '../render/palette';
+import { BG, BREAK, CYAN, TAG_COLOR, ENERGY_CSS, HP_LOW, HP_OK, MARK_CSS, PANEL_FILL, TEXT_DIM, WHITE } from '../render/palette';
 import { ps } from '../render/resolution';
 import { DEPTH } from '../render/WorldView';
 import type { GameData } from '../sim/data';
 import { fusionMark } from '../sim/perks';
+import { pulseCharge, pulseTag } from '../sim/pulse';
 import type { World } from '../sim/state';
 import type { CoreStats } from '../sim/stats';
 import { pauseTicks, waveTicks } from '../sim/waves';
 import { formatNum } from './format';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
+import { drawTagIcon } from './tagIcon';
 
 interface Geo {
   wave: [number, number, number];
@@ -31,6 +34,8 @@ interface Geo {
   timer: Rect;
   /** Bounty chip anchor (right-aligned); portrait: the arena's bottom-right corner (the HUD rows are full). */
   bounty: [number, number, number];
+  /** Pulse button (square; the cooldown ring is drawn inside it). */
+  pulse: Rect;
 }
 
 function geometry(L: Layout): Geo {
@@ -50,6 +55,7 @@ function geometry(L: Layout): Geo {
       hpFont: 28,
       timer: { x: 0, y: h.h - 6, w: h.w, h: 6 },
       bounty: [L.arena.x + L.arena.w - 32, L.arena.y + L.arena.h - 40, 22],
+      pulse: { x: L.arena.x + L.arena.w - 140, y: L.arena.y + L.arena.h - 196, w: 116, h: 126 },
     };
   }
   const x = h.x + 28;
@@ -67,12 +73,14 @@ function geometry(L: Layout): Geo {
     hpFont: 18,
     timer: { x, y: 90, w: h.w - 56, h: 6 },
     bounty: [h.x + h.w - 30, 170, 18],
+    pulse: { x: L.arena.x + L.arena.w - 124, y: L.arena.y + L.arena.h - 130, w: 100, h: 106 },
   };
 }
 
 export interface HudHandlers {
   onSpeed: () => void;
   onPause: () => void;
+  onPulse: () => void;
 }
 
 export class Hud {
@@ -84,6 +92,9 @@ export class Hud {
   private readonly hpText: Phaser.GameObjects.Text;
   readonly speedBtn: Button;
   private readonly pauseBtn: Button;
+  /** Pulse button; `.r` is the hint target. */
+  readonly pulseBtn: Button;
+  private pulseKey = '';
   private readonly pausedBanner: Phaser.GameObjects.Text;
   readonly bountyText: Phaser.GameObjects.Text;
   private last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null as boolean | null, bounty: '' };
@@ -125,6 +136,8 @@ export class Hud {
     this.speedBtn = new Button(scene, g.speed, '×1', g.btnFont, D, h.onSpeed, { font: 'title' });
     this.pauseBtn = new Button(scene, g.pause, '', g.btnFont, D, h.onPause);
     this.pauseBtn.drawPauseIcon(false);
+    this.pulseBtn = new Button(scene, g.pulse, 'PULSE', L.minFont, D, h.onPulse, { font: 'title', fillA: 0.75 });
+    this.pulseBtn.label.setY(g.pulse.y + g.pulse.h - g.pulse.w * 0.14);
     const a = L.arena;
     this.pausedBanner = text(scene, a.x + a.w / 2, a.y + a.h * 0.2, 'PAUSED', Math.max(L.minFont * 1.6, 34), { font: 'title', weight: '900', glow: '#22e5ff', blur: 16 })
       .setOrigin(0.5)
@@ -139,6 +152,32 @@ export class Hud {
   reset(): void {
     this.last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null, bounty: '' };
     this.hpShown = 1;
+    this.pulseKey = '';
+  }
+
+  /** Cooldown ring (fills clockwise; glows when ready) around the dominant tag's glyph (a plain dot without one). */
+  private drawPulse(w: World, now: number): void {
+    const charge = pulseCharge(w, this.data);
+    const ready = charge >= 1 && !w.dead && w.phase !== 'pick';
+    const tag = pulseTag(w, this.data);
+    const blink = ready ? Math.round(4 + 4 * Math.sin(now / 180)) : 0;
+    const key = `${tag}|${Math.round(charge * 64)}|${ready}|${blink}`;
+    if (key === this.pulseKey) return;
+    this.pulseKey = key;
+    const r = this.g.pulse;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.w * 0.46;
+    const R = r.w * 0.34;
+    const color = tag ? TAG_COLOR[tag] : CYAN;
+    const g = this.pulseBtn.icon.clear();
+    g.lineStyle(5, color, 0.18).strokeCircle(cx, cy, R);
+    if (ready) g.lineStyle(4 + blink, color, 0.12 + blink * 0.03).strokeCircle(cx, cy, R);
+    g.lineStyle(5, color, ready ? 1 : 0.75).beginPath();
+    g.arc(cx, cy, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * charge, false).strokePath();
+    const a = ready ? 1 : 0.4;
+    if (tag) drawTagIcon(g, tag, cx, cy, R * 1.05, color, a);
+    else g.fillStyle(color, a).fillCircle(cx, cy, R * 0.32);
+    this.pulseBtn.label.setAlpha(ready ? 1 : 0.5);
   }
 
   update(w: World, st: CoreStats, speed: number, paused: boolean, now: number, dt: number): void {
@@ -171,6 +210,8 @@ export class Hud {
       this.pausedBanner.setVisible(paused);
     }
     if (paused) this.pausedBanner.setAlpha(0.6 + 0.4 * Math.sin(now / 250));
+
+    this.drawPulse(w, now);
 
     // Bars.
     const g = this.bars.clear();

@@ -6,7 +6,7 @@ import { DEPTH } from '../render/WorldView';
 import { text } from './kit';
 import type { Layout, Rect } from './layout';
 
-export type HintId = 'buy' | 'speed' | 'def' | 'chips';
+export type HintId = 'buy' | 'speed' | 'def' | 'chips' | 'pulse';
 
 export interface HintState {
   /** Rect to ring, and whether the hint's condition currently holds. */
@@ -20,6 +20,7 @@ const TEXT: Record<HintId, string> = {
   speed: 'Tap ×1 to speed the battle up',
   def: 'Low HP? Try HEALTH and REGEN in DEF',
   chips: 'Set online! Tap the chips to see your protocols',
+  pulse: 'PULSE ready: tap it, the core or Space', // pulse
 };
 
 export class Hints {

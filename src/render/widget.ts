@@ -2,12 +2,13 @@
 // The loop keeps going while the window is hidden (setTimeout loop, no Phaser/scene auto-pause), upgrades
 // the stats the player marked (tap a row's glyph) are bought cheapest-first, protocols are picked like the
 // greedy balance bot (tools/sim/bot.ts), a dead
-// run restarts by itself, and the window title carries the live state for the desktop.
+// run restarts by itself, the Pulse fires under the autoPulse rule (ready + its crowd in the ring), and the window title carries the live state for the desktop.
 // The player can still play by hand: a pick waits `pickDelayMs` for a manual choice, A pauses auto-buy.
 import widgetJson from '../data/widget.json';
 import { type Command, isUnlocked, quoteFor } from '../sim/commands';
 import type { GameData, StatId } from '../sim/data';
 import { tagCounts } from '../sim/perks';
+import { pulseWorth } from '../sim/pulse';
 import type { World } from '../sim/state';
 
 export const WIDGET = typeof location !== 'undefined' && new URLSearchParams(location.search).get('widget') === '1';
@@ -83,6 +84,11 @@ export function autoBuy(w: World, data: GameData, marked: ReadonlySet<StatId>): 
   }
   if (best === null || !quoteFor(w, data, best, 1).affordable) return null;
   return { type: 'buy', stat: best, count: 1 };
+}
+
+/** The Pulse once it is ready and the autoPulse crowd (pulse.json) is inside its ring, else null. */
+export function autoPulseCmd(w: World, data: GameData): Command | null {
+  return pulseWorth(w, data) ? { type: 'pulse' } : null;
 }
 
 /**

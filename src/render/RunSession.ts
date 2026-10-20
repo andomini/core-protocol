@@ -54,6 +54,11 @@ export class RunSession {
     return this.pending.length > 0;
   }
 
+  /** A command of this type is already queued (the Pulse button/key/core tap queue at most one). */
+  hasQueued(type: Command['type']): boolean {
+    return this.pending.some((c) => c.type === type);
+  }
+
   /** True while a protocol offer is open (the world does not tick until a pickPerk). */
   get picking(): boolean {
     return this.world.phase === 'pick';
