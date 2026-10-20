@@ -156,6 +156,18 @@ export function installDevHooks(game: Phaser.Game): void {
     pickNow: () => battle()?.devPickNow(),
     /** Takes boot sector `i` of the open boot offer. */
     pickBoot: (i = 0) => battle()?.command({ type: 'pickBoot', index: i }),
+    /**
+     * Fires the Pulse as the HUD button would (not while paused, in an overlay or a pick). `force` ignores the
+     * cooldown first by moving pulseReadyTick (the run is then not replayable). True when a pulse is queued.
+     */
+    pulse: (force = false): boolean => {
+      const b = battle();
+      if (!b) return false;
+      const w = b.session.world;
+      if (force) w.pulseReadyTick = Math.min(w.pulseReadyTick, w.tick);
+      (b as unknown as { pulse: () => void }).pulse();
+      return b.session.hasQueued('pulse');
+    },
     /** The crystal editor: `index` ≥ 0 places that offer card's module, −1 (default) arranges (as the pause menu's CRYSTAL). */
     openEditor: (index = -1) => battle()?.openEditor(index),
     closeEditor: () => battle()?.closeEditor(true),
@@ -197,4 +209,31 @@ export function installDevHooks(game: Phaser.Game): void {
     /** The leaderboard service (identity, queue, flush) for the UI smoke's mocked-API checks. */
     lb: () => services.leaderboard,
   };
+  autoBoot(game, battle);
+}
+
+/**
+ * `?boot=<id>`: every run whose boot pick opens takes that boot sector at once. An id the offer lacks replaces
+ * its first card (dev only; the run is then not replayable). An unknown id is reported and ignored.
+ */
+function autoBoot(game: Phaser.Game, battle: () => BattleScene | null): void {
+  const id = new URLSearchParams(location.search).get('boot');
+  if (!id) return;
+  const done = new WeakSet<object>();
+  game.events.on('step', () => {
+    const b = battle();
+    const w = b?.session?.world;
+    if (!b || !w || w.bootOffer.length === 0 || done.has(w) || b.session.hasQueued('pickBoot')) return;
+    done.add(w);
+    if (!b.gd.boot.sectors.some((s) => s.id === id)) {
+      console.warn(`?boot=${id}: no such boot sector (${b.gd.boot.sectors.map((s) => s.id).join(', ')})`);
+      return;
+    }
+    let i = w.bootOffer.indexOf(id);
+    if (i < 0) {
+      w.bootOffer[0] = id;
+      i = 0;
+    }
+    b.command({ type: 'pickBoot', index: i });
+  });
 }

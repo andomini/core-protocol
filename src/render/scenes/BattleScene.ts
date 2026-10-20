@@ -560,10 +560,20 @@ export class BattleScene extends Phaser.Scene {
         def: { active: low && w.wave >= 2, target: def?.rect ?? null },
         chips: { active: anySet && this.chips.rect.w > 0, target: this.chips.rect },
         pulse: { active: w.wave >= 2 && pulseReady(w) && w.enemies.length > 0, target: this.hud.pulseBtn.r },
+        boot: { active: w.bootOffer.length > 0 && this.pick.visible, target: this.bootCards(), over: true }, // c3
       },
       w.dead || w.phase === 'pick' || this.paused || this.protocols.visible,
     );
   }
+
+  /** The boot offer's card row as one rect (the first-run boot hint rings it). */ // c3
+  private bootCards(): { x: number; y: number; w: number; h: number } | null { // c3
+    const rs = [0, 1, 2, 3].map((i) => this.pick.cardRect(i)).filter((r) => r !== null); // c3
+    if (rs.length === 0) return null; // c3
+    const x = Math.min(...rs.map((r) => r.x)); // c3
+    const y = Math.min(...rs.map((r) => r.y)); // c3
+    return { x, y, w: Math.max(...rs.map((r) => r.x + r.w)) - x, h: Math.max(...rs.map((r) => r.y + r.h)) - y }; // c3
+  } // c3
 
   /** Camera shake unless the player turned on "Reduce motion". */
   shake(ms: number, intensity: number): void {

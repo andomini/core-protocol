@@ -13,7 +13,7 @@ const browser = await launch();
 const ctx = await browser.newContext({ viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1, recordVideo: { dir: RAW, size: { width: 1080, height: 1920 } } });
 const p = await ctx.newPage();
 const t0 = Date.now();
-await p.goto(srv.base + '?seed=31');
+await p.goto(srv.base + '?seed=31&boot=hotStart'); // ?boot=: the Hot Start boot sector every time (dev hook)
 await p.waitForFunction(() => window.__cp?.ready());
 await p.evaluate(async () => {
   const c = window.__cp;
@@ -57,8 +57,8 @@ await p.evaluate(async () => {
   });
   await sleep(2600);
   // Fire the Pulse once in each clip videos.sh cuts (action start + 0.3…2.5 s and + 5…7.2 s); the recording skips
-  // its cooldown by moving pulseReadyTick (dev only, the run is not replayed).
-  const fire = () => { const w = b.session.world; w.pulseReadyTick = w.tick; b.pulse(); };
+  // its cooldown (__cp.pulse(true), dev only, the run is not replayed).
+  const fire = () => c.pulse(true);
   setTimeout(fire, 900);
   setTimeout(fire, 5600);
 });
