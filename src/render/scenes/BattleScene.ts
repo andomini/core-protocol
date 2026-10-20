@@ -60,6 +60,7 @@ import { RunSession } from '../RunSession';
 import { DEPTH, ENEMY_VIS, WorldView } from '../WorldView';
 import { RS } from '../resolution';
 import { autoBuy, autoBuyOn, autoPick, autoPulseCmd, loadAutoStats, saveAutoStats, setAutoBuy, setWidgetSpeed, WIDGET, WIDGET_CFG, widgetSpeed } from '../widget';
+import { pose, type Pose } from '../virusShapes';
 
 const OFFLINE_TOAST_MS = 2600;
 const MAX_TICKS_PER_FRAME = 4;
@@ -79,6 +80,9 @@ let fieldZoom: FieldZoom = freshZoom();
 function newSeed(): number {
   return Math.floor(Math.random() * 0x7fffffff);
 }
+
+/** Scratch pose for a dying body's start rotation. */
+const DEATH_POSE: Pose = { rot: 0, sx: 1, sy: 1 };
 
 export class BattleScene extends Phaser.Scene {
   L!: Layout;
@@ -1294,7 +1298,8 @@ export class BattleScene extends Phaser.Scene {
         const en = this.session.lastKnown(e.enemyId);
         if (!en) break;
         this.view.enemyScreen(en, 1, this.tmp);
-        const rot = e.kind === 'fast' || e.kind === 'ranged' || e.kind === 'boss' ? Math.atan2(-en.y, -en.x) : now * 0.0012;
+        // The dying copy starts at the body's live pose (the same spin and heading the view drew it with).
+        const rot = pose(e.kind, now, en.id, en.id % 2 === 0 ? 1 : -1, Math.atan2(-en.y, -en.x), DEATH_POSE).rot;
         this.fx.death(e.kind, ENEMY_TEX[e.kind], this.tmp.x, this.tmp.y, rot, L.scale * ENEMY_VIS, e.kind === 'boss');
         sfx.play(e.kind === 'boss' ? 'bossDie' : 'kill');
         if (e.kind === 'boss') this.shake(260, 0.006);

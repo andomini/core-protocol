@@ -6,7 +6,7 @@ import type { RewardedPlacement } from '../portal/ads';
 import { services } from '../services';
 import type { BuyCount } from '../sim/commands';
 import type { EnemyKind, StatId, TabId } from '../sim/data';
-import { grantPerk } from '../sim/perks';
+import { grantPerk, rebuildCrystal } from '../sim/perks';
 import { freeSlots } from '../sim/crystal';
 import type { BattleScene } from './scenes/BattleScene';
 
@@ -127,20 +127,25 @@ export function installDevHooks(game: Phaser.Game): void {
     },
     restart: () => battle()?.restart(),
     /**
-     * Dev: bolts on a showcase crystal (sets on and off, a lone module, fusions I and II) outside the command
-     * log (breaks replay of this run), for crystal screenshots.
+     * Dev: replaces the crystal with a showcase one (sets on and off, a lone module, fusions I and II) outside
+     * the command log (breaks replay of this run), for crystal screenshots and the editor checks.
      */
     demoCrystal: () => {
       const b = battle();
       if (!b) return;
       const w = b.session.world;
+      // A clean slate first: the boot sector and the picks so far would sit under the showcase and hide its moves.
+      w.crystal = [];
+      for (const id of Object.keys(w.perks)) w.perks[id] = 0;
+      w.mods = w.mods.filter((m) => !m.source.startsWith('perk:'));
+      rebuildCrystal(w, b.gd);
       const put: [string, [number, number], number][] = [
         ['overclockRounds', [-2, 2], 2], ['burstFire', [-1, 2], 2], ['bounce', [0, 2], 1], ['arc', [-1, 3], 1], ['conductive', [-2, 3], 1],
         ['frostShot', [2, 0], 1], ['patch', [2, -2], 2], ['hardening', [1, -2], 1], ['energySiphon', [0, -2], 2],
       ];
-      // A slot already taken (modules from earlier picks) falls back to the auto slot.
+      // A slot that is not free falls back to the auto slot (every perk id is a key of w.perks: test the stacks, not the key).
       const free = (s: [number, number]) => freeSlots(w, b.gd).some(([q, r]) => q === s[0] && r === s[1]);
-      for (const [id, slot, n] of put) for (let i = 0; i < n; i++) grantPerk(w, b.gd, id, null, i === 0 && !(id in w.perks) && free(slot) ? slot : undefined);
+      for (const [id, slot, n] of put) for (let i = 0; i < n; i++) grantPerk(w, b.gd, id, null, i === 0 && (w.perks[id] ?? 0) === 0 && free(slot) ? slot : undefined);
     },
     /** Takes card `i` of the open protocol offer (as a card tap would: the boot sector while the boot pick is open). */
     pickPerk: (i = 0) => {

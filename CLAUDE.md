@@ -8,7 +8,7 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 - `npm test` — vitest (determinism, snapshot, sim purity, data)
 - `npm run typecheck`, `npm run build` (`build:crazygames`, `build:poki`)
 - `npm run sim:smoke -- <seed> <tier> [policy] [--unlockall]` — one run until death in Node (policy: none|greedy|atk-first|def-first|round-robin)
-- `npm run sim:balance` — bot policies × 24 seeds → `reports/balance-m2b.md` (B2 check)
+- `npm run sim:balance` — bot policies × 24 seeds → `reports/balance-m3.md` (B1–B6 gates)
 - `npm run sim:balance -- --crystal arrange` adds the fusion-pick + hill-climb arrange player and per-fusion tier columns; `npx tsx tools/sim/crystalGeometry.ts` → `reports/crystal-geometry.md` (pairs touchable with one cluster per tag, modules for a 7-link pair)
 - `npm run replay:record -- --update` — re-record `tests/replays/golden-01.json` (only for a deliberate sim/data change)
 - `npm run ui` — Playwright UI smoke, both orientations + portal checks (starts its own Vite server on `UI_PORT`, default 5180; `-- --only portal`)
@@ -25,6 +25,11 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 - `?widget=1` (any build; code lives on the local branch `widget`: `src/render/widget.ts` + `src/data/widget.json`): no pause when hidden (setTimeout loop), auto-pick after 5 s, auto-restart 8 s after death, Home → back to play after 2 min idle, live state in `document.title`. Auto-buy in a run only for stats marked by tapping a row's glyph (AUTO badge; A pauses all); after each run Bits go to workshop levels / lab nodes marked AUTO on Home (cheapest first). Nothing is marked by default.
 - `~/.local/bin/core-protocol` [toggle|start|install|stop|status]: Chrome `--app` with its own profile in `~/.local/share/core-protocol-widget` (save on disk), on Hyprland `special:core`, Super+G.
 - `scripts/widget-install.sh` (hooks post-commit/post-merge/post-rewrite on main, or `npm run widget:install`): merges main into `widget` in the worktree `~/.local/share/core-protocol-widget/build`, builds, swaps `app/`; the open widget reloads within 30 s (run saved). A merge conflict keeps the old build — see `install.log`. `npm run widget:install -- --wip` builds the *uncommitted* working tree of main instead (for trying WIP in the widget).
+
+## Controls and first-run flow
+- A run opens on the **boot sector** pick (1 of 3 starter crystals, `src/data/boot.json`; it stands in for the wave 1–3 protocol picks), then the normal schedule. Mutations start at wave 5, every 8 (`src/data/mutations.json`); the genome strip is visible from wave 1.
+- **Pulse** (`src/data/pulse.json`, `src/sim/pulse.ts`): HUD button, tap on the core, or Space; effect by the dominant tag, cooldown; the `autoPulse` lab node fires it automatically. Keys: Space pulse, P pause, S speed.
+- Daily missions ×3 (`src/data/missions.json`, `src/meta/missions.ts`, reset by UTC day) and the NEXT track live on Home.
 
 ## Rules
 - `src/sim` is pure and deterministic: only + − × ÷, Math.floor/ceil/min/max/abs/imul; roots via `dsqrt`, powers via `powInt` (`src/sim/num.ts`). No Math.random/sqrt/pow/trig, `**`, Date, DOM. Checked by `tests/purity.test.ts`.
