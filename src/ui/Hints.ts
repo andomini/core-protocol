@@ -1,7 +1,7 @@
 // First-run hints (spec M7 "first 5 minutes"): one short line + a pulsing ring around the thing to tap.
 // Each hint shows once, hides when its condition resolves or after a few seconds. Only in the first run.
 import Phaser from 'phaser';
-import { CYAN } from '../render/palette';
+import { BG, CYAN } from '../render/palette';
 import { DEPTH } from '../render/WorldView';
 import { text } from './kit';
 import type { Layout, Rect } from './layout';
@@ -33,6 +33,7 @@ export class Hints {
   private current: HintId | null = null;
   private shownAt = 0;
   private target: Rect | null = null;
+  private over = false;
   private readonly baseY: number;
   private readonly maxY: number;
 
@@ -73,7 +74,8 @@ export class Hints {
         // An `over` hint sits above the overlays, its line under the ringed rect; the rest under them, low in the arena.
         const depth = s.over === true ? DEPTH.overlay + 1 : DEPTH.overlay - 3;
         this.g.setDepth(depth);
-        this.label.setDepth(depth).setText(TEXT[id]).setVisible(true);
+        this.over = s.over === true;
+        this.label.setDepth(depth + 0.01).setText(TEXT[id]).setVisible(true);
         this.label.setY(s.over === true && s.target ? this.besideY(s.target) : this.baseY);
         break;
       }
@@ -82,19 +84,25 @@ export class Hints {
     if (!this.current || !this.target) return;
     const r = this.target;
     const k = 0.5 + 0.5 * Math.sin(now / 160);
+    // Over an overlay the line may sit on the overlay's own text: a dark plate keeps it readable.
+    if (this.over) {
+      const b = this.label.getBounds();
+      g.fillStyle(BG, 0.92).fillRoundedRect(b.x - 12, b.y - 4, b.width + 24, b.height + 8, 8);
+    }
     g.lineStyle(3 + 3 * k, CYAN, 0.5 + 0.5 * k).strokeRoundedRect(r.x - 6 - 4 * k, r.y - 6 - 4 * k, r.w + 12 + 8 * k, r.h + 12 + 8 * k, 12);
   }
 
   /** Just under `r`, or just above it when the line would leave the screen. */
   private besideY(r: Rect): number {
     const h = this.label.height / 2;
-    const below = r.y + r.h + 22 + h;
-    return below + h <= this.maxY - 8 ? below : Math.max(h + 8, r.y - 22 - h);
+    const below = r.y + r.h + 12 + h;
+    return below + h <= this.maxY - 2 ? below : Math.max(h + 4, r.y - 12 - h);
   }
 
   private hide(): void {
     this.current = null;
     this.target = null;
+    this.over = false;
     this.label.setVisible(false);
     this.g.clear();
   }
