@@ -1,5 +1,6 @@
 // Records a showcase gameplay clip for the animated thumbnail (dev server + dev hooks; portrait 1080×1920).
-// Staging: no hints, god mode, levels, Chain/Cryo protocols (lightning, freeze), a boss wave with an extra crowd, no text; then records.
+// Staging: no hints, god mode, levels, Chain/Cryo protocols (lightning, freeze) in the crystal, a boss wave with an extra
+// crowd, no text, two Pulses (one per clip); then records.
 // Usage: node tools/covers/record.mjs [seconds=9] → publish/out/raw/port.webm and its start offset.
 import { mkdirSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { launch, startServer } from '../ui/harness.mjs';
@@ -28,7 +29,7 @@ await p.evaluate(async () => {
   const pick = () => {
     const w = b.session.world;
     if (w.phase !== 'pick') return;
-    if (w.bootOffer.length > 0) return void b.command({ type: 'pickBoot', index: Math.max(0, w.bootOffer.indexOf('arcLoader')) }); // boot: Chain first
+    if (w.bootOffer.length > 0) return void b.command({ type: 'pickBoot', index: Math.max(0, w.bootOffer.indexOf('hotStart')) }); // boot: Overload (warm modules next to the cool picks)
     const i = Math.max(0, w.offer.findIndex((id) => want.includes(id)));
     b.command({ type: 'pickPerk', index: i });
   };
@@ -50,8 +51,16 @@ await p.evaluate(async () => {
   // Thumbnails carry no text: hide every label (boss name, damage numbers, HUD) and the protocol chips (depth bars+0.4…).
   b.events.on('postupdate', () => {
     for (const o of b.children.list) if (o.type === 'Text' || (o.depth > 10.3 && o.depth < 10.7)) o.setVisible(false);
+    // …and the PULSE button frame, which sits inside the square videos.sh crops.
+    b.hud.pulseBtn.bg.setVisible(false);
+    b.hud.pulseBtn.icon.setVisible(false);
   });
   await sleep(2600);
+  // Fire the Pulse once in each clip videos.sh cuts (action start + 0.3…2.5 s and + 5…7.2 s); the recording skips
+  // its cooldown by moving pulseReadyTick (dev only, the run is not replayed).
+  const fire = () => { const w = b.session.world; w.pulseReadyTick = w.tick; b.pulse(); };
+  setTimeout(fire, 900);
+  setTimeout(fire, 5600);
 });
 const startS = (Date.now() - t0) / 1000;
 await p.waitForTimeout(secs * 1000);
