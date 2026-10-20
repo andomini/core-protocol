@@ -1,0 +1,14 @@
+{
+  "perDay": 3,
+  "salt": 40503,
+  "templates": [
+    { "id": "wave", "kind": "wave", "mode": "best", "text": "Reach wave {n} on tier {t}+", "targets": [10, 10, 10, 10, 10, 10], "scale": { "by": "bestWave", "frac": 0.8 }, "step": 5, "reward": [5, 5, 6, 6, 7, 8] },
+    { "id": "kills", "kind": "kills", "mode": "best", "text": "Purge {n} viruses in one run", "targets": [100, 300, 450, 600, 800, 1000], "scale": { "by": "avgKills", "frac": 1.1 }, "step": 50, "reward": [4, 4, 5, 5, 6, 6] },
+    { "id": "fusion", "kind": "fusion", "mode": "best", "text": "Reach a tier {r} fusion", "targets": [2, 2, 2, 3, 3, 3], "step": 1, "reward": [5, 5, 6, 6, 7, 8] },
+    { "id": "nests", "kind": "nests", "mode": "best", "text": "Destroy {n} nests in one run", "targets": [2, 3, 4, 5, 6, 8], "scale": { "by": "bestWave", "frac": 0.08 }, "step": 1, "reward": [4, 4, 5, 6, 6, 7] },
+    { "id": "levels", "kind": "levels", "mode": "sum", "text": "Buy {n} stat levels today", "targets": [80, 150, 250, 350, 450, 550], "scale": { "by": "avgLevels", "frac": 2 }, "step": 10, "reward": [3, 3, 4, 4, 5, 5] },
+    { "id": "bits", "kind": "bits", "mode": "best", "text": "Earn {n} Bits in one run", "targets": [100, 500, 2000, 8000, 30000, 100000], "scale": { "by": "avgBits", "frac": 1.1 }, "step": 0, "reward": [4, 4, 5, 5, 6, 6] },
+    { "id": "tagWave", "kind": "tagWave", "mode": "best", "text": "Wave {n} with {tag} as top set", "targets": [8, 8, 8, 8, 8, 8], "scale": { "by": "bestWave", "frac": 0.5 }, "step": 5, "reward": [5, 5, 6, 6, 7, 8] },
+    { "id": "waves", "kind": "waves", "mode": "sum", "text": "Clear {n} waves today", "targets": [30, 60, 100, 150, 200, 250], "scale": { "by": "avgWaves", "frac": 2 }, "step": 10, "reward": [3, 3, 4, 4, 5, 5] }
+  ]
+}

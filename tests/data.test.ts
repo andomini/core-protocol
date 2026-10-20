@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_DATA, ENEMY_KINDS, validateData } from '../src/sim/data';
 import { testData } from './helpers';
+import { MISSIONS, validateMissions } from '../src/meta/missions';
+import missionsJson from '../src/data/missions.json';
 
 describe('game data', () => {
   it('default data is valid and complete', () => {
@@ -38,5 +40,16 @@ describe('game data', () => {
 
   it('rejects a basic enemy that cannot spawn on wave 1', () => {
     expect(() => testData({ enemies: { basic: { firstWave: 2 } } })).toThrow(/basic/);
+  });
+
+  it('missions.json is valid: distinct ids, known kinds, whole Key rewards, a {n} in every text', () => {
+    expect(() => validateMissions(structuredClone(missionsJson) as unknown as typeof MISSIONS)).not.toThrow();
+    expect(MISSIONS.templates.length).toBeGreaterThanOrEqual(MISSIONS.perDay);
+    const dup = structuredClone(MISSIONS);
+    dup.templates[1]!.id = dup.templates[0]!.id;
+    expect(() => validateMissions(dup)).toThrow(/duplicate/);
+    const kind = structuredClone(MISSIONS);
+    (kind.templates[0] as { kind: string }).kind = 'dance';
+    expect(() => validateMissions(kind)).toThrow(/unknown kind/);
   });
 });

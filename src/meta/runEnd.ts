@@ -3,6 +3,7 @@ import { fusionTierIndex } from '../sim/crystal';
 import type { GameData } from '../sim/data';
 import { labEffects } from './labs';
 import { type MetaData, unlockWaveFor } from './metaData';
+import { applyMissions, type MissionDelta, type MissionRun } from './missions';
 import type { MetaState } from './state';
 
 export interface RunResult {
@@ -18,6 +19,10 @@ export interface RunResult {
   bitsMul?: number;
   /** Best fusion tier (link count) each pair reached in the run (World.fusionBest) — feeds the Codex. */
   fusionsReached?: Record<string, number>;
+  /** What the run did for the daily missions (meta/missions.ts missionRun); absent → missions untouched. */
+  missions?: MissionRun;
+  /** Settlement time (epoch ms): picks the mission day. Required with `missions`. */
+  now?: number;
 }
 
 export interface Settlement {
@@ -33,6 +38,10 @@ export interface Settlement {
   codexNew: string[];
   /** A daily attempt beyond the day's paid ones: ranked, but no Bits or Keys. */
   unpaid?: boolean;
+  /** Daily mission progress this run made (in list order); Keys of completed ones are already in the save. */
+  missions?: MissionDelta[];
+  /** Keys the completed missions paid (not in `keys`, which a revive takes back; missions stay claimed). */
+  missionKeys?: number;
 }
 
 export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResult): Settlement {
@@ -71,9 +80,10 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
   bits += codexBits;
   m.bits += bits;
   m.keys += keys;
+  const ms = settleMissions(m, r, bits);
   m.runs += 1;
   m.firstRunDone = true;
-  return { bits, keys, milestones, newBest, tierUnlocked, codexBits, codexNew };
+  return { bits, keys, milestones, newBest, tierUnlocked, codexBits, codexNew, ...ms };
 }
 
 /**
@@ -81,7 +91,7 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
  * multipliers) and dropped Keys only — no best wave, milestones, tier unlock or Codex, which belong to the
  * player's own loadout on their tier.
  */
-export function settleDaily(m: MetaState, md: MetaData, r: Pick<RunResult, 'bits' | 'keys' | 'doubled'>, day: string, paidPerDay: number): Settlement {
+export function settleDaily(m: MetaState, md: MetaData, r: Pick<RunResult, 'bits' | 'keys' | 'doubled' | 'missions' | 'now'>, day: string, paidPerDay: number): Settlement {
   // Only the first `paidPerDay` attempts of a challenge day pay (leaderboard.json daily.paidAttemptsPerDay): the
   // daily is a short, strong fixed loadout, and unlimited restarts would make it the best Bits farm in the game.
   if (m.dailyPaid.day !== day) m.dailyPaid = { day, n: 0 };
@@ -92,7 +102,16 @@ export function settleDaily(m: MetaState, md: MetaData, r: Pick<RunResult, 'bits
   const keys = paid ? Math.floor(r.keys) : 0;
   m.bits += bits;
   m.keys += keys;
+  // Practice attempts (unpaid) do not count for missions either: restarts would farm them.
+  const ms = paid ? settleMissions(m, r, bits) : {};
   m.runs += 1;
   m.firstRunDone = true;
-  return { bits, keys, milestones: [], newBest: false, tierUnlocked: 0, codexBits: 0, codexNew: [], ...(paid ? {} : { unpaid: true }) };
+  return { bits, keys, milestones: [], newBest: false, tierUnlocked: 0, codexBits: 0, codexNew: [], ...(paid ? {} : { unpaid: true }), ...ms };
+}
+
+/** Daily missions at settlement (before `runs` counts the run: the run key of a revived run stays the same). */
+function settleMissions(m: MetaState, r: Pick<RunResult, 'missions' | 'now'>, bits: number): Pick<Settlement, 'missions' | 'missionKeys'> {
+  if (!r.missions || r.now === undefined) return {};
+  const missions = applyMissions(m, r.missions, bits, r.now);
+  return { missions, missionKeys: missions.reduce((a, d) => a + d.keys, 0) };
 }

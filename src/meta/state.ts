@@ -4,6 +4,7 @@ import { type GameData, STAT_IDS, type StatId } from '../sim/data';
 import { cardDef } from './cards';
 import { emptyLifetime, type LifetimeStats, validateLifetime } from './runStats';
 import { labNode, type MetaData } from './metaData';
+import { emptyMissions, type MissionsState, validateMissionsState } from './missions';
 
 export interface Settings {
   sound: boolean;
@@ -57,6 +58,8 @@ export interface MetaState {
   codex: Record<string, number>;
   /** Daily challenge attempts settled on `day` (UTC "YYYY-MM-DD"): only the first few pay. */
   dailyPaid: { day: string; n: number };
+  /** Daily missions of `missions.day` (UTC): the frozen list, progress and which paid (meta/missions.ts). Save v2. */
+  missions: MissionsState;
 }
 
 export function defaultMeta(): MetaState {
@@ -84,6 +87,7 @@ export function defaultMeta(): MetaState {
     economy: 0,
     codex: {},
     dailyPaid: { day: '', n: 0 },
+    missions: emptyMissions(),
   };
 }
 
@@ -134,6 +138,7 @@ export function validateMeta(raw: unknown, data: GameData, md: MetaData): MetaSt
     }
   }
   if (isObj(raw.dailyPaid) && typeof raw.dailyPaid.day === 'string') m.dailyPaid = { day: raw.dailyPaid.day.slice(0, 10), n: int(raw.dailyPaid.n, 0) };
+  m.missions = validateMissionsState(raw.missions);
   if (isObj(raw.settings)) {
     m.settings.sound = raw.settings.sound !== false;
     m.settings.music = raw.settings.music !== false;

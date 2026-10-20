@@ -24,6 +24,7 @@ import { worldStats } from '../../sim/state';
 import { sectorOf } from '../../sim/hex';
 import { grantStarter, type PackCard } from '../../meta/cards';
 import { type Settlement, settleDaily, settleRun } from '../../meta/runEnd';
+import { missionLines, missionRun } from '../../meta/missions';
 import { claimFromMeta, dailyClaim, dailyRunOptions, dailySeed, dayIndex, dayKey, LEADERBOARD, type LoadoutClaim } from '../../meta/leaderboardRules';
 import type { RunBoard, RunStartInfo } from '../../meta/MetaStore';
 import { type DailyChallenge, rankedBuild, type RunOutcome, startExpired } from '../../portal/leaderboard';
@@ -565,10 +566,11 @@ export class BattleScene extends Phaser.Scene {
     const m = services.meta.meta;
     const lifetimeBefore = structuredClone(m.lifetime);
     const codexBefore = { ...m.codex };
+    const missions = { missions: missionRun(w, this.gd, this.runStats), now: Date.now() };
     const s =
       this.board.kind === 'daily'
-        ? settleDaily(m, DEFAULT_META_DATA, { bits: w.bits, keys: w.keys, doubled: false }, this.board.day ?? '', LEADERBOARD.daily.paidAttemptsPerDay)
-        : settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest });
+        ? settleDaily(m, DEFAULT_META_DATA, { bits: w.bits, keys: w.keys, doubled: false, ...missions }, this.board.day ?? '', LEADERBOARD.daily.paidAttemptsPerDay)
+        : settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest, ...missions });
     this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore, codexBefore };
     addRunToLifetime(m.lifetime, this.runStats, {
       waves: w.wave,
@@ -1614,6 +1616,7 @@ export class BattleScene extends Phaser.Scene {
           note: [latticeLine(this.gd, dw, true), p ? this.deathNote(p.s) : ''].filter((x) => x).join(' · '),
           canRevive: !dw.revived && !this.flags.stress,
           canDouble: p !== null && !p.doubled && !p.s.unpaid,
+          missions: p ? missionLines(services.meta.meta, p.s, this.gd) : [],
         },
         time,
       );

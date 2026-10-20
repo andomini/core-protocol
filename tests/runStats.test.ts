@@ -21,6 +21,9 @@ describe('run stats', () => {
     expect(totalKills(s.kills)).toBe(1);
     expect([s.takenRanged, s.takenMelee, s.absorbed, s.blocked, s.hitsTaken]).toEqual([4, 0, 6, 1, 2]);
     expect([s.energySpent, s.levelsBought, s.freeUpgrades]).toEqual([40, 4, 1]);
+    recordEvent(s, { type: 'nestDestroyed', x: 0, y: 0, energy: 30, bits: 12 });
+    expect(s.nests).toBe(1);
+    expect(validateRunStats(JSON.parse(JSON.stringify(s))).nests).toBe(1);
   });
 
   it('a real session: every kill and the dealt damage are counted', () => {
