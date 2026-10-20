@@ -161,3 +161,42 @@ with Overload ground; basic is under 50 % of the mix from wave 5; `tools/covers/
 and wants the `?boot=<id>` / `__cp.pulse(true)` dev hooks (→ C3); in-game Pulse VFX reads smaller than on the covers;
 the game background is still magenta-on-navy while the covers went teal; phone stress FPS dropped to ~40 (profile the
 vfx/bodies pass before launch); listing size to re-check with `npm run package`.
+
+## 10. Phase 3 result (merged 2026-10-20, main 6a9af62)
+
+Four Opus agents in worktrees (notes: `2026-10-20-uniqueness-notes-c1..c4.md`), merged C3 → C1 → C4 → C2. Conflicts:
+`reports/balance-m3.md` and the golden replay (regenerated on main), `src/render/audio.ts` and `src/sim/commands.ts`
+(C1/C4 vs C2 additions, both sides kept). One type fix at the merge: C2's `'beacon'` joined `StructureKind` while C4's
+panel, `structLevels.ts` and the data validator indexed `Record<StructureKind, …>` maps — they now use
+`FusionStructureKind` (only fusion-built kinds have upgrade ladders). World version is 9 (C3 dropped `fusionPending`;
+v7→v8→v9 migrations chain); C1, C2 and C4 added optional fields only.
+
+| Gate | Before (main bd730fc) | After |
+|---|---|---|
+| B1 first pick ≤ 30 s | PASS | PASS |
+| B2 fresh player dies at waves 4–6 | PASS (median 6) | PASS (median 6; none-buy 3) |
+| B5 ≥ 80 % reach a 2-set by wave 10 | PASS | PASS (100 %) |
+| B6 tag medians within ±20 % | FAIL (1.33) | PASS (6/6/6/6/6 = 1.00; 48 seeds, arrange player, C4's harness) |
+| `npm test` | 695 | 736 |
+| `npm run ui` | 352/352 | 365/365 (stress 60 FPS desktop, phone 4× CPU 49.4) |
+| build (local) | 479.0 KB gz | 490.9 KB gz, checks pass |
+
+What landed: six tier bosses with one data-keyed mechanic each (Overseer shield, Broodmother spores, Siphon steal+heal,
+Swarm Lord aura, Artillery, Mutagen), FINALE waves that unlock the next tier on the kill, a boss HP bar at the arena's
+bottom-left, boss stingers and telegraphs (`src/sim/bosses.ts`, `src/render/bossShapes.ts`); the Territory Beacon
+(`beacon` command, CLAIM button / B, hold goal, `BeaconView`, a mission template); Weld dropped and Apex shelved,
+`latticeCoef` 0.015 → 0.014 (first-run Lattice bonus +4 %, workshop-30 −6.5 %), readout in plain sentences
+(`src/ui/crystalReadout.ts`), the `boot` hint, `?boot=<id>` and `__cp.pulse(true)` dev hooks; structure upgrades
+(`upgradeStruct`, 5 levels per kind at 30·1.7^L Energy, STRUCTURES panel, U key), `sim:balance` with 48 seeds and the
+arrange player by default, overload softened (overclockRounds ×1.09, burstFire ×1.07, critSpike +0.04, 2-set ×1.06).
+
+Open from the agents' notes: boss numbers (`bosses.json`) are a first pass — bots never reach wave 10 without meta, so
+waves 10–250 are untested; Artillery's aim has a laser line but no sound (no sim aim event); after a revive the second
+death repeats "TIER n UNLOCKED"; the boss bar can sit under the first-run hint text; the beacon does little early (the
+arena cleans itself after wave 1) — consider a slow field or placement outside the arena; the bot rarely places one;
+beacon move-by-tap not done; the new mission template reshuffles some days' draws; a tap on a turret on the wall ring
+can open the wall (`structureAt` order); upgrades have no Free Upgrade roll and stack multiplicatively with BUILD stats;
+level-1 upgrades barely move bots (raise `perLevel` if they should matter); stale "4 = Apex" comments in
+`src/meta/state.ts` and `src/meta/missions.ts`; `CrystalView` still calls link lines "welds" internally; the portrait
+boot-pick subtitle clips at both edges (A1). Item 6 (launch and measure) and item 15 (prestige, cosmetics) stay with
+the owner.

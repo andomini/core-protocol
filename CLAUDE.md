@@ -8,7 +8,7 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 - `npm test` — vitest (determinism, snapshot, sim purity, data)
 - `npm run typecheck`, `npm run build` (`build:crazygames`, `build:poki`)
 - `npm run sim:smoke -- <seed> <tier> [policy] [--unlockall]` — one run until death in Node (policy: none|greedy|atk-first|def-first|round-robin)
-- `npm run sim:balance` — bot policies × 24 seeds → `reports/balance-m3.md` (B1–B6 gates)
+- `npm run sim:balance` — bot policies × 48 seeds, arrange crystal player by default (~70 s) → `reports/balance-m3.md` (B1–B6 gates)
 - `npm run sim:balance -- --crystal arrange` adds the fusion-pick + hill-climb arrange player and per-fusion tier columns; `npx tsx tools/sim/crystalGeometry.ts` → `reports/crystal-geometry.md` (pairs touchable with one cluster per tag)
 - `npm run replay:record -- --update` — re-record `tests/replays/golden-01.json` (only for a deliberate sim/data change)
 - `npm run ui` — Playwright UI smoke, both orientations + portal checks (starts its own Vite server on `UI_PORT`, default 5180; `-- --only portal`)
@@ -28,7 +28,10 @@ Spec: `docs/superpowers/specs/2026-10-05-core-protocol-design.md`. Plans: `docs/
 
 ## Controls and first-run flow
 - A run opens on the **boot sector** pick (1 of 3 starter crystals, `src/data/boot.json`; it stands in for the wave 1–3 protocol picks), then the normal schedule. Mutations start at wave 5, every 8 (`src/data/mutations.json`); the genome strip is visible from wave 1.
-- **Pulse** (`src/data/pulse.json`, `src/sim/pulse.ts`): HUD button, tap on the core, or Space; effect by the dominant tag, cooldown; the `autoPulse` lab node fires it automatically. Keys: Space pulse, P pause, S speed.
+- **Pulse** (`src/data/pulse.json`, `src/sim/pulse.ts`): HUD button, tap on the core, or Space; effect by the dominant tag, cooldown; the `autoPulse` lab node fires it automatically. Keys: Space pulse, P pause, S speed, B beacon, U cheapest structure upgrade.
+- **Bosses** (`src/data/bosses.json`, `src/sim/bosses.ts`): one per tier with a telegraphed mechanic, every `config.bossEvery` waves; the tier's unlock wave is a FINALE boss wave and killing it unlocks the next tier at once (`unlockByFinale`).
+- **Territory Beacon** (`src/data/territory.json` beacon block, `src/sim/beacon.ts`): CLAIM button / B plants one at the infection front for Energy; it keeps infection out of its disc, viruses target it, holding it 3 wave ends pays Bits and claims the disc.
+- **Structure upgrades** (`structures.json` upgrades, `src/sim/structLevels.ts`): per-kind Energy ladders for turret/wall/mine/station, STRUCTURES chip or tap a structure; levels live in optional `World.structLevels`.
 - Daily missions ×3 (`src/data/missions.json`, `src/meta/missions.ts`, reset by UTC day) and the NEXT track live on Home.
 
 ## Rules
