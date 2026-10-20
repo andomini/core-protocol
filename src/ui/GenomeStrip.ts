@@ -13,6 +13,8 @@ import { drawTagIcon } from './tagIcon';
 import type { Layout } from './layout';
 
 const D = DEPTH.hud - 1;
+/** vfx: mutation warp shake length (ms). */
+const WARP_MS = 600;
 
 export class GenomeStrip {
   private readonly g: Phaser.GameObjects.Graphics;
@@ -22,6 +24,11 @@ export class GenomeStrip {
   private readonly levels = new Map<Tag, Phaser.GameObjects.Text>();
   private last = '';
   private readonly font: number;
+  /** vfx: mutation warp start (ms), whether it may shake, and the texts' rest x while it runs. */
+  private warpAt = -1e9;
+  private warpShake = true;
+  private labelX = 0;
+  private readonly levelX = new Map<Tag, number>();
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -41,6 +48,7 @@ export class GenomeStrip {
 
   /** Redraws when the genome or the next adaptation wave changes. */
   update(genome: Record<Tag, number>, wave: number, data: GameData): void {
+    this.warp();
     const next = nextMutationWave(data, Math.max(1, wave));
     const key = `${TAGS.map((t) => genome[t]).join(',')}:${next}`;
     if (key === this.last) return;
@@ -70,17 +78,51 @@ export class GenomeStrip {
       .setAlpha(any ? 1 : 0.8)
       .setPosition(x, cy)
       .setVisible(true);
+    this.labelX = x;
+    for (const t of TAGS) this.levelX.set(t, this.levels.get(t)!.x);
     const left = x - this.label.width - 10;
     this.box = { x: left, y: cy - s / 2 - 6, w: a.x + a.w - 18 - left + 10, h: s + 12 };
     g.lineStyle(1.5, CRIMSON, any ? 0.6 : 0.35).strokeRect(this.box.x, this.box.y, this.box.w, this.box.h);
   }
 
-  /** A mutation landed: the strip's box flashes in the tag's colour. */
-  flash(tag: Tag): void {
+  /**
+   * A mutation landed: the strip warps (vfx) — the box flashes in the tag's colour with crimson glitch slices, pulses
+   * twice and fades, and the strip shakes sideways for WARP_MS (not with reduce motion: `shake` false).
+   */
+  flash(tag: Tag, shake = true): void {
     const b = this.box;
-    this.flashG.clear().fillStyle(TAG_COLOR[tag], 0.35).fillRect(b.x, b.y, b.w, b.h).lineStyle(3, TAG_COLOR[tag], 1).strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+    const tc = TAG_COLOR[tag];
+    const g = this.flashG.clear().fillStyle(tc, 0.35).fillRect(b.x, b.y, b.w, b.h).lineStyle(3, tc, 1).strokeRect(b.x - 2, b.y - 2, b.w + 4, b.h + 4);
+    // Glitch slices: three thin crimson bars, offset sideways out of the box.
+    for (let i = 0; i < 3; i++) {
+      const y = b.y + (b.h * (i + 0.5)) / 3 - 2;
+      const dx = (i - 1) * 10 + 6;
+      g.fillStyle(i === 1 ? tc : CRIMSON, 0.7).fillRect(b.x + dx, y, b.w * (0.5 + 0.2 * i), 3);
+    }
     this.scene.tweens.killTweensOf(this.flashG);
     this.flashG.setAlpha(1);
-    this.scene.tweens.add({ targets: this.flashG, alpha: 0, duration: 900, ease: 'Quad.easeOut', repeat: 0 });
+    this.scene.tweens.add({
+      targets: this.flashG,
+      alpha: { from: 1, to: 0.25 },
+      duration: 140,
+      yoyo: true,
+      repeat: 1,
+      ease: 'Sine.easeInOut',
+      onComplete: () => this.scene.tweens.add({ targets: this.flashG, alpha: 0, duration: 700, ease: 'Quad.easeOut' }),
+    });
+    this.warpAt = this.scene.time.now;
+    this.warpShake = shake;
+  }
+
+  /** vfx: the sideways shake of a mutation warp (a decaying wobble), back to rest when it ends. */
+  private warp(): void {
+    const t = (this.scene.time.now - this.warpAt) / WARP_MS;
+    if (t > 1.2) return;
+    const dx = t >= 1 || !this.warpShake ? 0 : Math.round(Math.sin(t * 38) * 6 * (1 - t));
+    if (t >= 1) this.warpAt = -1e9;
+    this.g.x = dx;
+    this.flashG.x = dx;
+    this.label.x = this.labelX + dx;
+    for (const t2 of TAGS) this.levels.get(t2)!.x = (this.levelX.get(t2) ?? 0) + dx;
   }
 }
