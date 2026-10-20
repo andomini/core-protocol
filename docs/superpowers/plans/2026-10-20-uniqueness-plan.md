@@ -131,3 +131,33 @@ local/poki builds since 4d08748); the `demoCrystal` dev hook starts from an empt
 Open from the agents' notes: HintId `boot` not done; Space fires the Pulse and pause moved to P; the 50 s Pulse cooldown
 is long (try 30–40 s once telemetry exists); missions read the top set / best fusion at death, not the run's peak, and a
 "cleanse N hexes" mission needs a sim event (it became "destroy N nests"); mission Keys are not in `lifetime.keysEarned`.
+
+## 9. Phase 2 result (merged 2026-10-20, main 4f1c56f)
+
+Three Opus agents in worktrees (notes: `2026-10-20-uniqueness-notes-b1..b3.md`), merged B1 → B3 → B2; the only
+conflict was `reports/balance-m3.md` (B2's version taken, then regenerated on main). World version stays 8: B2 put the
+new kinds' state into optional `Enemy` fields (`carried?`, `gen?`). Golden replay re-recorded once (the leech joins at
+wave 4 and changes the draws).
+
+| Gate | Before (main 892ceae) | After |
+|---|---|---|
+| B1 first pick ≤ 30 s | PASS | PASS |
+| B2 fresh player dies at waves 4–6 | PASS (median 6) | PASS (median 6; none-buy 3) |
+| B5 ≥ 80 % reach a 2-set by wave 10 | PASS | PASS |
+| B6 tag medians within ±20 % | PASS (1.17) | **FAIL** (8/6/6/6/6 = 1.33 on 24 seeds; 1.17 on 72 — B2's table, the 24-seed medians sit on the 6/7 edge) → C4 |
+| `npm test` | 668 | 695 |
+| `npm run ui` | 352/352 | 352/352 (stress 60 FPS desktop; phone 4× CPU 39.9 FPS, was 48 before B3's VFX + the new bodies) |
+| build (local) | 470.8 KB gz | 479.0 KB gz, checks pass |
+
+What landed: covers and the animated thumbnail show the crystal, virus bodies and a Pulse (`tools/covers`, `publish/out`);
+leech / spore / carrier / phage from waves 4 / 8 / 12 / 16 (`src/sim/viruses.ts`, data-keyed mechanics, new bodies,
+ranged recoloured acid green, phage takes the bacteriophage body); SFX in three families with a voice limiter, a second
+music layer by wave band from wave 10, boot and death stingers, `src/render/vfx.ts` (Pulse ring per tag, docking,
+fusion flash, card reveal, genome warp), reduced bus in widget mode.
+
+Open from the agents' notes: nobody has listened to the sound on a phone speaker yet (headless Chromium is silent);
+stingers are fixed to A minor; a phage walks through a wall arc on its way to a station; the carrier aura multiplies
+with Overload ground; basic is under 50 % of the mix from wave 5; `tools/covers/record.mjs` spawns only the old kinds
+and wants the `?boot=<id>` / `__cp.pulse(true)` dev hooks (→ C3); in-game Pulse VFX reads smaller than on the covers;
+the game background is still magenta-on-navy while the covers went teal; phone stress FPS dropped to ~40 (profile the
+vfx/bodies pass before launch); listing size to re-check with `npm run package`.
