@@ -8,7 +8,7 @@ import { type World, WORLD_VERSION } from './state';
 import { canonicalLevels } from './stats';
 
 /** Bumped with the World shape: v1 (M1–M2a) derived core stats; v2 (M2b) had no protocols (M3). */
-export const SNAPSHOT_VERSION = 7;
+export const SNAPSHOT_VERSION = 8; // v8 (boot): World.bootOffer, World.boot
 
 /** Serializes the whole world. Throws if any value is non-finite (JSON would turn it into null). */
 export function snapshot(w: World): string {
@@ -62,10 +62,17 @@ export function restore(s: string, data?: GameData): World {
     throw new Error(`snapshot: invalid JSON (${(err as Error).message})`);
   }
   const o = parsed as { v?: unknown; world?: unknown } | null;
-  if (o === null || typeof o !== 'object' || o.v !== SNAPSHOT_VERSION) {
+  // boot: a v7 snapshot (no boot sector fields) is upgraded below.
+  if (o === null || typeof o !== 'object' || (o.v !== SNAPSHOT_VERSION && o.v !== 7)) {
     throw new Error(`snapshot: unsupported version ${String(o?.v)}`);
   }
   const w = o.world as Partial<World> | null | undefined;
+  // boot: runs saved before boot sectors (v7) had no boot pick: none open, none taken.
+  if (o.v === 7 && w !== null && typeof w === 'object' && (w as { v?: unknown }).v === 7) {
+    (w as { v: number }).v = WORLD_VERSION;
+    w.bootOffer ??= [];
+    w.boot ??= '';
+  }
   if (
     w === null ||
     typeof w !== 'object' ||
@@ -95,7 +102,10 @@ export function restore(s: string, data?: GameData): World {
     typeof w.setTiers !== 'object' ||
     w.setTiers === null ||
     !Array.isArray(w.offer) ||
-    (w.phase === 'pick') !== (w.offer.length > 0) ||
+    !Array.isArray(w.bootOffer) || // boot
+    typeof w.boot !== 'string' || // boot
+    (w.offer.length > 0 && w.bootOffer.length > 0) || // boot
+    (w.phase === 'pick') !== (w.offer.length > 0 || w.bootOffer.length > 0) ||
     typeof w.timers !== 'object' ||
     w.timers === null ||
     typeof w.boost !== 'object' ||

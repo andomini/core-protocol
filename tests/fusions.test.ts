@@ -302,7 +302,7 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
           cmds.push({ type: 'moveModule', from: [a.q, a.r], to: [b.q, b.r] });
           moves++;
         }
-        cmds.push({ type: 'pickPerk', index: 0 });
+        cmds.push(w.bootOffer.length > 0 ? { type: 'pickBoot', index: 0 } : { type: 'pickPerk', index: 0 });
       }
       for (const cmd of cmds) log.push({ tick: w.tick, cmd });
       step(w, D, cmds, events);

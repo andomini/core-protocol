@@ -1,0 +1,65 @@
+{
+  "offerSize": 3,
+  "sectors": [
+    {
+      "id": "hotStart",
+      "tag": "overload",
+      "name": "Hot Start",
+      "blurb": "Raw damage, fire rate and crits from the first shot.",
+      "partner": "cryo",
+      "modules": [
+        { "perk": "overclockRounds", "slot": [2, 0] },
+        { "perk": "burstFire", "slot": [2, -1] },
+        { "perk": "critSpike", "slot": [3, -1] }
+      ]
+    },
+    {
+      "id": "coldBoot",
+      "tag": "cryo",
+      "name": "Cold Boot",
+      "blurb": "Slows the swarm, then shatters what it slowed.",
+      "partner": "chain",
+      "modules": [
+        { "perk": "frostShot", "slot": [2, -2] },
+        { "perk": "coldAura", "slot": [1, -2] },
+        { "perk": "shatter", "slot": [2, -3] }
+      ]
+    },
+    {
+      "id": "arcLoader",
+      "tag": "chain",
+      "name": "Arc Loader",
+      "blurb": "Shots bounce and arc from virus to virus.",
+      "partner": "overload",
+      "modules": [
+        { "perk": "bounce", "slot": [0, -2] },
+        { "perk": "arc", "slot": [-1, -1] },
+        { "perk": "conductive", "slot": [-1, -2] }
+      ]
+    },
+    {
+      "id": "minerKernel",
+      "tag": "mining",
+      "name": "Miner Kernel",
+      "blurb": "More Energy and Bits from every kill.",
+      "partner": "firewall",
+      "modules": [
+        { "perk": "energySiphon", "slot": [-2, 0] },
+        { "perk": "dataMine", "slot": [-2, 1] },
+        { "perk": "bounty", "slot": [-3, 1] }
+      ]
+    },
+    {
+      "id": "safeMode",
+      "tag": "firewall",
+      "name": "Safe Mode",
+      "blurb": "Regen, armour and thorns: outlast the swarm.",
+      "partner": "overload",
+      "modules": [
+        { "perk": "patch", "slot": [-2, 2] },
+        { "perk": "hardening", "slot": [-1, 2] },
+        { "perk": "reflect", "slot": [-2, 3] }
+      ]
+    }
+  ]
+}

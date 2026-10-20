@@ -4,7 +4,7 @@
 // switches off takes its mods back); everything else is derived from the perk stacks and tiers by
 // perkProfile(), never stored.
 
-import type { GameData, StatId } from './data';
+import type { BootSector, GameData, StatId } from './data';
 import type { SimEvent } from './events';
 import { type CrystalShape, crystalTagCounts, crystalShape, freeSlots, fusionEffects, fusionLinkCounts, fusionLinks, fusionSteps, fusionTierAt, fusionTierIndex, isSlot, ladderTier, moveModule, placeModule } from './crystal';
 import { geneKeep } from './mutations';
@@ -334,10 +334,74 @@ export function latticeMul(w: World, data: GameData): number {
   return 1 + latticeBonus(w, data);
 }
 
-/** Run start: sets completed by card tags alone, then the opening (wave-1) pick. */
-export function initProtocols(w: World, data: GameData): void {
+/** Run start: sets completed by card tags alone, then the boot sector pick (`boot`), else the opening (wave-1) pick. */
+export function initProtocols(w: World, data: GameData, boot = true): void {
   refreshCrystal(w, data, null);
+  if (w.protocols && boot && enterBoot(w, data)) return;
   if (w.protocols && isPickWave(data, 1)) enterPick(w, data, null);
+}
+
+// ---------------------------------------------------------------------------------------------------------
+// boot — Boot sectors (uniqueness plan item 1): before wave 1 the run offers `boot.offerSize` starter crystals
+// (boot.json), drawn from the seed alone. Taking one grants its modules on their hexes (set tier 2 at once);
+// then the wave-1 protocol pick opens as usual (if the schedule has one), else the run starts.
+
+export function bootSector(data: GameData, id: string): BootSector | undefined {
+  return data.boot.sectors.find((s) => s.id === id);
+}
+
+/** True while the boot pick is open (phase `pick` with a boot offer, no protocol offer). */
+export function bootOpen(w: World): boolean {
+  return w.phase === 'pick' && w.bootOffer.length > 0;
+}
+
+/** The boot offer: `offerSize` distinct sectors in a seed-only order (stream `boot`), so nothing else shifts it. */
+export function generateBootOffer(w: World, data: GameData): string[] {
+  const rng = createStream(w.seed, 'boot');
+  const ids = data.boot.sectors.map((s) => s.id);
+  // Partial Fisher–Yates: the first offerSize entries.
+  const n = Math.min(data.boot.offerSize, ids.length);
+  for (let i = 0; i < n; i++) {
+    const j = i + nextInt(rng, ids.length - i);
+    const t = ids[i]!;
+    ids[i] = ids[j]!;
+    ids[j] = t;
+  }
+  return ids.slice(0, n);
+}
+
+/** Opens the boot pick at run start (the world waits in `pick`). False when there is nothing to offer. */
+function enterBoot(w: World, data: GameData): boolean {
+  if (w.crystal.length > 0) return false;
+  const offer = generateBootOffer(w, data);
+  if (offer.length === 0) return false;
+  w.phase = 'pick';
+  w.bootOffer = offer;
+  return true;
+}
+
+/**
+ * The pickBoot command: takes sector `index` of the boot offer and grants its modules on their hexes (a hex
+ * that is no longer free falls back to the auto slot), then opens the wave-1 protocol pick (if scheduled).
+ */
+export function pickBoot(w: World, data: GameData, index: unknown, events: SimEvent[]): ProtocolReject | null {
+  if (w.dead) return 'dead';
+  if (!bootOpen(w)) return 'phase';
+  if (!Number.isInteger(index) || (index as number) < 0 || (index as number) >= w.bootOffer.length) return 'index';
+  const sector = bootSector(data, w.bootOffer[index as number]!);
+  if (sector === undefined) return 'index';
+  w.bootOffer = [];
+  w.boot = sector.id;
+  w.phase = 'pause';
+  for (const m of sector.modules) {
+    const free = freeSlots(w, data).some(([q, r]) => q === m.slot[0] && r === m.slot[1]);
+    grantPerk(w, data, m.perk, events, free ? [m.slot[0], m.slot[1]] : undefined);
+  }
+  refreshCrystal(w, data, events);
+  const modules = w.crystal.filter((c) => sector.modules.some((m) => m.perk === c.perk)).map((c): [number, number] => [c.q, c.r]);
+  events.push({ type: 'bootPicked', id: sector.id, tag: sector.tag, modules });
+  if (w.protocols && isPickWave(data, 1)) enterPick(w, data, events);
+  return null;
 }
 
 /** Changes that may move max HP keep the current HP consistent (as a Health purchase does). */
@@ -396,7 +460,7 @@ export function moveCrystalModule(w: World, data: GameData, from: unknown, to: u
  */
 export function pickPerk(w: World, data: GameData, index: unknown, events: SimEvent[], slot?: unknown): ProtocolReject | null {
   if (w.dead) return 'dead';
-  if (w.phase !== 'pick') return 'phase';
+  if (w.phase !== 'pick' || w.bootOffer.length > 0) return 'phase'; // boot: not during the boot pick
   if (!Number.isInteger(index) || (index as number) < 0 || (index as number) >= w.offer.length) return 'index';
   const offer = w.offer;
   const id = offer[index as number]!;
@@ -417,7 +481,7 @@ export function pickPerk(w: World, data: GameData, index: unknown, events: SimEv
 /** A new offer for the same pick: `free` uses a lab reroll, `ad` follows a watched rewarded ad. */
 export function rerollOffer(w: World, data: GameData, via: unknown, events: SimEvent[]): ProtocolReject | null {
   if (w.dead) return 'dead';
-  if (w.phase !== 'pick') return 'phase';
+  if (w.phase !== 'pick' || w.bootOffer.length > 0) return 'phase'; // boot: not during the boot pick
   if (via !== 'free' && via !== 'ad') return 'index';
   if (w.rerolls >= data.perks.offer.maxRerolls) return 'noReroll';
   if (via === 'free') {
@@ -434,14 +498,14 @@ export function rerollOffer(w: World, data: GameData, via: unknown, events: SimE
 
 /** Can the rewarded boost be taken now (pick phase, cooldown over)? */
 export function boostAvailable(w: World, data: GameData): boolean {
-  if (w.dead || w.phase !== 'pick') return false;
+  if (w.dead || w.phase !== 'pick' || w.bootOffer.length > 0) return false;
   return w.boost.from === 0 || w.wave + 1 >= w.boost.from + data.perks.boost.cooldownWaves;
 }
 
 /** Rewarded boost: × Energy for the next `waves` waves (the waves after this pick). */
 export function takeBoost(w: World, data: GameData, events: SimEvent[]): ProtocolReject | null {
   if (w.dead) return 'dead';
-  if (w.phase !== 'pick') return 'phase';
+  if (w.phase !== 'pick' || w.bootOffer.length > 0) return 'phase'; // boot: not during the boot pick
   if (!boostAvailable(w, data)) return 'cooldown';
   w.boost = { from: w.wave + 1, until: w.wave + data.perks.boost.waves };
   events.push({ type: 'boost', from: w.boost.from, until: w.boost.until });

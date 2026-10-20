@@ -4,7 +4,7 @@
 import { type GameData, STAT_IDS, type StatId } from './data';
 import type { SimEvent } from './events';
 import { clampValue } from './num';
-import { fusionStructure, moveCrystalModule, pickPerk, type ProtocolReject, rerollOffer, structureBuilt, structureFusionNames, takeBoost } from './perks';
+import { fusionStructure, moveCrystalModule, pickBoot, pickPerk, type ProtocolReject, rerollOffer, structureBuilt, structureFusionNames, takeBoost } from './perks';
 import { chance } from './rng';
 import { quoteBuy, type BuyQuote } from './stats';
 import { type World, worldStats } from './state';
@@ -15,6 +15,9 @@ export type Command =
   | { type: 'buy'; stat: StatId; count: BuyCount }
   /** Takes card `index` of the open protocol offer; `slot` = crystal hex [q, r] for a new module (else auto). */
   | { type: 'pickPerk'; index: number; slot?: [number, number] }
+  // boot
+  /** Takes boot sector `index` of the run-start boot offer (its modules on their hexes). */
+  | { type: 'pickBoot'; index: number }
   /** Moves the crystal module at `from` to hex `to`; a module at `to` swaps places with it (spec 2026-10-15 §2). */
   | { type: 'moveModule'; from: [number, number]; to: [number, number] }
   /** A new offer: `free` (lab node) or `ad` (after a watched rewarded ad). */
@@ -133,6 +136,7 @@ export function applyCommands(w: World, data: GameData, cmds: readonly Command[]
     const c = cmd as { type?: unknown; stat?: unknown; count?: unknown; index?: unknown; via?: unknown };
     if (c.type === 'buy') buy(w, data, c.stat, c.count, events);
     else if (c.type === 'pickPerk') protocol(events, 'pickPerk', pickPerk(w, data, c.index, events, (cmd as { slot?: unknown }).slot));
+    else if (c.type === 'pickBoot') protocol(events, 'pickBoot', pickBoot(w, data, c.index, events)); // boot
     else if (c.type === 'moveModule') {
       const m = cmd as { from?: unknown; to?: unknown };
       protocol(events, 'moveModule', moveCrystalModule(w, data, m.from, m.to, events));

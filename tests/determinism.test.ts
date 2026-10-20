@@ -16,8 +16,9 @@ function run(seed: number) {
   const hashes: string[] = [];
   const events: SimEvent[] = [];
   const pick: Command[] = [{ type: 'pickPerk', index: 0 }];
+  const boot: Command[] = [{ type: 'pickBoot', index: 0 }];
   for (let i = 1; i <= TICKS; i++) {
-    step(w, data, w.phase === 'pick' ? pick : [], events);
+    step(w, data, w.phase !== 'pick' ? [] : w.bootOffer.length > 0 ? boot : pick, events);
     events.length = 0;
     if (i % 100 === 0) hashes.push(hashWorld(w));
   }

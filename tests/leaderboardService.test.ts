@@ -477,7 +477,7 @@ function drive(s: RunSession, untilTick: number): void {
   while (!s.world.dead && s.world.tick < untilTick) {
     s.advance(9, () => {});
     if (s.picking) {
-      s.queue({ type: 'pickPerk', index: 0 });
+      s.queue(s.world.bootOffer.length > 0 ? { type: 'pickBoot', index: 0 } : { type: 'pickPerk', index: 0 });
       s.applyPendingNow(() => {});
     }
     s.queue({ type: 'buy', stat: STAT_IDS[i++ % STAT_IDS.length]!, count: 1 });

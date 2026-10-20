@@ -37,10 +37,10 @@ const hard = (k = 1): GameData =>
 function play(data: GameData, opts: RunOptions, claim: LoadoutClaim, kind: 'tier' | 'daily' = 'tier', day: string | null = null): VerifyInput {
   const s = new RunSession(data, opts);
   let i = 0;
-  while (!s.world.dead && s.world.tick < 30000) {
+  while (!s.world.dead && s.world.tick < 60000) {
     s.advance(9, () => {});
     if (s.picking) {
-      s.queue({ type: 'pickPerk', index: i % 3 });
+      s.queue(s.world.bootOffer.length > 0 ? { type: 'pickBoot', index: i % 3 } : { type: 'pickPerk', index: i % 3 });
       if (i % 2 === 0) s.applyPendingNow(() => {});
     }
     s.queue({ type: 'buy', stat: STAT_IDS[i++ % STAT_IDS.length]!, count: i % 4 === 0 ? 'max' : 1 });

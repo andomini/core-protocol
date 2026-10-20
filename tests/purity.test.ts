@@ -46,3 +46,26 @@ describe('src/sim purity', () => {
     });
   }
 });
+
+describe('World is plain JSON (boot sector fields included)', () => {
+  it('a new World with the boot pick open, and after it, round-trips through JSON with no nulls, classes or functions', async () => {
+    const { DEFAULT_DATA } = await import('../src/sim/data');
+    const { createWorld } = await import('../src/sim/state');
+    const { applyCommands } = await import('../src/sim/commands');
+    const plain = (x: unknown, at: string): void => {
+      expect(x, `${at} is null`).not.toBeNull();
+      if (typeof x === 'object') {
+        const proto = Object.getPrototypeOf(x);
+        expect(proto === Object.prototype || proto === Array.prototype, `${at} is a class instance`).toBe(true);
+        for (const [k, v] of Object.entries(x as object)) plain(v, `${at}.${k}`);
+      } else expect(['number', 'string', 'boolean'], `${at} is a ${typeof x}`).toContain(typeof x);
+    };
+    const w = createWorld(DEFAULT_DATA, { seed: 4, tier: 1 });
+    expect(w.bootOffer.length).toBeGreaterThan(0);
+    plain(w, '$');
+    expect(JSON.parse(JSON.stringify(w))).toEqual(w);
+    applyCommands(w, DEFAULT_DATA, [{ type: 'pickBoot', index: 0 }], []);
+    plain(w, '$');
+    expect(JSON.parse(JSON.stringify(w))).toEqual(w);
+  });
+});

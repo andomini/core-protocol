@@ -50,7 +50,7 @@ describe('pick schedule (spec §2.4)', () => {
   });
 
   it('the wave-1 pick opens the run at tick 0, before any spawn (B1), and the world waits for it', () => {
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false });
     expect(w.phase).toBe('pick');
     expect(w.offer).toHaveLength(3);
     expect(new Set(w.offer).size).toBe(3);
@@ -60,7 +60,7 @@ describe('pick schedule (spec §2.4)', () => {
   });
 
   it('a pick resolves into the pause and the same step ticks (wave 1 starts at once)', () => {
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false });
     const id = w.offer[1]!;
     const ev = apply(w, data, { type: 'pickPerk', index: 1 });
     expect(ofType(ev, 'perkPicked')).toEqual([{ type: 'perkPicked', id, stacks: 1, module: expect.any(Array) }]);
@@ -72,7 +72,7 @@ describe('pick schedule (spec §2.4)', () => {
   });
 
   it('later picks open when waves 3, 5, 8, 10, 15, 20 end ("WAVE N CLEARED")', () => {
-    const w = createWorld(data, { seed: 2, tier: 1 });
+    const w = createWorld(data, { seed: 2, tier: 1, boot: false });
     const ev = play(w, data, 21 * 30 * data.config.tickHz);
     const offers = ofType(ev, 'pickOffer');
     expect(offers.map((o) => o.wave)).toEqual([3, 5, 8, 10, 15, 20]);
@@ -84,13 +84,13 @@ describe('pick schedule (spec §2.4)', () => {
   });
 
   it('protocols: false never opens a pick', () => {
-    const w = createWorld(data, { seed: 2, tier: 1, protocols: false });
+    const w = createWorld(data, { seed: 2, tier: 1, boot: false, protocols: false });
     expect(w.phase).toBe('pause');
     expect(ofType(play(w, data, 6 * 30 * 30), 'pickOffer')).toHaveLength(0);
   });
 
   it('4 cards with the lab node', () => {
-    const w = createWorld(data, { seed: 3, tier: 1, extraPerkChoice: true });
+    const w = createWorld(data, { seed: 3, tier: 1, boot: false, extraPerkChoice: true });
     expect(w.offer).toHaveLength(4);
     expect(new Set(w.offer).size).toBe(4);
   });
@@ -100,7 +100,7 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
   it('rarity split is Common 70 / Rare 25 / Epic 5 (first offers, no weighting)', () => {
     const n = { common: 0, rare: 0, epic: 0 };
     for (let seed = 1; seed <= 2000; seed++) {
-      for (const id of createWorld(DEFAULT_DATA, { seed, tier: 1 }).offer) n[P[id]!.rarity]++;
+      for (const id of createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false }).offer) n[P[id]!.rarity]++;
     }
     const total = n.common + n.rare + n.epic;
     expect(n.common / total).toBeGreaterThan(0.67);
@@ -114,7 +114,7 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
   it('pity: after 3 picks without a Rare+, the 4th offer has one (offers chained through real picks)', () => {
     let forced = 0;
     for (let seed = 1; seed <= 400; seed++) {
-      const w = createWorld(DEFAULT_DATA, { seed, tier: 1 });
+      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false });
       const history: boolean[] = [];
       for (let k = 0; k < 10 && w.phase === 'pick'; k++) {
         history.push(offerHasRarePlus(DEFAULT_DATA, w.offer));
@@ -133,14 +133,14 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
 
   it('pity set directly forces a Rare+ card into every offer', () => {
     for (let seed = 1; seed <= 300; seed++) {
-      const w = createWorld(DEFAULT_DATA, { seed, tier: 1 });
+      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false });
       w.pity = DEFAULT_DATA.perks.offer.pityAfter;
       expect(offerHasRarePlus(DEFAULT_DATA, generateOffer(w, DEFAULT_DATA, 0))).toBe(true);
     }
   });
 
   it('pity counter: +1 after a Common-only offer, 0 after one with a Rare+', () => {
-    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1 });
+    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1, boot: false });
     w.offer = ['overclockRounds', 'burstFire', 'patch'];
     apply(w, DEFAULT_DATA, { type: 'pickPerk', index: 0 });
     expect(w.pity).toBe(1);
@@ -152,7 +152,7 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
 
   it('tag weighting: with held tags, every offer carries at least one held tag', () => {
     for (let seed = 1; seed <= 400; seed++) {
-      const w = createWorld(DEFAULT_DATA, { seed, tier: 1 });
+      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false });
       grantPerk(w, DEFAULT_DATA, seed % 2 === 0 ? 'bounce' : 'patch', null);
       const held = heldTags(w, DEFAULT_DATA);
       for (let r = 0; r < 3; r++) {
@@ -164,7 +164,7 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
 
   it('card tags alone also weight the very first offer', () => {
     for (let seed = 1; seed <= 300; seed++) {
-      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, cardTags: ['cryo'] });
+      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false, cardTags: ['cryo'] });
       expect(w.offer.some((id) => P[id]!.tag === 'cryo'), `seed ${seed}`).toBe(true);
     }
   });
@@ -173,14 +173,14 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
     const locked = ['split', 'leech', 'compound'];
     const seen = new Set<string>();
     for (let seed = 1; seed <= 1500; seed++) {
-      const w = createWorld(DEFAULT_DATA, { seed, tier: 1 });
+      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false });
       w.pity = 9; // force Rare+ slots: all three are Rare
       for (const id of generateOffer(w, DEFAULT_DATA, 0)) seen.add(id);
     }
     for (const id of locked) expect(seen.has(id), id).toBe(false);
     const unlockedSeen = new Set<string>();
     for (let seed = 1; seed <= 1500; seed++) {
-      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, unlocked: ['multishot', 'lifesteal', 'interest'] });
+      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false, unlocked: ['multishot', 'lifesteal', 'interest'] });
       w.pity = 9;
       for (const id of generateOffer(w, DEFAULT_DATA, 0)) unlockedSeen.add(id);
     }
@@ -190,7 +190,7 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
 
   it('a perk at max stacks is never offered again', () => {
     for (let seed = 1; seed <= 500; seed++) {
-      const w = createWorld(DEFAULT_DATA, { seed, tier: 1 });
+      const w = createWorld(DEFAULT_DATA, { seed, tier: 1, boot: false });
       grantPerk(w, DEFAULT_DATA, 'glassCannon', null);
       w.pity = 9;
       expect(generateOffer(w, DEFAULT_DATA, 0)).not.toContain('glassCannon');
@@ -198,7 +198,7 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
   });
 
   it('an exhausted pool gives no pick (the run simply continues)', () => {
-    const w = createWorld(data, { seed: 1, tier: 1, protocols: false });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false, protocols: false });
     for (const id of perkIds(data)) w.perks[id] = P[id]!.maxStacks;
     w.protocols = true;
     expect(generateOffer(w, data, 0)).toEqual([]);
@@ -211,7 +211,7 @@ describe('offers: rarity, pity, tag weighting, locked perks', () => {
 describe('offer determinism (Weekly-style)', () => {
   /** Offers of the first 6 picks with a given buy log (same picks: index 0; an ad reroll on pick 3). */
   function offersWith(buys: (w: World) => Command[]): string[][] {
-    const w = createWorld(data, { seed: 424242, tier: 1 });
+    const w = createWorld(data, { seed: 424242, tier: 1, boot: false });
     const offers: string[][] = [w.offer.slice()];
     const ev: SimEvent[] = [];
     for (let t = 0; t < 20 * 30 * 30 && w.picks < 6; t++) {
@@ -234,17 +234,17 @@ describe('offer determinism (Weekly-style)', () => {
   });
 
   it('a different seed gives different offers', () => {
-    const a = createWorld(data, { seed: 1, tier: 1 }).offer;
-    const differ = [2, 3, 4, 5, 6].some((s) => JSON.stringify(createWorld(data, { seed: s, tier: 1 }).offer) !== JSON.stringify(a));
+    const a = createWorld(data, { seed: 1, tier: 1, boot: false }).offer;
+    const differ = [2, 3, 4, 5, 6].some((s) => JSON.stringify(createWorld(data, { seed: s, tier: 1, boot: false }).offer) !== JSON.stringify(a));
     expect(differ).toBe(true);
   });
 });
 
 describe('rerolls and boost', () => {
   it('a free reroll needs the lab flag and is spent once; ad rerolls always work', () => {
-    const w = createWorld(data, { seed: 5, tier: 1 });
+    const w = createWorld(data, { seed: 5, tier: 1, boot: false });
     expect(ofType(apply(w, data, { type: 'reroll', via: 'free' }), 'commandRejected')).toEqual([{ type: 'commandRejected', cmd: 'reroll', reason: 'noReroll' }]);
-    const f = createWorld(data, { seed: 5, tier: 1, freeReroll: true });
+    const f = createWorld(data, { seed: 5, tier: 1, boot: false, freeReroll: true });
     expect(f.freeRerolls).toBe(1);
     const first = f.offer.slice();
     const ev = apply(f, data, { type: 'reroll', via: 'free' });
@@ -259,7 +259,7 @@ describe('rerolls and boost', () => {
   });
 
   it('rerolls per pick are capped by perks.json offer.maxRerolls (free + ad), so a replay cannot farm offers', () => {
-    const w = createWorld(data, { seed: 5, tier: 1 });
+    const w = createWorld(data, { seed: 5, tier: 1, boot: false });
     const cap = data.perks.offer.maxRerolls;
     for (let i = 0; i < cap; i++) expect(ofType(apply(w, data, { type: 'reroll', via: 'ad' }), 'commandRejected')).toEqual([]);
     expect(w.rerolls).toBe(cap);
@@ -269,7 +269,7 @@ describe('rerolls and boost', () => {
   });
 
   it('pick commands outside a pick, bad indexes and unknown commands are rejected without changes', () => {
-    const w = createWorld(data, { seed: 5, tier: 1 });
+    const w = createWorld(data, { seed: 5, tier: 1, boot: false });
     const before = JSON.stringify(w);
     const ev: SimEvent[] = [];
     step(w, data, [{ type: 'pickPerk', index: 3 }, { type: 'pickPerk', index: -1 }, { type: 'pickPerk', index: 0.5 } as Command, { type: 'reroll', via: 'gift' } as unknown as Command], ev);
@@ -281,14 +281,14 @@ describe('rerolls and boost', () => {
   });
 
   it('boost: ×2 Energy for the next 5 waves, at most once every 10 waves', () => {
-    const w = createWorld(data, { seed: 6, tier: 1 });
+    const w = createWorld(data, { seed: 6, tier: 1, boot: false });
     expect(ofType(apply(w, data, { type: 'boost' }, { type: 'pickPerk', index: 0 }), 'boost')).toEqual([{ type: 'boost', from: 1, until: 5 }]);
     const ev = play(w, data, 6 * 30 * 30, () => []);
     const kills = ofType(ev, 'kill').filter((k) => k.kind === 'basic');
     // Same base reward per wave; boosted waves pay twice the unboosted ones (energyGrowth aside).
     expect(kills.length).toBeGreaterThan(10);
     // Picks after wave 3 and 5: still on cooldown.
-    const w2 = createWorld(data, { seed: 6, tier: 1 });
+    const w2 = createWorld(data, { seed: 6, tier: 1, boot: false });
     apply(w2, data, { type: 'boost' }, { type: 'pickPerk', index: 0 });
     let rejected = 0;
     let accepted: SimEvent[] = [];
@@ -306,7 +306,7 @@ describe('rerolls and boost', () => {
 
   it('boosted kills pay ×2 Energy (same wave, same enemy)', () => {
     const run = (boost: boolean) => {
-      const w = createWorld(data, { seed: 8, tier: 1 });
+      const w = createWorld(data, { seed: 8, tier: 1, boot: false });
       apply(w, data, ...(boost ? [{ type: 'boost' } as Command] : []), { type: 'pickPerk', index: 0 });
       return ofType(play(w, data, 20 * 30), 'kill')[0]!.energy;
     };
@@ -316,7 +316,7 @@ describe('rerolls and boost', () => {
 
 describe('tags, sets and modifiers', () => {
   it('tag counts: 1 per perk stack plus 1 per card tag', () => {
-    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1, cardTags: ['chain', 'mining', 'nonsense'] });
+    const w = createWorld(DEFAULT_DATA, { seed: 1, tier: 1, boot: false, cardTags: ['chain', 'mining', 'nonsense'] });
     grantPerk(w, DEFAULT_DATA, 'bounce', null);
     grantPerk(w, DEFAULT_DATA, 'bounce', null);
     grantPerk(w, DEFAULT_DATA, 'patch', null);
@@ -325,13 +325,13 @@ describe('tags, sets and modifiers', () => {
   });
 
   it('two card tags of one kind complete its 2-set at run start', () => {
-    const w = createWorld(data, { seed: 1, tier: 1, cardTags: ['chain', 'chain'] });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false, cardTags: ['chain', 'chain'] });
     expect(w.setTiers.chain).toBe(2);
     expect(perkProfile(w, data).rules.bounces).toBe(data.perks.rules.bounces + 1);
   });
 
   it('set tiers switch on at 2, 4 and 6 with one event each; stat bonuses apply once', () => {
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false });
     const base = worldStats(w, data).damage;
     const tiers: number[] = [];
     const seq = ['critSpike', 'critSpike', 'critSpike', 'critSpike', 'critSpike', 'hotBarrel'];
@@ -350,7 +350,7 @@ describe('tags, sets and modifiers', () => {
   });
 
   it('no double application: a perk adds its modifiers once; recomputing (twice, or after a restore) changes nothing', () => {
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false });
     const n0 = w.mods.length;
     const d0 = worldStats(w, data).damage;
     grantPerk(w, data, 'overclockRounds', null);
@@ -367,7 +367,7 @@ describe('tags, sets and modifiers', () => {
   });
 
   it('stacks compound: two Overclock Rounds = ×1.15² (and the ⚡ 2-set ×1.1 they complete)', () => {
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false });
     const d0 = worldStats(w, data).damage;
     grantPerk(w, data, 'overclockRounds', null);
     grantPerk(w, data, 'overclockRounds', null);
@@ -376,7 +376,7 @@ describe('tags, sets and modifiers', () => {
   });
 
   it('max HP perks keep HP consistent: Bunker adds the new HP, Glass Cannon clamps it', () => {
-    const w = createWorld(data, { seed: 1, tier: 1 });
+    const w = createWorld(data, { seed: 1, tier: 1, boot: false });
     const h0 = worldStats(w, data).health;
     w.core.hp = h0 - 10;
     grantPerk(w, data, 'bunker', null);
@@ -387,7 +387,7 @@ describe('tags, sets and modifiers', () => {
 });
 
 describe('snapshots in the pick phase', () => {
-  const opts: RunOptions = { seed: 99, tier: 1 };
+  const opts: RunOptions = { seed: 99, tier: 1, boot: false };
 
   it('the opening offer survives a round trip and the run continues identically', () => {
     const straight = createWorld(data, opts);

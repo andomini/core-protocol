@@ -54,6 +54,7 @@ describe('MetaStore', () => {
     const w = createWorld(D, opts);
     w.phase = 'pause';
     w.offer = [];
+    w.bootOffer = [];
     stepN(w, D, 50);
     s.saveRun(w, opts);
     const s2 = new MetaStore(kv, D, M, () => 0);

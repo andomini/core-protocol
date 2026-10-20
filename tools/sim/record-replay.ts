@@ -44,7 +44,12 @@ let kind = 0;
 let picks = 0;
 while (w.tick < TICKS) {
   const cmds: Command[] = [];
-  if (w.phase === 'pick') {
+  if (w.phase === 'pick' && w.bootOffer.length > 0) {
+    // Boot pick: a pickPerk while it is open (rejected), then the firewall sector if offered, else cryo, else the first.
+    const sector = (tag: string) => w.bootOffer.findIndex((id) => data.boot.sectors.find((s) => s.id === id)?.tag === tag);
+    const want = sector('firewall') >= 0 ? sector('firewall') : sector('cryo');
+    cmds.push({ type: 'pickPerk', index: 0 }, { type: 'pickBoot', index: Math.max(0, want) });
+  } else if (w.phase === 'pick') {
     // Opening pick: boost first; pick 2: an ad reroll and a bad index; pick 3: the free reroll.
     if (w.picks === 0) cmds.push({ type: 'boost' });
     if (w.picks === 1) cmds.push({ type: 'reroll', via: 'ad' }, { type: 'pickPerk', index: 9 });

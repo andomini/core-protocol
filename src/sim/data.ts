@@ -1,3 +1,4 @@
+import bootJson from '../data/boot.json'; // boot
 import configJson from '../data/config.json';
 import coreJson from '../data/core.json';
 import crystalJson from '../data/crystal.json';
@@ -10,6 +11,7 @@ import setsJson from '../data/sets.json';
 import statsJson from '../data/stats.json';
 import structuresJson from '../data/structures.json';
 import { type PerksData, type SetsData, STRUCTURE_KINDS, type StructureKind, TAGS, type Tag, validatePerks, validateSets } from './perkData';
+import { hexDist, isNeighbour } from './hex'; // boot
 import tiersJson from '../data/tiers.json';
 
 export type EnemyKind = 'basic' | 'fast' | 'tank' | 'ranged' | 'boss';
@@ -227,6 +229,28 @@ export interface MutationsDef {
   maxLevel: number;
   /** Each gene level × (1 − perLevel) on the countered effect. */
   perLevel: Record<Tag, number>;
+  /** The first gene level of a tag counts only this share of a level (a softer first mutation); later levels count 1. */
+  firstLevelScale: number;
+}
+
+// boot
+/** One boot sector (uniqueness plan item 1): a starter crystal of pre-arranged modules of one tag. */
+export interface BootSector {
+  id: string;
+  tag: Tag;
+  name: string;
+  blurb: string;
+  /** The tag whose module beside the cluster would make the first fusion link (shown as a hint). */
+  partner: Tag;
+  /** Modules in placement order: the first touches the core block, each next one touches an earlier one. */
+  modules: { perk: string; slot: [number, number] }[];
+}
+
+// boot
+/** Boot sectors: before wave 1 the run offers `offerSize` of them (drawn from the seed). */
+export interface BootData {
+  offerSize: number;
+  sectors: BootSector[];
 }
 
 /** Firewall-fusion structures (spec 2026-10-15): fixed geometry; the strength of each kind lives in the sets.json ladders. */
@@ -279,6 +303,8 @@ export interface GameData {
   territory: TerritoryDef;
   mutations: MutationsDef;
   structures: StructuresDef;
+  /** Boot sectors (uniqueness plan item 1). */
+  boot: BootData;
   /** 64 unit vectors around the circle (see tools/gen-directions.ts). */
   directions: [number, number][];
 }
@@ -294,6 +320,38 @@ function positive(x: number, where: string): void {
 }
 function wholeNonNeg(x: number, where: string): void {
   check(Number.isInteger(x) && x >= 0, `${where} must be a whole number ≥ 0, got ${x}`);
+}
+
+// boot
+/** Boot sectors: known perks of the sector's tag, distinct crystal hexes, each placed where a new module may go. */
+function validateBoot(d: GameData): void {
+  const b = d.boot;
+  check(b !== undefined && Array.isArray(b.sectors) && b.sectors.length > 0, 'boot.sectors must not be empty');
+  check(Number.isInteger(b.offerSize) && b.offerSize >= 1 && b.offerSize <= b.sectors.length, 'boot.offerSize must be a whole number in 1..sectors');
+  const ids = new Set<string>();
+  const inner = d.crystal.coreRing + 1;
+  for (const s of b.sectors) {
+    const at = `boot.${s.id}`;
+    check(typeof s.id === 'string' && s.id !== '' && !ids.has(s.id), `boot: sector id "${s.id}" must be unique and non-empty`);
+    ids.add(s.id);
+    check((TAGS as readonly string[]).includes(s.tag), `${at}.tag must be a tag`);
+    check((TAGS as readonly string[]).includes(s.partner) && s.partner !== s.tag, `${at}.partner must be another tag`);
+    check(typeof s.name === 'string' && s.name !== '' && typeof s.blurb === 'string', `${at}: name and blurb are required`);
+    check(Array.isArray(s.modules) && s.modules.length >= 1, `${at}.modules must not be empty`);
+    const placed: [number, number][] = [];
+    for (const m of s.modules) {
+      const p = d.perks.perks[m.perk];
+      check(p !== undefined && p.tag === s.tag, `${at}: "${m.perk}" must be a ${s.tag} perk`);
+      check(p!.requires === undefined, `${at}: "${m.perk}" needs a locked stat`);
+      check(!placed.some((_, i) => s.modules[i]!.perk === m.perk), `${at}: "${m.perk}" is listed twice`);
+      const [q, r] = Array.isArray(m.slot) ? m.slot : [NaN, NaN];
+      const ring = hexDist(q, r);
+      check(Number.isInteger(q) && Number.isInteger(r) && ring >= inner && ring <= d.crystal.maxRing, `${at}: slot of "${m.perk}" must be a crystal hex`);
+      check(!placed.some(([a, c]) => a === q && c === r), `${at}: slot of "${m.perk}" is taken`);
+      check(ring === inner || placed.some(([a, c]) => isNeighbour(q, r, a, c)), `${at}: "${m.perk}" must touch the core block or an earlier module`);
+      placed.push([q, r]);
+    }
+  }
 }
 
 /** Stats whose value 0 would break the sim (a divisor or a must-have). */
@@ -429,6 +487,8 @@ export function validateData(d: GameData): GameData {
     const v = mu.perLevel?.[t];
     check(Number.isFinite(v) && v >= 0 && v * mu.maxLevel < 1, `mutations.perLevel.${t} must be ≥ 0 and × maxLevel < 1`);
   }
+  check(Number.isFinite(mu.firstLevelScale) && mu.firstLevelScale > 0 && mu.firstLevelScale <= 1, 'mutations.firstLevelScale must be in (0, 1]');
+  validateBoot(d);
 
   for (const kind of ENEMY_KINDS) {
     const e = d.enemies[kind];
@@ -484,5 +544,6 @@ export const DEFAULT_DATA: GameData = validateData({
   territory: territoryJson as TerritoryDef,
   mutations: mutationsJson as unknown as MutationsDef,
   structures: structuresJson as StructuresDef,
+  boot: bootJson as unknown as BootData,
   directions: directionsJson as [number, number][],
 });

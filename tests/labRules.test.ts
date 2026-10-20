@@ -25,8 +25,8 @@ describe('lab parameters (RunOptions)', () => {
     let rare0 = 0;
     let rare1 = 0;
     for (let seed = 1; seed <= 300; seed++) {
-      const a = createWorld(d, { seed, tier: 1 });
-      const b = createWorld(d, { seed, tier: 1, rareMul: 2 });
+      const a = createWorld(d, { seed, tier: 1, boot: false });
+      const b = createWorld(d, { seed, tier: 1, boot: false, rareMul: 2 });
       rare0 += a.offer.filter((id) => d.perks.perks[id]!.rarity !== 'common').length;
       rare1 += b.offer.filter((id) => d.perks.perks[id]!.rarity !== 'common').length;
     }
@@ -139,7 +139,7 @@ describe('revive', () => {
   it('the World round-trips through a snapshot with the lab fields', () => {
     const d = testData();
     const w = createWorld(d, { seed: 3, tier: 1, pickEvery: 4, rareMul: 1.5, maxLevelBonus: { range: 10 }, startEnergy: 10 });
-    expect(w.v).toBe(7);
+    expect(w.v).toBe(8);
     expect(JSON.stringify(restore(snapshot(w)))).toBe(JSON.stringify(w));
   });
 });

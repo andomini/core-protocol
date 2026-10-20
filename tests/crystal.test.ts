@@ -70,7 +70,7 @@ describe('crystal (spec 2026-10-14 §A)', () => {
   });
 
   it('pickPerk with a slot places the module there; a bad slot rejects the pick', () => {
-    const w = createWorld(D, { seed: 3, tier: 1 });
+    const w = createWorld(D, { seed: 3, tier: 1, boot: false });
     expect(w.phase).toBe('pick');
     const ev: SimEvent[] = [];
     applyCommands(w, D, [{ type: 'pickPerk', index: 0, slot: [9, 9] }], ev);
@@ -254,7 +254,8 @@ describe('mutations (spec 2026-10-14 §C)', () => {
     step(w, D, [], ev);
     expect(ofType(ev, 'mutation')).toEqual([{ type: 'mutation', tag: 'overload', level: 1 }]);
     const after = combatStats(w, D, perkProfile(w, D)).critFactor;
-    expect(after - 1).toBeCloseTo((before - 1) * (1 - D.mutations.perLevel.overload), 9);
+    // Level 1 is the softer first step: perLevel × firstLevelScale.
+    expect(after - 1).toBeCloseTo((before - 1) * (1 - D.mutations.perLevel.overload * D.mutations.firstLevelScale), 9);
   });
 });
 

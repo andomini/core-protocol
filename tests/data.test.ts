@@ -24,6 +24,14 @@ describe('game data', () => {
     expect(() => testData({ enemies: { basic: { hp: NaN } } })).toThrow(/enemies\.basic\.hp/);
   });
 
+  it('rejects a mutation firstLevelScale outside (0, 1] and a boot sector with a foreign-tag perk', () => {
+    expect(() => testData({ mutations: { firstLevelScale: 0 } })).toThrow(/firstLevelScale/);
+    expect(() => testData({ mutations: { firstLevelScale: 1.5 } })).toThrow(/firstLevelScale/);
+    const d = structuredClone(DEFAULT_DATA);
+    d.boot.sectors[0]!.modules[0]!.perk = 'patch';
+    expect(() => validateData(d)).toThrow(/boot/);
+  });
+
   it('rejects a zero attack speed (would divide by zero)', () => {
     expect(() => testData({}, { attackSpeed: 0 })).toThrow(/stats\.attackSpeed\.base/);
   });
