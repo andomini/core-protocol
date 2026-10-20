@@ -1,5 +1,7 @@
 // Draws the World in the neon style: faint grid with data pulses, glowing hex core with a dashed range
-// ring, viruses by kind (squares, triangles, rhombi, a segmented boss worm), tracers, HP bars.
+// ring, virus bodies by kind (spiked capsid, flagellated comet, icosahedral tank, bacteriophage, a capsid boss with a
+// breathing membrane trailing progeny virions), tracers, HP bars. Bodies are baked textures (textures.ts) animated by
+// frame swaps, rotation and scale only (virusShapes.ts), so the per-enemy cost per frame stays one Image.
 // Reads the World only. Positions are interpolated between ticks with RunSession.prevOf().
 
 import Phaser from 'phaser';
@@ -7,11 +9,12 @@ import type { EnemyKind } from '../sim/data';
 import type { Enemy } from '../sim/state';
 import type { Layout } from '../ui/layout';
 import { TAGS, type Tag } from '../sim/perkData';
-import { CORE, CORE_HIT, CRIMSON, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, MARK, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
+import { CORE, CORE_HIT, CRIMSON, ENEMY_ACCENT, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, MARK, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
 import { ImagePool } from './pools';
 import { ps, RS } from './resolution';
 import type { RunSession } from './RunSession';
 import { GRID_TILE, TRACER_LEN } from './textures';
+import { animFrame, bossMembrane, type Pose, pose, texKey } from './virusShapes';
 
 /** Per-channel blend of two 0xRRGGBB colours: `t` = 0 → a, 1 → b. */
 export function mixColor(a: number, b: number, t: number): number {
@@ -39,12 +42,13 @@ export const DEPTH = {
   vignette: 11, scan: 12, hud: 20, overlay: 40,
 } as const;
 
-const TEX: Record<Exclude<EnemyKind, 'boss'>, string> = { basic: 'e_basic', fast: 'e_fast', tank: 'e_tank', ranged: 'e_ranged' };
 const SPAWN_FADE_MS = 260;
 /** Enemies and the core are drawn a bit larger than their sim radius so they read on phones. */
 export const ENEMY_VIS = 1.2;
 const CORE_VIS = 1.15;
 const FLASH_MS = 70;
+/** A hit squashes the body this much larger at the flash start, easing back over FLASH_MS. */
+const HIT_SWELL = 0.14;
 const BOSS_SEGMENTS = 6;
 /** Segment size relative to the head, tail last. */
 const SEG_SCALE = [0.86, 0.78, 0.7, 0.62, 0.54, 0.46];
@@ -53,6 +57,9 @@ const PULSES = 10;
 
 interface BossBody {
   segs: Phaser.GameObjects.Image[];
+  /** Lipid envelope behind the head (breathes and counter-turns) and the nucleus glow over it. */
+  membrane: Phaser.GameObjects.Image;
+  glow: Phaser.GameObjects.Image;
   /** Ring buffer of head positions (world px), newest at `head`. */
   tx: Float64Array;
   ty: Float64Array;
@@ -70,6 +77,8 @@ interface Sprite {
   look: number;
   stamp: number;
   spin: number;
+  /** Animation frame shown (−1 forces a texture set). */
+  frame: number;
   boss: BossBody | null;
 }
 
@@ -86,6 +95,8 @@ export class WorldView {
   private readonly spritePool: Sprite[] = [];
   private readonly enemyImgs: ImagePool;
   private readonly bossImgs: ImagePool;
+  private readonly bossGlow: ImagePool;
+  private readonly pose: Pose = { rot: 0, sx: 1, sy: 1 };
   private readonly tracers: ImagePool;
   private readonly tracerLive = new Map<number, Phaser.GameObjects.Image>();
   private readonly tracerStamp = new Map<number, number>();
@@ -151,6 +162,8 @@ export class WorldView {
     // Viruses use normal blending: their glow is baked in, and ADD would blow dense piles out to white.
     this.enemyImgs = new ImagePool(scene, 'e_basic', DEPTH.enemy, Phaser.BlendModes.NORMAL);
     this.bossImgs = new ImagePool(scene, 'e_boss_seg', DEPTH.boss, Phaser.BlendModes.NORMAL);
+    this.bossGlow = new ImagePool(scene, 'glow', DEPTH.boss + 0.6);
+    this.enemyImgs.prewarm(64);
     this.tracers = new ImagePool(scene, 'tracer', DEPTH.projectile);
     this.bars = scene.add.graphics().setDepth(DEPTH.bars);
     this.spine = scene.add.graphics().setDepth(DEPTH.boss - 0.5).setBlendMode(Phaser.BlendModes.ADD);
@@ -270,22 +283,17 @@ export class WorldView {
       const k = ps(L.scale * ENEMY_VIS) * pop;
       const img = s.img;
       img.setPosition(sx, sy).setAlpha(fade);
-      switch (s.kind) {
-        case 'basic':
-          img.setRotation(now * 0.0012 * s.spin).setScale(k);
-          break;
-        case 'fast':
-          img.setRotation(toCore).setScale(k);
-          break;
-        case 'tank':
-          img.setRotation(now * 0.0004 * s.spin).setScale(k * (1 + 0.04 * Math.sin(now / 180 + e.id)));
-          break;
-        case 'ranged':
-          img.setRotation(toCore + Math.sin(now / 300 + e.id) * 0.25).setScale(k);
-          break;
-        case 'boss':
-          this.drawBoss(s, e, sx, sy, toCore, dt, k, fade);
-          break;
+      const swell = now < s.flashUntil ? 1 + (HIT_SWELL * (s.flashUntil - now)) / FLASH_MS : 1;
+      if (s.kind === 'boss') {
+        this.drawBoss(s, e, sx, sy, toCore, dt, k * swell, fade, now);
+      } else {
+        const f = animFrame(s.kind, now, e.id);
+        if (f !== s.frame) {
+          s.frame = f;
+          img.setTexture(texKey(s.kind, f));
+        }
+        const p = pose(s.kind, now, e.id, s.spin, toCore, this.pose);
+        img.setRotation(p.rot).setScale(k * swell * p.sx, k * swell * p.sy);
       }
       // Tint state: hit flash > frozen (icy fill) > slowed (cold tint) > none.
       const look = now < s.flashUntil ? 1 : e.frozenUntil > w.tick ? 2 : e.slowUntil > w.tick && e.slow > 0 ? 3 : 0;
@@ -295,6 +303,12 @@ export class WorldView {
         else if (look === 2) img.setTintFill(FROZEN_TINT);
         else if (look === 3) img.setTint(SLOW_TINT);
         else img.clearTint();
+        const m = s.boss?.membrane;
+        if (m) {
+          if (look === 2) m.setTintFill(FROZEN_TINT);
+          else if (look === 3) m.setTint(SLOW_TINT);
+          else m.clearTint();
+        }
       }
       const r = e.radius * L.scale * ENEMY_VIS;
       if (gene !== null) bars.lineStyle(Math.max(1.5, r * 0.14), TAG_COLOR[gene], 0.75 * fade).strokeCircle(sx, sy, r + 3);
@@ -355,18 +369,19 @@ export class WorldView {
   }
 
   private add(e: Enemy, now: number): Sprite {
-    const s = this.spritePool.pop() ?? { img: null!, kind: e.kind, bornAt: 0, flashUntil: 0, look: 0, stamp: 0, spin: 1, boss: null };
+    const s = this.spritePool.pop() ?? { img: null!, kind: e.kind, bornAt: 0, flashUntil: 0, look: 0, stamp: 0, spin: 1, frame: 0, boss: null };
     s.kind = e.kind;
     s.bornAt = now;
     s.flashUntil = 0;
     s.look = 0;
     s.spin = e.id % 2 === 0 ? 1 : -1;
+    s.frame = 0;
     if (e.kind === 'boss') {
-      s.img = this.bossImgs.get('e_boss_head');
+      s.img = this.bossImgs.get(texKey('boss'));
       s.img.setDepth(DEPTH.boss + 0.5);
       s.boss = this.makeBoss(e);
     } else {
-      s.img = this.enemyImgs.get(TEX[e.kind]);
+      s.img = this.enemyImgs.get(texKey(e.kind));
       s.boss = null;
     }
     this.enemies.set(e.id, s);
@@ -378,6 +393,8 @@ export class WorldView {
     if (s.boss) {
       this.bossImgs.release(s.img);
       for (const seg of s.boss.segs) this.bossImgs.release(seg);
+      this.bossImgs.release(s.boss.membrane);
+      this.bossGlow.release(s.boss.glow);
     } else {
       this.enemyImgs.release(s.img);
     }
@@ -388,7 +405,9 @@ export class WorldView {
   private makeBoss(e: Enemy): BossBody {
     const segs: Phaser.GameObjects.Image[] = [];
     for (let i = 0; i < BOSS_SEGMENTS; i++) segs.push(this.bossImgs.get('e_boss_seg').setDepth(DEPTH.boss - i * 0.01));
-    const body: BossBody = { segs, tx: new Float64Array(TRAIL_CAP), ty: new Float64Array(TRAIL_CAP), head: 0, count: 0, phase: 0 };
+    const membrane = this.bossImgs.get('e_boss_membrane').setDepth(DEPTH.boss + 0.4);
+    const glow = this.bossGlow.get().setTint(ENEMY_ACCENT.boss);
+    const body: BossBody = { segs, membrane, glow, tx: new Float64Array(TRAIL_CAP), ty: new Float64Array(TRAIL_CAP), head: 0, count: 0, phase: 0 };
     // Seed the trail outward from the head so the worm enters fully formed.
     const d = Math.hypot(e.x, e.y) || 1;
     const ux = e.x / d;
@@ -409,7 +428,7 @@ export class WorldView {
     b.count = Math.min(TRAIL_CAP, b.count + 1);
   }
 
-  private drawBoss(s: Sprite, e: Enemy, sx: number, sy: number, toCore: number, dt: number, k: number, fade: number): void {
+  private drawBoss(s: Sprite, e: Enemy, sx: number, sy: number, toCore: number, dt: number, k: number, fade: number, now: number): void {
     const b = s.boss!;
     const L = this.L;
     const stop = L.scale * (e.radius + 40);
@@ -425,6 +444,10 @@ export class WorldView {
     const ly = b.ty[b.head]!;
     if (Math.hypot(hx - lx, hy - ly) >= 3) this.pushTrail(b, hx, hy);
     s.img.setPosition(L.cx + hx * L.scale, L.cy + hy * L.scale).setRotation(toCore + Math.cos(b.phase * 1.8) * 0.35).setScale(k);
+    const m = bossMembrane(now, e.id);
+    b.membrane.setPosition(s.img.x, s.img.y).setRotation(m.rot).setScale(k * m.scale).setAlpha(fade);
+    // The nucleus glow: `glow` is 64 px across, drawn ~1.1 radii wide over the capsid centre.
+    b.glow.setPosition(s.img.x, s.img.y).setScale(ps(e.radius * L.scale * 0.017) * m.scale).setAlpha(m.glow * fade * 0.7);
     const sp = this.spine;
     let lastX = s.img.x;
     let lastY = s.img.y;
