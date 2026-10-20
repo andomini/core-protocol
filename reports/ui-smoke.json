@@ -1,14 +1,14 @@
 {
-  "date": "2026-10-16T09:10:10.166Z",
+  "date": "2026-10-19T10:49:37.284Z",
   "metrics": {
     "portrait.firstPickMs": 1,
-    "portrait.firstVisibleSimS": 0,
-    "landscape 1280×720.firstPickMs": 8,
-    "landscape 1280×720.firstVisibleSimS": 0,
-    "landscape 907×510.firstPickMs": 2,
+    "portrait.firstVisibleSimS": 0.03,
+    "landscape 1280×720.firstPickMs": 4,
+    "landscape 1280×720.firstVisibleSimS": 0.03,
+    "landscape 907×510.firstPickMs": 1,
     "landscape 907×510.firstVisibleSimS": 0.03,
     "stress.desktop.fps": 60,
-    "stress.phone.cpu4x.fps": 59.6
+    "stress.phone.cpu4x.fps": 56.4
   },
   "results": [
     {
@@ -421,24 +421,24 @@
         {
           "seed": 3,
           "tier": 1,
-          "deviceId": "v68ri3qjr9zxrr9q",
+          "deviceId": "h1jf2q8yu78itt6f",
           "runIndex": 1,
-          "t": 1792141507500,
+          "t": 1792406674206,
           "type": "run_start",
-          "runId": "8usr6t49",
-          "sessionId": "u8ww07gn",
-          "build": "local-202610160904"
+          "runId": "1z7oq2ul",
+          "sessionId": "f5upfzh8",
+          "build": "local-202610191044"
         },
         {
-          "seed": 1748884942,
+          "seed": 1735033520,
           "tier": 1,
-          "deviceId": "v68ri3qjr9zxrr9q",
+          "deviceId": "h1jf2q8yu78itt6f",
           "runIndex": 2,
-          "t": 1792141512002,
+          "t": 1792406678728,
           "type": "run_start",
-          "runId": "01hyvc6h",
-          "sessionId": "u8ww07gn",
-          "build": "local-202610160904"
+          "runId": "4s6q2r7q",
+          "sessionId": "f5upfzh8",
+          "build": "local-202610191044"
         }
       ]
     },
@@ -812,7 +812,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 952193639,
+        "seed": 1955534301,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -843,13 +843,13 @@
         "tab": "atk",
         "amount": 1,
         "commands": 0,
-        "pickOpen": false,
+        "pickOpen": true,
         "placing": false,
         "crystal": [],
         "offer": [
-          "bounce",
-          "hotBarrel",
-          "bounty"
+          "bounty",
+          "reflect",
+          "permafrost"
         ],
         "picks": 0,
         "perks": {},
@@ -878,7 +878,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 10,
+        "tick": 8,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -892,7 +892,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 952193639,
+        "seed": 1955534301,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -934,13 +934,13 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "bounce": 1
+          "bounty": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
-          "chain": 2,
-          "mining": 0,
+          "chain": 0,
+          "mining": 2,
           "firewall": 0
         },
         "fusionTiers": {},
@@ -974,24 +974,24 @@
         {
           "kind": "midgame",
           "placement": "restart",
-          "t": 1792141515891,
+          "t": 1792406682717,
           "type": "ad_request",
-          "runId": "lfyy59m5",
-          "sessionId": "6l9bin5m",
-          "deviceId": "0r5e3lc98ff8ljp3",
-          "build": "local-202610160904"
+          "runId": "aia68zul",
+          "sessionId": "ehtjtdzp",
+          "deviceId": "oqdpoy4lmnm6a03u",
+          "build": "local-202610191044"
         },
         {
           "kind": "midgame",
           "placement": "restart",
           "result": "completed",
-          "ms": 2301,
-          "t": 1792141518192,
+          "ms": 2303,
+          "t": 1792406685020,
           "type": "ad_result",
-          "runId": "lfyy59m5",
-          "sessionId": "6l9bin5m",
-          "deviceId": "0r5e3lc98ff8ljp3",
-          "build": "local-202610160904"
+          "runId": "aia68zul",
+          "sessionId": "ehtjtdzp",
+          "deviceId": "oqdpoy4lmnm6a03u",
+          "build": "local-202610191044"
         }
       ]
     },
@@ -1038,7 +1038,7 @@
         "coreHp": 5,
         "speed": 1,
         "paused": false,
-        "fps": 64,
+        "fps": 63,
         "seed": 3,
         "levels": {
           "damage": 0,
@@ -1461,7 +1461,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1227670382,
+        "seed": 1037940163,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1496,8 +1496,8 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "dataMine",
-          "conductive",
+          "arc",
+          "reflect",
           "bounce"
         ],
         "picks": 0,
@@ -1541,7 +1541,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1227670382,
+        "seed": 1037940163,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -1583,13 +1583,13 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "dataMine": 1
+          "arc": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
-          "chain": 0,
-          "mining": 2,
+          "chain": 2,
+          "mining": 0,
           "firewall": 0
         },
         "fusionTiers": {},
@@ -2019,7 +2019,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 869583143,
+        "seed": 91334464,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2054,9 +2054,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "critSpike",
-          "conductive",
-          "deepFreeze"
+          "shatter",
+          "hotBarrel",
+          "frostShot"
         ],
         "picks": 0,
         "perks": {},
@@ -2088,7 +2088,7 @@
         "tick": 8,
         "phase": "wave",
         "enemies": 1,
-        "visible": 0,
+        "visible": 1,
         "projectiles": 0,
         "dead": false,
         "overlay": false,
@@ -2099,7 +2099,7 @@
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 869583143,
+        "seed": 91334464,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2141,10 +2141,10 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "critSpike": 1
+          "shatter": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
@@ -2299,7 +2299,7 @@
           "speed": 5,
           "paused": false,
           "fps": 60,
-          "seed": 60485985,
+          "seed": 1795219497,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2330,13 +2330,13 @@
           "tab": "atk",
           "amount": 1,
           "commands": 0,
-          "pickOpen": false,
+          "pickOpen": true,
           "placing": false,
           "crystal": [],
           "offer": [
-            "dataMine",
-            "hardening",
-            "reflect"
+            "permafrost",
+            "burstFire",
+            "hardening"
           ],
           "picks": 0,
           "perks": {},
@@ -2373,7 +2373,7 @@
       "ok": true,
       "detail": {
         "ok": false,
-        "ms": 152,
+        "ms": 154,
         "toast": {
           "text": "No ad right now",
           "opacity": "1",
@@ -2388,7 +2388,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 26,
+        "tick": 23,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -2401,8 +2401,8 @@
         "coreHp": 5,
         "speed": 5,
         "paused": false,
-        "fps": 58,
-        "seed": 60485985,
+        "fps": 57,
+        "seed": 1795219497,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -2444,11 +2444,11 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "dataMine": 1
+          "permafrost": 1
         },
         "setTiers": {
           "overload": 0,
-          "cryo": 0,
+          "cryo": 2,
           "chain": 0,
           "mining": 0,
           "firewall": 0
@@ -2490,8 +2490,8 @@
           "coreHp": 100,
           "speed": 1,
           "paused": false,
-          "fps": 67,
-          "seed": 584457465,
+          "fps": 66,
+          "seed": 1988580049,
           "levels": {
             "damage": 0,
             "attackSpeed": 0,
@@ -2526,8 +2526,8 @@
           "placing": false,
           "crystal": [],
           "offer": [
-            "hotBarrel",
-            "permafrost",
+            "dataMine",
+            "bounty",
             "patch"
           ],
           "picks": 0,
@@ -2773,8 +2773,8 @@
           "h": 76
         },
         "autoSlot": [
-          281.5061487217439,
-          659.9553384956948
+          287.64372824397475,
+          649.3247389276967
         ],
         "free": [
           [
@@ -2962,7 +2962,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3292,7 +3292,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 1,
-        "tick": 2,
+        "tick": 3,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3375,7 +3375,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 915,
+        "tick": 912,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -3681,7 +3681,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1025,
+        "tick": 1020,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4299,7 +4299,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1025,
+        "tick": 1023,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -4843,7 +4843,7 @@
         "speed": 5,
         "paused": false,
         "fps": 57,
-        "seed": 922365302,
+        "seed": 1843040684,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -4878,9 +4878,9 @@
         "placing": false,
         "crystal": [],
         "offer": [
-          "permafrost",
-          "energySiphon",
-          "reflect"
+          "hotBarrel",
+          "hardening",
+          "patch"
         ],
         "picks": 0,
         "perks": {},
@@ -5111,8 +5111,8 @@
           "h": 54
         },
         "autoSlot": [
-          305.5061487217439,
-          495.95533849569483
+          311.64372824397475,
+          485.3247389276967
         ],
         "free": [
           [
@@ -5300,7 +5300,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -5383,7 +5383,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 1,
-        "tick": 1,
+        "tick": 2,
         "phase": "wave",
         "enemies": 1,
         "visible": 1,
@@ -5466,7 +5466,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 911,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -5758,7 +5758,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 913,
+        "tick": 911,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6157,7 +6157,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 65,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -6237,7 +6237,7 @@
         "coreHp": 100,
         "speed": 1,
         "paused": false,
-        "fps": 67,
+        "fps": 65,
         "seed": 5,
         "levels": {
           "damage": 0,
@@ -6341,8 +6341,8 @@
           "h": 54
         },
         "autoSlot": [
-          305.5061487217439,
-          495.95533849569483
+          311.64372824397475,
+          485.3247389276967
         ],
         "free": [
           [
@@ -6696,7 +6696,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 911,
+        "tick": 914,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -6988,7 +6988,7 @@
         "scene": "Battle",
         "orientation": "landscape",
         "wave": 2,
-        "tick": 911,
+        "tick": 914,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -7633,8 +7633,8 @@
       "name": "portrait protocols: the panel opens and pauses the battle",
       "ok": true,
       "detail": {
-        "p1": 1743,
-        "p2": 1743
+        "p1": 1740,
+        "p2": 1740
       }
     },
     {
@@ -9464,15 +9464,15 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792141688214,
+        "lastSeen": 1792406857090,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "criticalMass": 1,
+          "spikes": 1,
           "compound": 1
         },
         "loadout": [
-          "criticalMass",
+          "spikes",
           "compound"
         ],
         "presets": [
@@ -9486,7 +9486,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16951.451199999967,
+          "realMs": 16950.8517333333,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -9557,7 +9557,7 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 913,
+        "tick": 910,
         "phase": "wave",
         "enemies": 1,
         "visible": 0,
@@ -9567,7 +9567,7 @@
         "kills": 7,
         "energy": 17.6458452722063,
         "bits": 7,
-        "coreHp": 100,
+        "coreHp": 110.00000000000001,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -9613,14 +9613,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "critSpike": 1
+          "patch": 1
         },
         "setTiers": {
-          "overload": 2,
+          "overload": 0,
           "cryo": 0,
           "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
         "fusionTiers": {},
         "keys": 0,
@@ -9756,16 +9756,16 @@
         },
         "milestones": [],
         "runs": 1,
-        "lastSeen": 1792141717895,
+        "lastSeen": 1792406886771,
         "firstRunDone": true,
         "tier": 1,
         "cards": {
-          "compound": 1,
-          "ricochet": 1
+          "cryoField": 1,
+          "spikes": 1
         },
         "loadout": [
-          "compound",
-          "ricochet"
+          "cryoField",
+          "spikes"
         ],
         "presets": [
           [],
@@ -9778,7 +9778,7 @@
         "starterGiven": true,
         "lifetime": {
           "runs": 1,
-          "realMs": 16950.976666666633,
+          "realMs": 16934.73546666663,
           "simTicks": 2537,
           "waves": 3,
           "kills": {
@@ -9859,7 +9859,7 @@
         "kills": 7,
         "energy": 17.6458452722063,
         "bits": 7,
-        "coreHp": 100,
+        "coreHp": 110.00000000000001,
         "speed": 5,
         "paused": false,
         "fps": 60,
@@ -9905,14 +9905,14 @@
         "offer": [],
         "picks": 1,
         "perks": {
-          "arc": 1
+          "patch": 1
         },
         "setTiers": {
           "overload": 0,
           "cryo": 0,
-          "chain": 2,
+          "chain": 0,
           "mining": 0,
-          "firewall": 0
+          "firewall": 2
         },
         "fusionTiers": {},
         "keys": 0,
@@ -9959,12 +9959,12 @@
       "ok": true,
       "detail": {
         "cards": {
-          "ricochet": 1,
-          "spikes": 1
+          "cryoField": 1,
+          "criticalMass": 1
         },
         "loadout": [
-          "ricochet",
-          "spikes"
+          "cryoField",
+          "criticalMass"
         ]
       }
     },
@@ -10010,12 +10010,12 @@
       "ok": true,
       "detail": {
         "tags": [
-          "chain",
-          "firewall"
+          "cryo",
+          "overload"
         ],
         "cards": [
-          "ricochet",
-          "spikes"
+          "cryoField",
+          "criticalMass"
         ],
         "sets": {
           "overload": 0,
@@ -10032,81 +10032,9 @@
       "detail": []
     },
     {
-      "name": "landscape cards: the first death grants 2 starter cards of different tags, equipped",
-      "ok": true,
-      "detail": {
-        "cards": {
-          "criticalMass": 1,
-          "cryoField": 1
-        },
-        "loadout": [
-          "criticalMass",
-          "cryoField"
-        ]
-      }
-    },
-    {
-      "name": "landscape cards: Home reveals the starter cards; the CARDS tab exists",
-      "ok": true,
-      "detail": {
-        "n": 15,
-        "ok": {
-          "x": 530,
-          "y": 510,
-          "w": 220,
-          "h": 64
-        },
-        "tabs": [
-          "BATTLE",
-          "WORKSHOP",
-          "LABS",
-          "CARDS",
-          "SETTINGS"
-        ]
-      }
-    },
-    {
-      "name": "landscape cards: OPEN PACK spends 10 Keys for 3 cards",
-      "ok": true,
-      "detail": {
-        "keys": 20,
-        "copies": 5
-      }
-    },
-    {
-      "name": "landscape cards tab: all 62 texts ≥ 16 px",
-      "ok": true,
-      "detail": {
-        "min": 16,
-        "count": 62,
-        "bad": []
-      }
-    },
-    {
-      "name": "landscape cards: the equipped cards reach the run (tags count toward sets)",
-      "ok": true,
-      "detail": {
-        "tags": [
-          "overload",
-          "cryo"
-        ],
-        "cards": [
-          "criticalMass",
-          "cryoField"
-        ],
-        "sets": {
-          "overload": 0,
-          "cryo": 0,
-          "chain": 0,
-          "mining": 0,
-          "firewall": 0
-        }
-      }
-    },
-    {
-      "name": "landscape cards: no console errors",
-      "ok": true,
-      "detail": []
+      "name": "cards: scenario threw",
+      "ok": false,
+      "detail": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'state')\n    at eval (eval at evaluate (:311:30), <anonymous>:1:19)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at Object.waitFor (/home/vlad/Projects/games/core-protocol/tools/ui/harness.mjs:95:27)\n    at async cards (/home/vlad/Projects/games/core-protocol/tools/ui/smoke.mjs:1057:7)\n    at async file:///home/vlad/Projects/games/core-protocol/tools/ui/smoke.mjs:1289:7"
     },
     {
       "name": "portrait stats: STATS opens from pause; kills match the world",
@@ -10150,7 +10078,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15584.836666666648,
+          "realMs": 15617.94333333332,
           "simTicks": 2333,
           "waves": 3,
           "kills": {
@@ -10228,7 +10156,7 @@
         "vis": true,
         "life": {
           "runs": 1,
-          "realMs": 15586.376666668737,
+          "realMs": 15617.896666666653,
           "simTicks": 2333,
           "waves": 3,
           "kills": {
@@ -10265,10 +10193,16 @@
       "detail": []
     },
     {
-      "name": "lb portrait 360×640: no registration on load",
+      "name": "lb portrait 360×640: Home registers once and prefetches a tier start",
       "ok": true,
       "detail": {
-        "players": 0
+        "players": 1,
+        "starts": [
+          "tier",
+          "daily",
+          "daily",
+          "daily"
+        ]
       }
     },
     {
@@ -10492,7 +10426,7 @@
           "/boards/weekly/1?scope=friends&limit=13",
           "/boards/weekly/1?scope=friends&limit=13",
           "/boards/weekly/1?scope=friends&limit=13",
-          "/boards/daily/2026-10-16?scope=global&limit=1"
+          "/boards/daily/2026-10-19?scope=global&limit=1"
         ]
       }
     },
@@ -10507,26 +10441,30 @@
         "/boards/weekly/1?scope=friends&limit=13",
         "/boards/weekly/1?scope=friends&limit=13",
         "/boards/weekly/1?scope=friends&limit=13",
-        "/boards/daily/2026-10-16?scope=global&limit=1"
+        "/boards/daily/2026-10-19?scope=global&limit=1"
       ]
     },
     {
       "name": "lb portrait 360×640: board calls are authenticated",
       "ok": true,
       "detail": [
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
         "",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
@@ -10756,7 +10694,7 @@
       "ok": true,
       "detail": {
         "kind": "daily",
-        "day": "2026-10-16"
+        "day": "2026-10-19"
       }
     },
     {
@@ -10779,7 +10717,7 @@
         "coreHp": 0,
         "speed": 5,
         "paused": false,
-        "fps": 51,
+        "fps": 50,
         "seed": 424242,
         "levels": {
           "damage": 0,
@@ -10854,12 +10792,13 @@
         "sub": {
           "kind": "daily",
           "tier": 1,
-          "day": "2026-10-16",
+          "day": "2026-10-19",
           "wave": 1,
           "ticks": 1,
           "hash": "0e705dbb",
-          "commit": "75392d0db4f20a5b7c996bd22eb6e328f4ec3f86-dirty",
-          "replay": "gz:H4sIAAAAAAAAAyWOs"
+          "commit": "c4ede7fe97a6c6169165d5bf7b6a984aaaa9916e-dirty",
+          "replay": "gz:H4sIAAAAAAAAAyWOs",
+          "token": "eyJ2IjoxLCJwIjoicF9zbW9rZSIsImsiOiJkYWlseSIsImQiOiIyMDI2LTEwLTE5IiwicyI6NDI0MjQyLCJhIjoxNzkyNDA2OTUwOTU5fQ.mock-tok"
         },
         "rp": {
           "v": 1,
@@ -10918,7 +10857,7 @@
         "coreHp": 0,
         "speed": 5,
         "paused": false,
-        "fps": 54,
+        "fps": 53,
         "seed": 424242,
         "levels": {
           "damage": 0,
@@ -10990,11 +10929,12 @@
       }
     },
     {
-      "name": "lb portrait 360×640: the queue uploads when back online",
+      "name": "lb portrait 360×640: the queue uploads when back online, with its start token",
       "ok": true,
       "detail": {
         "after": 0,
-        "runs": 2
+        "runs": 2,
+        "token": "eyJ2IjoxLCJwIjoicF9zbW9rZSIsImsiOiJkYWlseSIsImQiOiIyMDI2LTEwLTE5IiwicyI6NDI0MjQyLCJhIjoxNzkyNDA2OTUxMTU1fQ.mock-tok"
       }
     },
     {
@@ -11003,10 +10943,16 @@
       "detail": []
     },
     {
-      "name": "lb landscape: no registration on load",
+      "name": "lb landscape: Home registers once and prefetches a tier start",
       "ok": true,
       "detail": {
-        "players": 0
+        "players": 1,
+        "starts": [
+          "tier",
+          "daily",
+          "daily",
+          "daily"
+        ]
       }
     },
     {
@@ -11230,7 +11176,7 @@
           "/boards/weekly/1?scope=friends&limit=15",
           "/boards/weekly/1?scope=friends&limit=15",
           "/boards/weekly/1?scope=friends&limit=15",
-          "/boards/daily/2026-10-16?scope=global&limit=1"
+          "/boards/daily/2026-10-19?scope=global&limit=1"
         ]
       }
     },
@@ -11245,26 +11191,30 @@
         "/boards/weekly/1?scope=friends&limit=15",
         "/boards/weekly/1?scope=friends&limit=15",
         "/boards/weekly/1?scope=friends&limit=15",
-        "/boards/daily/2026-10-16?scope=global&limit=1"
+        "/boards/daily/2026-10-19?scope=global&limit=1"
       ]
     },
     {
       "name": "lb landscape: board calls are authenticated",
       "ok": true,
       "detail": [
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
+        "Bearer p_smoke.sekret",
         "",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "Bearer p_smoke.sekret",
-        "",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
         "Bearer p_smoke.sekret",
@@ -11494,7 +11444,7 @@
       "ok": true,
       "detail": {
         "kind": "daily",
-        "day": "2026-10-16"
+        "day": "2026-10-19"
       }
     },
     {
@@ -11592,12 +11542,13 @@
         "sub": {
           "kind": "daily",
           "tier": 1,
-          "day": "2026-10-16",
+          "day": "2026-10-19",
           "wave": 1,
           "ticks": 1,
           "hash": "0e705dbb",
-          "commit": "75392d0db4f20a5b7c996bd22eb6e328f4ec3f86-dirty",
-          "replay": "gz:H4sIAAAAAAAAAyWOs"
+          "commit": "c4ede7fe97a6c6169165d5bf7b6a984aaaa9916e-dirty",
+          "replay": "gz:H4sIAAAAAAAAAyWOs",
+          "token": "eyJ2IjoxLCJwIjoicF9zbW9rZSIsImsiOiJkYWlseSIsImQiOiIyMDI2LTEwLTE5IiwicyI6NDI0MjQyLCJhIjoxNzkyNDA2OTU4MDMxfQ.mock-tok"
         },
         "rp": {
           "v": 1,
@@ -11728,11 +11679,12 @@
       }
     },
     {
-      "name": "lb landscape: the queue uploads when back online",
+      "name": "lb landscape: the queue uploads when back online, with its start token",
       "ok": true,
       "detail": {
         "after": 0,
-        "runs": 2
+        "runs": 2,
+        "token": "eyJ2IjoxLCJwIjoicF9zbW9rZSIsImsiOiJkYWlseSIsImQiOiIyMDI2LTEwLTE5IiwicyI6NDI0MjQyLCJhIjoxNzkyNDA2OTU4MTQ2fQ.mock-tok"
       }
     },
     {
@@ -11755,13 +11707,13 @@
         "dead": false,
         "overlay": false,
         "kills": 73,
-        "energy": 176.31977077363894,
+        "energy": 176.5719197707737,
         "bits": 73,
-        "coreHp": 999999966371.6223,
+        "coreHp": 999999966357.8942,
         "speed": 5,
         "paused": false,
         "fps": 60,
-        "seed": 1443450531,
+        "seed": 878795214,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,
@@ -11833,21 +11785,21 @@
         "scene": "Battle",
         "orientation": "portrait",
         "wave": 2,
-        "tick": 1132,
+        "tick": 1122,
         "phase": "wave",
-        "enemies": 199,
-        "visible": 199,
-        "projectiles": 0,
+        "enemies": 200,
+        "visible": 200,
+        "projectiles": 1,
         "dead": false,
         "overlay": false,
-        "kills": 73,
-        "energy": 176.36275071633239,
-        "bits": 73,
-        "coreHp": 999999966351.2935,
+        "kills": 72,
+        "energy": 174.32562750716332,
+        "bits": 72.02,
+        "coreHp": 999999967290.9781,
         "speed": 5,
         "paused": false,
-        "fps": 60,
-        "seed": 672195800,
+        "fps": 58,
+        "seed": 285621870,
         "levels": {
           "damage": 0,
           "attackSpeed": 0,

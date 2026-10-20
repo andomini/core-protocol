@@ -26,7 +26,8 @@
     "sim:progression": "tsx tools/sim/progression.ts",
     "dev:up": "scripts/dev-up.sh",
     "dev:status": "scripts/dev-up.sh status",
-    "dev:stop": "scripts/dev-up.sh stop"
+    "dev:stop": "scripts/dev-up.sh stop",
+    "widget:install": "scripts/widget-install.sh --force"
   },
   "dependencies": {
     "phaser": "3.90.0"
