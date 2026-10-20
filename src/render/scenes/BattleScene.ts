@@ -24,7 +24,8 @@ import { StructureView, stationRebuild } from '../StructureView';
 import { worldStats } from '../../sim/state';
 import { sectorOf } from '../../sim/hex';
 import { grantStarter, type PackCard } from '../../meta/cards';
-import { type Settlement, settleDaily, settleRun } from '../../meta/runEnd';
+import { type Settlement, settleDaily, settleRun, unlockByFinale } from '../../meta/runEnd'; // c1
+import { bossLook } from '../bossShapes'; // c1
 import { missionLines, missionRun } from '../../meta/missions';
 import { claimFromMeta, dailyClaim, dailyRunOptions, dailySeed, dayIndex, dayKey, LEADERBOARD, type LoadoutClaim } from '../../meta/leaderboardRules';
 import type { RunBoard, RunStartInfo } from '../../meta/MetaStore';
@@ -171,6 +172,8 @@ export class BattleScene extends Phaser.Scene {
   /** Last leaderboard outcome of this run (UI smoke reads it). */
   lbOutcome: RunOutcome | null = null;
   private tier = 1;
+  /** c1: the tier this run's FINALE kill unlocked mid-run (0: none). */
+  private finaleUnlocked = 0;
   private speeds: number[] = SPEEDS;
   /** The death settlement already paid into the meta save (undone on a revive). */
   private paid: { s: Settlement; runKeys: number; doubled: boolean; lifetimeBefore: LifetimeStats; codexBefore: Record<string, number> } | null = null;
@@ -205,6 +208,7 @@ export class BattleScene extends Phaser.Scene {
     this.paused = false;
     this.deathAt = 0;
     this.bannerUntil = 0;
+    this.finaleUnlocked = 0; // c1
     this.frameMs = [];
     this.paid = null;
     this.runStats = emptyRunStats();
@@ -597,7 +601,7 @@ export class BattleScene extends Phaser.Scene {
     const s =
       this.board.kind === 'daily'
         ? settleDaily(m, DEFAULT_META_DATA, { bits: w.bits, keys: w.keys, doubled: false, ...missions }, this.board.day ?? '', LEADERBOARD.daily.paidAttemptsPerDay)
-        : settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest, ...missions });
+        : settleRun(m, this.gd, DEFAULT_META_DATA, { tier: w.tier, wave: w.wave, bits: w.bits, keys: w.keys, doubled: false, bitsMul: this.session.opts.metaBonus?.bitsMul, fusionsReached: w.fusionBest, finaleUnlocked: this.finaleUnlocked, ...missions }); // c1: finaleUnlocked
     this.paid = { s, runKeys: Math.floor(w.keys), doubled: false, lifetimeBefore, codexBefore };
     addRunToLifetime(m.lifetime, this.runStats, {
       waves: w.wave,
@@ -1182,6 +1186,59 @@ export class BattleScene extends Phaser.Scene {
     return 1000 / (s / this.frameMs.length);
   }
 
+  /** c1: a tier boss wave announces its boss (name, FINALE, the hint) with the boss stinger. */
+  private bossEntrance(id: string, finale: boolean, now: number): void {
+    const b = this.gd.bosses.bosses[id];
+    if (!b) return;
+    this.showBanner(finale ? `FINALE · ${b.name}` : `${b.name} INBOUND`, bossLook(id).css, now, b.hint);
+    services.audio.sting('boss');
+  }
+
+  /** c1: tier boss cues: an entrance ring at its spawn, its mechanics, and the FINALE kill unlocking the next tier. */
+  private bossEvent(e: SimEvent, now: number): void {
+    const L = this.L;
+    const sfx = services.audio;
+    if (e.type === 'spawn') {
+      if (e.kind !== 'boss') return;
+      const en = this.session.world.enemies.find((x) => x.id === e.id);
+      if (en?.boss === undefined) return;
+      const c = bossLook(en.boss).color;
+      this.vfx.pulse(null, L.cx + e.x * L.scale, L.cy + e.y * L.scale, en.radius * L.scale * 4, c);
+      this.shake(200, 0.004);
+      return;
+    }
+    if (e.type === 'bossMech') {
+      const look = bossLook(e.boss);
+      const [sx, sy] = [L.cx + e.x * L.scale, L.cy + e.y * L.scale];
+      const r = (this.gd.bosses.bosses[e.boss]?.radius ?? 40) * L.scale;
+      if (e.mech === 'shieldWarn') sfx.play('bossWarn');
+      else if (e.mech === 'shieldUp') {
+        this.vfx.pulse('firewall', sx, sy, r * 2.2, look.color);
+        sfx.play('freeze');
+      } else if (e.mech === 'brood') {
+        this.fx.pulse(sx, sy, r * 2.5, look.color);
+        sfx.play('zap');
+      } else if (e.mech === 'drain') this.numbers.popup(L.cx, L.cy - this.gd.core.radius * L.scale, `-${formatNum(e.value ?? 0)} E`, look.css);
+      else if (e.mech === 'enrage') {
+        this.showBanner(`${this.gd.bosses.bosses[e.boss]?.name ?? 'BOSS'} ENRAGED`, look.css, now);
+        this.vfx.pulse('overload', sx, sy, r * 3, look.color);
+        sfx.play('boss');
+        this.shake(180, 0.005);
+      }
+      return;
+    }
+    if (e.type !== 'bossDown' || !e.finale) return;
+    // The FINALE kill unlocks the next tier at once (not in a daily or a stress run); death reports it.
+    if (this.board.kind === 'daily' || this.flags.stress) return;
+    const t = unlockByFinale(services.meta.meta, this.gd, e.tier);
+    this.fx.waveRing(L.cx + e.x * L.scale, L.cy + e.y * L.scale, Math.max(L.arena.w, L.arena.h) * 0.5, bossLook(e.boss).color);
+    if (t === 0) return;
+    this.finaleUnlocked = t;
+    services.meta.save();
+    this.showBanner(`FINALE CLEARED · TIER ${t} UNLOCKED`, '#2bffb0', now);
+    sfx.sting('finale');
+  }
+
   private showBanner(s: string, color: string, now: number, sub = ''): void {
     // The editor's readout already says what a move did; banners would sit dimmed under its scrim.
     if (this.editor?.visible) return;
@@ -1295,6 +1352,7 @@ export class BattleScene extends Phaser.Scene {
     this.life.onEvent(e, this.session.world);
     const now = this.time.now;
     const sfx = services.audio;
+    this.bossEvent(e, now); // c1
     if (e.type === 'buy' || e.type === 'buyRejected') {
       if (e.type === 'buy') sfx.play('upgrade', 1 + Math.min(1, e.level / 60));
       this.upgrades.onEvent(e);
@@ -1425,7 +1483,8 @@ export class BattleScene extends Phaser.Scene {
         if (this.fastBoot > 0 && !this.speedChosen) this.speed = e.wave <= this.fastBoot ? battleJson.fastBootSpeed : Math.min(this.speed, this.speeds[this.speeds.length - 1]!);
         sfx.play(e.boss ? 'boss' : 'wave');
         sfx.setWave(e.wave, e.boss); // vfx/audio: music layer 2 by wave band
-        if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now);
+        if (e.bossId !== undefined) this.bossEntrance(e.bossId, e.finale === true, now); // c1
+        else if (e.boss) this.showBanner('WORM.EXE INBOUND', '#ff6b8b', now); // c1: else
         else this.showBanner(`WAVE ${e.wave}`, '#e8fbff', now);
         this.fx.waveRing(L.cx, L.cy, this.session.stats.range * L.scale, e.boss ? CRIMSON : undefined);
         break;

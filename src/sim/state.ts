@@ -40,6 +40,18 @@ export interface Enemy {
   carried?: number;
   /** Spore (B2): split generation, absent = 0 (a regular spawn); copies of a split are gen + 1. */
   gen?: number;
+  /** c1 boss state (optional: no World version bump). `boss`: the tier boss id (bosses.json); absent = a plain boss / not a boss. */
+  boss?: string;
+  /** c1: this boss is its tier's FINALE (its kill unlocks the next tier). */
+  finale?: boolean;
+  /** c1: ticks this boss has been alive (its mechanic clock). */
+  bt?: number;
+  /** c1 Broodmother: broods already released. */
+  brood?: number;
+  /** c1 Siphon: Energy drained so far, paid back × drainReturn by its kill. */
+  drained?: number;
+  /** c1 Mutagen: enraged (sped up below enrageAt). */
+  enraged?: boolean;
 }
 
 /** One painted blueprint hex (spec 2026-10-16 Planning UI, phase 6): the tag the auto-placer should put there. */

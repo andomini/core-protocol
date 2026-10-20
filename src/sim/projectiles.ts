@@ -10,6 +10,7 @@ import type { Enemy, Projectile, World } from './state';
 import { arenaRadius, cleanse, farMul, groundAt } from './territory';
 import type { CoreStats } from './stats';
 import { auraMul, carriedReturn, splitSpore } from './viruses';
+import { broodCheck, bossShielded, drainedReturn } from './bosses';
 
 /** Below this distance from the core the outward direction is undefined; knockback uses directions[0]. */
 const CENTER_EPS = 1e-9;
@@ -78,6 +79,8 @@ export function hitEnemy(
   events: SimEvent[],
 ): void {
   if (e.hp <= 0 || !(damage > 0)) return;
+  // c1 Overseer: a shielded boss takes no damage from any source.
+  if (e.boss !== undefined && bossShielded(data, e)) return;
   // A Carrier's aura (B2) shields the viruses around it from every source.
   const aura = auraMul(w, data, e);
   if (aura < 1) damage = clampValue(damage * aura);
@@ -125,7 +128,8 @@ export function hitEnemy(
         markBits *= m.critMul;
       }
     }
-    const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how * markEnergy);
+    // c1 Siphon: the drained Energy comes back × drainReturn, outside every Energy multiplier.
+    const energy = clampValue(e.energy * (1 + st.energyBonus + prof.killEnergy) * (boss ? prof.bossEnergyMul : 1) * boost * land * far * how * markEnergy + drainedReturn(data, e));
     // A Leech pays back what it stole × returnMul, outside every Bits multiplier.
     const returned = carriedReturn(data, e);
     const bits = clampValue(e.bits * (1 + st.bitsPerKill) * (boss ? prof.bossBitsMul : 1) * far * markBits + returned);
@@ -138,8 +142,10 @@ export function hitEnemy(
     events.push(returned > 0 ? { type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys, returned } : { type: 'kill', enemyId: e.id, kind: e.kind, energy, bits, keys });
     if (m !== null) payMark(w, data, m, e, energy, bits, events);
     splitSpore(w, data, e, events);
+    if (e.boss !== undefined) events.push({ type: 'bossDown', enemyId: e.id, boss: e.boss, finale: e.finale === true, tier: w.tier, x: e.x, y: e.y }); // c1
     return;
   }
+  if (e.boss !== undefined) broodCheck(w, data, e, prof.rules.enemyHp, events); // c1 Broodmother
   // At most one knockback per enemy per cooldown: Multishot volleys must not pin the whole crowd.
   if (projectile && st.knockback > 0 && w.tick >= e.kbUntil) {
     knockBack(e, data, st.knockback * data.enemies[e.kind].knockback, w.wave);

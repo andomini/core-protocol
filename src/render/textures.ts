@@ -9,6 +9,7 @@ import {
 } from './palette';
 import { RS } from './resolution';
 import { FRAMES, texKey } from './virusShapes';
+import { bossSegKey, bossTexKey, bossTexSize, drawBossHead, drawBossSeg } from './bossShapes';
 
 type Ctx = CanvasRenderingContext2D;
 type Pt = [number, number];
@@ -505,6 +506,15 @@ function enemies(scene: Phaser.Scene, data: GameData): void {
     body(ctx, c, c, R, C.boss, 3, () => poly(ctx, regular(c, c, R, 6, Math.PI / 6)), 10);
     dot(ctx, c, c, R * 0.22, A.boss, 10);
   });
+}
+
+/** c1: tier boss heads and segments (src/render/bossShapes.ts), baked at each boss's own radius. */
+function bossBodies(scene: Phaser.Scene, data: GameData): void {
+  for (const [id, b] of Object.entries(data.bosses.bosses)) {
+    const s = bossTexSize(b.radius);
+    bake(scene, bossTexKey(id), s, s, (ctx) => drawBossHead(ctx, id, s / 2, b.radius, 10 * RS));
+    bake(scene, bossSegKey(id), s, s, (ctx) => drawBossSeg(ctx, id, s / 2, b.radius, 8 * RS));
+  }
 }
 
 /** Death fragments (`frag_<v>`, baked white, tinted per kind): a shell arc with a spike, a plate, a droplet. */
@@ -1034,6 +1044,7 @@ export function bakePanel(scene: Phaser.Scene, key: string, w: number, h: number
 export function generateTextures(scene: Phaser.Scene, data: GameData): void {
   background(scene);
   enemies(scene, data);
+  bossBodies(scene, data); // c1
   fragmentTextures(scene);
   core(scene, data);
   fx(scene);

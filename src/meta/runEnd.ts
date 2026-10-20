@@ -23,6 +23,8 @@ export interface RunResult {
   missions?: MissionRun;
   /** Settlement time (epoch ms): picks the mission day. Required with `missions`. */
   now?: number;
+  /** c1: the tier the run's FINALE kill already unlocked mid-run (unlockByFinale); reported as `tierUnlocked`. */
+  finaleUnlocked?: number;
 }
 
 export interface Settlement {
@@ -65,6 +67,8 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
     m.tierUnlocked += 1;
     tierUnlocked = m.tierUnlocked;
   }
+  // c1: a FINALE kill unlocked the next tier mid-run (the wave rule above then finds it already open).
+  if (tierUnlocked === 0 && r.finaleUnlocked !== undefined && r.finaleUnlocked > 0) tierUnlocked = r.finaleUnlocked;
   // Fusion Codex: record the best tier per pair; the first III pays md.codex.bits once (flat, not × labs/ad).
   let codexBits = 0;
   const codexNew: string[] = [];
@@ -84,6 +88,16 @@ export function settleRun(m: MetaState, data: GameData, md: MetaData, r: RunResu
   m.runs += 1;
   m.firstRunDone = true;
   return { bits, keys, milestones, newBest, tierUnlocked, codexBits, codexNew, ...ms };
+}
+
+/**
+ * c1: the FINALE boss of `tier` died — the next tier opens at once (the same rule as reaching the unlock wave:
+ * only from the highest unlocked tier, never past the last). Returns the tier unlocked, 0 = none.
+ */
+export function unlockByFinale(m: MetaState, data: GameData, tier: number): number {
+  if (tier !== m.tierUnlocked || m.tierUnlocked >= data.tiers.length) return 0;
+  m.tierUnlocked += 1;
+  return m.tierUnlocked;
 }
 
 /**

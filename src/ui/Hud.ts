@@ -7,10 +7,12 @@ import Phaser from 'phaser';
 import { BG, BREAK, CYAN, TAG_COLOR, ENERGY_CSS, HP_LOW, HP_OK, MARK_CSS, PANEL_FILL, TEXT_DIM, WHITE } from '../render/palette';
 import { ps } from '../render/resolution';
 import { DEPTH } from '../render/WorldView';
+import { bossLook } from '../render/bossShapes';
+import { bossShielded } from '../sim/bosses';
 import type { GameData } from '../sim/data';
 import { fusionMark } from '../sim/perks';
 import { pulseCharge, pulseTag } from '../sim/pulse';
-import type { World } from '../sim/state';
+import type { Enemy, World } from '../sim/state';
 import type { CoreStats } from '../sim/stats';
 import { pauseTicks, waveTicks } from '../sim/waves';
 import { formatNum } from './format';
@@ -36,6 +38,20 @@ interface Geo {
   bounty: [number, number, number];
   /** Pulse button (square; the cooldown ring is drawn inside it). */
   pulse: Rect;
+  /** c1: the tier boss bar in the arena's bottom-left corner (left of the Pulse button): name row, bar, hint row. */
+  boss: { x: number; w: number; nameY: number; barY: number; barH: number; hintY: number; nameFont: number; hintFont: number };
+}
+
+/** c1: the boss bar block sits on the arena's bottom edge, left of the Pulse button and the bounty chip. */
+function bossGeo(L: Layout, right: number): Geo['boss'] {
+  const a = L.arena;
+  const portrait = L.o === 'portrait';
+  const hintFont = L.minFont;
+  const nameFont = Math.max(L.minFont, portrait ? 28 : 20);
+  const barH = portrait ? 14 : 10;
+  const hintY = a.y + a.h - (portrait ? 22 : 18);
+  const barY = hintY - hintFont * 1.25 - 6 - barH;
+  return { x: a.x + 24, w: right - 16 - (a.x + 24), nameY: barY - 6, barY, barH, hintY, nameFont, hintFont };
 }
 
 function geometry(L: Layout): Geo {
@@ -56,6 +72,7 @@ function geometry(L: Layout): Geo {
       timer: { x: 0, y: h.h - 6, w: h.w, h: 6 },
       bounty: [L.arena.x + L.arena.w - 32, L.arena.y + L.arena.h - 40, 22],
       pulse: { x: L.arena.x + L.arena.w - 140, y: L.arena.y + L.arena.h - 196, w: 116, h: 126 },
+      boss: bossGeo(L, L.arena.x + L.arena.w - 200),
     };
   }
   const x = h.x + 28;
@@ -74,6 +91,7 @@ function geometry(L: Layout): Geo {
     timer: { x, y: 90, w: h.w - 56, h: 6 },
     bounty: [h.x + h.w - 30, 170, 18],
     pulse: { x: L.arena.x + L.arena.w - 124, y: L.arena.y + L.arena.h - 130, w: 100, h: 106 },
+    boss: bossGeo(L, L.arena.x + L.arena.w - 124),
   };
 }
 
@@ -100,6 +118,12 @@ export class Hud {
   private last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null as boolean | null, bounty: '' };
   private hpShown = 1;
   private hitUntil = 0;
+  /** c1: the tier boss bar (name, FINALE tag, HP %, the how-to-beat-it hint); texts change only with the boss. */
+  private readonly bossName: Phaser.GameObjects.Text;
+  private readonly bossTag: Phaser.GameObjects.Text;
+  private readonly bossHint: Phaser.GameObjects.Text;
+  private bossKey = '';
+  private bossHpShown = 1;
 
   constructor(
     scene: Phaser.Scene,
@@ -138,6 +162,10 @@ export class Hud {
     this.pauseBtn.drawPauseIcon(false);
     this.pulseBtn = new Button(scene, g.pulse, 'PULSE', L.minFont, D, h.onPulse, { font: 'title', fillA: 0.75 });
     this.pulseBtn.label.setY(g.pulse.y + g.pulse.h - g.pulse.w * 0.14);
+    const bg2 = g.boss;
+    this.bossName = text(scene, bg2.x, bg2.nameY, '', bg2.nameFont, { font: 'title', weight: '900', stroke: true }).setOrigin(0, 1).setDepth(D).setVisible(false);
+    this.bossTag = text(scene, bg2.x + bg2.w, bg2.nameY, '', L.minFont, { font: 'title', weight: '900', stroke: true }).setOrigin(1, 1).setDepth(D).setVisible(false);
+    this.bossHint = text(scene, bg2.x, bg2.hintY, '', bg2.hintFont, { color: '#e8fbff', stroke: true }).setOrigin(0, 1).setDepth(D).setVisible(false);
     const a = L.arena;
     this.pausedBanner = text(scene, a.x + a.w / 2, a.y + a.h * 0.2, 'PAUSED', Math.max(L.minFont * 1.6, 34), { font: 'title', weight: '900', glow: '#22e5ff', blur: 16 })
       .setOrigin(0.5)
@@ -153,6 +181,50 @@ export class Hud {
     this.last = { wave: -1, secs: '', energy: '', hp: '', speed: -1, paused: null, bounty: '' };
     this.hpShown = 1;
     this.pulseKey = '';
+    this.bossKey = '';
+    this.bossHpShown = 1;
+  }
+
+  /** c1: the living tier boss (the first one; a FINALE boss wins), else undefined. */
+  private tierBoss(w: World): Enemy | undefined {
+    let best: Enemy | undefined;
+    for (const e of w.enemies) if (e.boss !== undefined && e.hp > 0 && (best === undefined || (e.finale === true && best.finale !== true))) best = e;
+    return best;
+  }
+
+  /** c1: name + FINALE tag, an HP bar in the boss's colour (white while shielded) and the hint's "how to beat it" half. */
+  private drawBoss(g: Phaser.GameObjects.Graphics, w: World, now: number, dt: number): void {
+    const e = this.tierBoss(w);
+    const key = e === undefined ? '' : `${e.boss}|${e.finale === true}|${e.enraged === true}`;
+    if (key !== this.bossKey) {
+      this.bossKey = key;
+      this.bossHpShown = 1;
+      const on = e !== undefined;
+      for (const t of [this.bossName, this.bossTag, this.bossHint]) t.setVisible(on);
+      if (e !== undefined) {
+        const def = this.data.bosses.bosses[e.boss!];
+        const look = bossLook(e.boss);
+        const b = this.g.boss;
+        this.bossName.setText(def?.name ?? e.boss!).setColor(look.css);
+        this.bossTag.setText(e.finale === true ? 'FINALE' : e.enraged === true ? 'ENRAGED' : '').setColor(e.finale === true ? '#ffd23f' : look.css);
+        const hint = def?.hint ?? '';
+        const i = hint.indexOf(':');
+        this.bossHint.setText(i >= 0 ? hint.slice(i + 1).trim() : hint).setScale(1);
+        if (this.bossHint.width > b.w) this.bossHint.setScale(b.w / this.bossHint.width);
+      }
+    }
+    if (e === undefined) return;
+    const b = this.g.boss;
+    const look = bossLook(e.boss);
+    const frac = Math.max(0, e.hp / e.maxHp);
+    this.bossHpShown = frac > this.bossHpShown ? frac : this.bossHpShown + (frac - this.bossHpShown) * Math.min(1, dt / 260);
+    const shielded = bossShielded(this.data, e);
+    g.fillStyle(0x05070f, 0.8).fillRect(b.x - 3, b.barY - 3, b.w + 6, b.barH + 6);
+    g.fillStyle(WHITE, 0.3).fillRect(b.x, b.barY, b.w * this.bossHpShown, b.barH);
+    g.fillStyle(shielded ? WHITE : look.color, shielded ? 0.55 + 0.25 * Math.sin(now / 70) : 1).fillRect(b.x, b.barY, b.w * frac, b.barH);
+    g.fillStyle(0x05070f, 0.6);
+    for (let k = 1; k < 4; k++) g.fillRect(b.x + (b.w * k) / 4 - 1, b.barY, 2, b.barH);
+    g.lineStyle(2, shielded ? WHITE : look.color, 0.9).strokeRect(b.x - 1, b.barY - 1, b.w + 2, b.barH + 2);
   }
 
   /** Cooldown ring (fills clockwise; glows when ready) around the dominant tag's glyph (a plain dot without one). */
@@ -239,6 +311,7 @@ export class Hud {
     const hit = now < this.hitUntil;
     g.lineStyle(hit ? 6 : 6, hit ? HP_LOW : color, hit ? 0.45 : 0.15).strokeRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
     g.lineStyle(2, hit ? WHITE : color, hit ? 1 : 0.8).strokeRect(r.x, r.y, r.w, r.h);
+    this.drawBoss(g, w, now, dt); // c1
   }
 }
 

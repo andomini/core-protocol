@@ -1,6 +1,6 @@
 # Balance report — M3 (protocols, tags, sets; first run)
 
-Seeds 1–24 per policy · tier 1 · no workshop · starred stats locked · no cards · 35.2 s · `npm run sim:balance`
+Seeds 1–24 per policy · tier 1 · no workshop · starred stats locked · no cards · 34.2 s · `npm run sim:balance`
 
 ## B1: first protocol pick ≤ 30 s after loading — **PASS**
 
@@ -32,13 +32,13 @@ Runs whose auto-placed crystal reached cryo+firewall tier I+ (greedy + greedy-pi
 
 ## B8: Bastion and Minefield (spec 2026-10-15, phase 2) — report only
 
-Turret + mine share, greedy + greedy-pick: 1 % of kills (target ≤ 25 % at III), Minefield 1 % of kill Energy (1/24 runs). The tag:overload / tag:chain / tag:firewall bots: — / — / 1 % of kills (target ≤ 25 % at III), Minefield 0 % of kill Energy (1/24 runs).
+Turret + mine share, greedy + greedy-pick: —. The tag:overload / tag:chain / tag:firewall bots: — / — / 1 % of kills (target ≤ 25 % at III), Minefield 0 % of kill Energy (1/24 runs).
 
 ## B9: Relay Stations (spec 2026-10-15, phase 3) — report only
 
 Station share of Energy income (stations / kills + stations; target ≤ 20 % at III), greedy + greedy-pick: —. The tag:mining / tag:firewall bots: — / 3 % (1/24 runs).
 
-Decoy share (damage the stations soaked / core + wall + stations), greedy + greedy-pick: 2 % (1/24 runs). The tag:mining / tag:firewall bots: 2 % (1/24 runs) / 8 % (1/24 runs).
+Decoy share (damage the stations soaked / core + wall + stations), greedy + greedy-pick: 2 % (1/24 runs). The tag:mining / tag:firewall bots: 2 % (1/24 runs) / 4 % (1/24 runs).
 
 ## Crystal fusions (spec 2026-10-16 phase 0) — report only
 
@@ -95,10 +95,10 @@ Pick policies: `greedy-pick` = highest rarity, then a held tag; `random-pick` = 
 - **greedy + greedy-pick:** Thermal Shock 8 % · Bounty Marks 8 % · Cold Storage 4 % · Network 4 % · Minefield 4 % · Relay Stations 4 %
 - **greedy + random-pick:** Overcharge 13 % · Ice Wall 8 % · Thermal Shock 4 % · Bounty Marks 4 % · Superconductor 4 % · Network 4 % · Relay Stations 4 %
 - **greedy + tag:overload:** Network 8 % · Bastion 4 % · Relay Stations 4 %
-- **greedy + tag:cryo:** Thermal Shock 13 % (II+ 4 %) · Superconductor 8 % · Bounty Marks 4 % · Cold Storage 4 % · Network 4 %
+- **greedy + tag:cryo:** Thermal Shock 13 % (II+ 4 %) · Bounty Marks 4 % · Superconductor 4 % · Cold Storage 4 % · Network 4 %
 - **greedy + tag:chain:** Overcharge 8 % · Superconductor 4 % · Network 4 %
 - **greedy + tag:mining:** Bounty Marks 4 % · Minefield 4 % · Relay Stations 4 %
-- **greedy + tag:firewall:** Bastion 8 % · Network 4 % · Relay Stations 4 % (II+ 4 %)
+- **greedy + tag:firewall:** Bastion 8 % · Network 4 % · Relay Stations 4 %
 
 ## Median levels at death
 

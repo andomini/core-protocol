@@ -9,12 +9,13 @@ import { DEFAULT_DATA, type EnemyKind } from '../sim/data';
 import type { Enemy } from '../sim/state';
 import type { Layout } from '../ui/layout';
 import { TAGS, type Tag } from '../sim/perkData';
-import { BITS, CORE, CORE_HIT, CRIMSON, ENEMY_ACCENT, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, MARK, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
+import { BITS, CORE, CORE_HIT, ENEMY_ACCENT, ENEMY_COLOR, FROZEN_TINT, GRID_MAJOR, MARK, SLOW_TINT, TAG_COLOR, TRACER } from './palette';
 import { ImagePool } from './pools';
 import { ps, RS } from './resolution';
 import type { RunSession } from './RunSession';
 import { GRID_TILE, TRACER_LEN } from './textures';
 import { animFrame, bossMembrane, glintLevel, type Pose, pose, texKey } from './virusShapes';
+import { bossLook, type BossLook, bossPose, bossSegKey, bossTexKey, drawBossTelegraph, type TeleView } from './bossShapes';
 
 /** Per-channel blend of two 0xRRGGBB colours: `t` = 0 → a, 1 → b. */
 export function mixColor(a: number, b: number, t: number): number {
@@ -56,6 +57,9 @@ const TRAIL_CAP = 96;
 const PULSES = 10;
 
 interface BossBody {
+  /** c1: the tier boss id (undefined: the plain WORM.EXE) and its look. */
+  id: string | undefined;
+  look: BossLook;
   segs: Phaser.GameObjects.Image[];
   /** Lipid envelope behind the head (breathes and counter-turns) and the nucleus glow over it. */
   membrane: Phaser.GameObjects.Image;
@@ -104,6 +108,9 @@ export class WorldView {
   /** Glowing spine linking the boss worm's segments. */
   private readonly spine: Phaser.GameObjects.Graphics;
   private readonly bossLabel: Phaser.GameObjects.Text;
+  /** c1: the boss id the label shows ('' = WORM.EXE) and a reused telegraph view (no per-frame allocation). */
+  private labelId = '';
+  private readonly tele: TeleView = { sx: 0, sy: 0, cx: 0, cy: 0, r: 0, scale: 1, now: 0, fade: 1 };
   private readonly coreLight: Phaser.GameObjects.Image;
   private readonly coreOuter: Phaser.GameObjects.Image;
   private readonly coreInner: Phaser.GameObjects.Image;
@@ -353,10 +360,29 @@ export class WorldView {
         }
       }
       if (s.kind === 'boss') {
+        const look = s.boss!.look;
+        if (e.boss !== undefined) {
+          // c1: the tier boss's telegraph (shield, aim, brood, drain, aura, rage).
+          const tv = this.tele;
+          tv.sx = sx;
+          tv.sy = sy;
+          tv.cx = L.cx;
+          tv.cy = L.cy;
+          tv.r = r;
+          tv.scale = L.scale;
+          tv.now = now;
+          tv.fade = fade;
+          drawBossTelegraph(bars, sess.data, e, tv);
+        }
+        const id = e.boss ?? '';
+        if (id !== this.labelId) {
+          this.labelId = id;
+          this.bossLabel.setText(id === '' ? 'WORM.EXE' : sess.data.bosses.bosses[id]?.name ?? id).setColor(look.css);
+        }
         const bw = Math.max(120, r * 3.2);
         const by = sy - r - 26;
         bars.fillStyle(0x1a0610, 0.9).fillRect(sx - bw / 2 - 2, by - 2, bw + 4, 10);
-        bars.fillStyle(CRIMSON, 1).fillRect(sx - bw / 2, by, bw * Math.max(0, e.hp / e.maxHp), 6);
+        bars.fillStyle(look.color, 1).fillRect(sx - bw / 2, by, bw * Math.max(0, e.hp / e.maxHp), 6);
         bars.fillStyle(0xffffff, 0.5).fillRect(sx - bw / 2, by, bw * Math.max(0, e.hp / e.maxHp), 1.5);
         const half = this.bossLabel.width / 2 + 8;
         const lx = Math.max(L.arena.x + half, Math.min(L.arena.x + L.arena.w - half, sx));
@@ -403,7 +429,7 @@ export class WorldView {
     s.spin = e.id % 2 === 0 ? 1 : -1;
     s.frame = 0;
     if (e.kind === 'boss') {
-      s.img = this.bossImgs.get(texKey('boss'));
+      s.img = this.bossImgs.get(e.boss !== undefined ? bossTexKey(e.boss) : texKey('boss'));
       s.img.setDepth(DEPTH.boss + 0.5);
       s.boss = this.makeBoss(e);
     } else {
@@ -430,15 +456,19 @@ export class WorldView {
 
   private makeBoss(e: Enemy): BossBody {
     const segs: Phaser.GameObjects.Image[] = [];
-    for (let i = 0; i < BOSS_SEGMENTS; i++) segs.push(this.bossImgs.get('e_boss_seg').setDepth(DEPTH.boss - i * 0.01));
-    const membrane = this.bossImgs.get('e_boss_membrane').setDepth(DEPTH.boss + 0.4);
-    const glow = this.bossGlow.get().setTint(ENEMY_ACCENT.boss);
-    const body: BossBody = { segs, membrane, glow, tx: new Float64Array(TRAIL_CAP), ty: new Float64Array(TRAIL_CAP), head: 0, count: 0, phase: 0 };
+    // c1: a tier boss has its own head, segment texture and count, and no lipid envelope.
+    const look = bossLook(e.boss);
+    const n = e.boss !== undefined ? look.segments : BOSS_SEGMENTS;
+    const segKey = e.boss !== undefined ? bossSegKey(e.boss) : 'e_boss_seg';
+    for (let i = 0; i < n; i++) segs.push(this.bossImgs.get(segKey).setDepth(DEPTH.boss - i * 0.01));
+    const membrane = this.bossImgs.get('e_boss_membrane').setDepth(DEPTH.boss + 0.4).setVisible(e.boss === undefined);
+    const glow = this.bossGlow.get().setTint(e.boss !== undefined ? look.accent : ENEMY_ACCENT.boss);
+    const body: BossBody = { id: e.boss, look, segs, membrane, glow, tx: new Float64Array(TRAIL_CAP), ty: new Float64Array(TRAIL_CAP), head: 0, count: 0, phase: 0 };
     // Seed the trail outward from the head so the worm enters fully formed.
     const d = Math.hypot(e.x, e.y) || 1;
     const ux = e.x / d;
     const uy = e.y / d;
-    const span = this.segSpacing(e) * (BOSS_SEGMENTS + 1);
+    const span = this.segSpacing(e) * (n + 1);
     for (let i = 24; i >= 0; i--) this.pushTrail(body, e.x + ux * (span * i) / 24, e.y + uy * (span * i) / 24);
     return body;
   }
@@ -470,6 +500,10 @@ export class WorldView {
     const ly = b.ty[b.head]!;
     if (Math.hypot(hx - lx, hy - ly) >= 3) this.pushTrail(b, hx, hy);
     s.img.setPosition(L.cx + hx * L.scale, L.cy + hy * L.scale).setRotation(toCore + Math.cos(b.phase * 1.8) * 0.35).setScale(k);
+    if (b.id !== undefined) {
+      const p = bossPose(b.id, now, e.id, toCore, e.enraged === true, this.pose); // c1
+      s.img.setRotation(p.rot).setScale(k * p.sx, k * p.sy);
+    }
     const m = bossMembrane(now, e.id);
     b.membrane.setPosition(s.img.x, s.img.y).setRotation(m.rot).setScale(k * m.scale).setAlpha(fade);
     // The nucleus glow: `glow` is 64 px across, drawn ~1.1 radii wide over the capsid centre.
@@ -484,20 +518,21 @@ export class WorldView {
     let target = spacing;
     let px = hx;
     let py = hy;
-    for (let i = 1; i < b.count && seg < BOSS_SEGMENTS; i++) {
+    const nSeg = b.segs.length;
+    for (let i = 1; i < b.count && seg < nSeg; i++) {
       const j = (b.head - i + TRAIL_CAP) % TRAIL_CAP;
       const qx = b.tx[j]!;
       const qy = b.ty[j]!;
       const d = Math.hypot(qx - px, qy - py);
-      while (d > 0 && acc + d >= target && seg < BOSS_SEGMENTS) {
+      while (d > 0 && acc + d >= target && seg < nSeg) {
         const t = (target - acc) / d;
         const x = px + (qx - px) * t;
         const y = py + (qy - py) * t;
         const img = b.segs[seg]!;
         const sc = SEG_SCALE[seg]!;
         img.setPosition(L.cx + x * L.scale, L.cy + y * L.scale).setScale(k * sc).setAlpha(fade);
-        sp.lineStyle(10 * sc, CRIMSON, 0.16 * fade).lineBetween(lastX, lastY, img.x, img.y);
-        sp.lineStyle(2.5, CRIMSON, 0.75 * fade).lineBetween(lastX, lastY, img.x, img.y);
+        sp.lineStyle(10 * sc, b.look.color, 0.16 * fade).lineBetween(lastX, lastY, img.x, img.y);
+        sp.lineStyle(2.5, b.look.color, 0.75 * fade).lineBetween(lastX, lastY, img.x, img.y);
         lastX = img.x;
         lastY = img.y;
         img.setRotation(this.lastNow * 0.001 * (seg % 2 ? 1 : -1));
@@ -508,7 +543,7 @@ export class WorldView {
       px = qx;
       py = qy;
     }
-    for (; seg < BOSS_SEGMENTS; seg++) b.segs[seg]!.setPosition(L.cx + px * L.scale, L.cy + py * L.scale).setScale(k * SEG_SCALE[seg]!);
+    for (; seg < nSeg; seg++) b.segs[seg]!.setPosition(L.cx + px * L.scale, L.cy + py * L.scale).setScale(k * SEG_SCALE[seg]!);
   }
 
   /** Cyber-frame corner brackets around the arena. */

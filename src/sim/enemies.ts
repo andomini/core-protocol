@@ -9,6 +9,7 @@ import { activeStations, activeWalls, breakSegment, clearShatter, destroyStation
 import { groundAt } from './territory';
 import type { CoreStats } from './stats';
 import { stealBits } from './viruses';
+import { drainCore, tickBoss } from './bosses';
 
 /** Distance tolerance for "arrived": guards against endless sub-ulp moves at the stop point. */
 const ARRIVE_EPS = 1e-6;
@@ -144,6 +145,7 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
   for (const e of w.enemies) {
     if (e.hp <= 0) continue;
     if (regen > 0 && e.hp < e.maxHp) e.hp = Math.min(e.maxHp, e.hp + e.maxHp * regen);
+    if (e.boss !== undefined) tickBoss(data, e, events); // c1: the boss clock runs while frozen
     if (isFrozen(w, e)) continue;
     // Melee viruses crash into the crystal: they stop at its reach in their sector (spec 2026-10-14 §A).
     const reach = Math.max(coreRadius, prof.shape.reach[sectorOf(e.x, e.y)] ?? 0);
@@ -207,6 +209,8 @@ export function updateEnemies(w: World, data: GameData, st: CoreStats, prof: Per
       events.push({ type: 'coreHit', enemyId: e.id, damage, ranged, blocked, absorbed });
       // Leech (B2): a hit that got through the immunity window drains Bits.
       if (!blocked) stealBits(w, data, e, events);
+      // c1 Siphon: the same landed hit drains Energy and heals the boss.
+      if (!blocked && e.boss !== undefined) drainCore(w, data, e, events);
       reflectThorns(w, data, st, prof, e, damage, ranged, events);
     }
   }

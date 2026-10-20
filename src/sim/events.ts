@@ -3,11 +3,18 @@ import type { StructureKind, Tag } from './perkData';
 import type { ProtocolReject } from './perks';
 import type { HitSource } from './projectiles';
 
+export type BossMech = 'shieldWarn' | 'shieldUp' | 'shieldDown' | 'brood' | 'drain' | 'enrage' | 'mutate';
+
 export type BuyRejectReason = 'dead' | 'unknown' | 'badCount' | 'locked' | 'maxed' | 'funds';
 
 /** Everything the sim reports to render/UI/telemetry. Events are not part of the World. */
 export type SimEvent =
-  | { type: 'waveStart'; wave: number; boss: boolean }
+  /** c1: `bossId` the tier boss of a boss wave (absent = the plain boss); `finale` the tier's FINALE wave. */
+  | { type: 'waveStart'; wave: number; boss: boolean; bossId?: string; finale?: boolean }
+  /** c1: a tier boss's mechanic fired (shield warn/up/down, brood, drain, enrage, forced mutation); `value` per mechanic. */
+  | { type: 'bossMech'; enemyId: number; boss: string; mech: BossMech; x: number; y: number; value?: number }
+  /** c1: a tier boss died; `finale`: it was the FINALE of `tier` (the run unlocks tier + 1). */
+  | { type: 'bossDown'; enemyId: number; boss: string; finale: boolean; tier: number; x: number; y: number }
   | { type: 'waveEnd'; wave: number }
   /** End-of-wave income: flat Energy/Wave, Interest on unspent Energy (capped), flat Bits/Wave. */
   | { type: 'waveReward'; wave: number; energy: number; interest: number; bits: number }

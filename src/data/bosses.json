@@ -1,0 +1,41 @@
+{
+  "finaleHpMul": 1.5,
+  "bosses": {
+    "overseer": {
+      "name": "OVERSEER",
+      "hint": "Shields itself every few seconds: hold the Pulse until the shield drops",
+      "hpMul": 0.85, "radius": 40, "speedMul": 1, "damageMul": 1,
+      "shieldEvery": 9, "shieldSec": 2.5, "shieldWarn": 1.5
+    },
+    "broodmother": {
+      "name": "BROODMOTHER",
+      "hint": "Spawns spores at every 25% of HP lost: keep damage spread to clear the brood",
+      "hpMul": 0.9, "radius": 46, "speedMul": 0.9, "damageMul": 1,
+      "broodStep": 0.25, "broodCount": 3, "broodKind": "spore"
+    },
+    "siphon": {
+      "name": "SIPHON",
+      "hint": "Drains Energy and heals on every hit: kill it before it reaches the core",
+      "hpMul": 1, "radius": 38, "speedMul": 1.15, "damageMul": 0.8,
+      "drainEnergy": 12, "drainHeal": 0.06, "drainReturn": 1.5
+    },
+    "swarmlord": {
+      "name": "SWARM LORD",
+      "hint": "Shields every virus near it: thin the swarm or burst the lord first",
+      "hpMul": 0.8, "radius": 44, "speedMul": 1, "damageMul": 1,
+      "auraRadius": 180, "auraReduce": 0.4
+    },
+    "artillery": {
+      "name": "ARTILLERY",
+      "hint": "Shells the core from the edge: buy Range or let turrets reach it",
+      "hpMul": 0.7, "radius": 36, "speedMul": 1.2, "damageMul": 1.6,
+      "standoff": 330, "attackInterval": 4, "shotWarn": 1
+    },
+    "mutagen": {
+      "name": "MUTAGEN",
+      "hint": "Forces a mutation on arrival and speeds up below half HP: burst it down",
+      "hpMul": 1, "radius": 48, "speedMul": 1, "damageMul": 1,
+      "mutations": 1, "enrageAt": 0.5, "enrageSpeed": 1.7
+    }
+  }
+}
