@@ -2,13 +2,16 @@ import { crystalTagCounts } from './crystal';
 import type { GameData } from './data';
 import { SECTOR_DIRS } from './hex';
 import { assertFiniteDeep } from './num';
-import { rebuildCrystal } from './perks';
+import { rebuildCrystal, refreshCrystal } from './perks';
 import { fusionKeys, STRUCTURE_KINDS, TAGS } from './perkData';
 import { type World, WORLD_VERSION } from './state';
 import { canonicalLevels } from './stats';
 
 /** Bumped with the World shape: v1 (M1–M2a) derived core stats; v2 (M2b) had no protocols (M3). */
-export const SNAPSHOT_VERSION = 8; // v8: pulse fields + boot sector (bootOffer, boot); a v7 snapshot migrates
+export const SNAPSHOT_VERSION = 9; // v8: pulse fields + boot sector (bootOffer, boot); v9: no fusionPending (Weld dropped); v7 and v8 snapshots migrate
+
+/** Older snapshot versions restore() still upgrades. */
+const LEGACY_VERSIONS: readonly number[] = [7, 8];
 
 /** Serializes the whole world. Throws if any value is non-finite (JSON would turn it into null). */
 export function snapshot(w: World): string {
@@ -62,8 +65,8 @@ export function restore(s: string, data?: GameData): World {
     throw new Error(`snapshot: invalid JSON (${(err as Error).message})`);
   }
   const o = parsed as { v?: unknown; world?: unknown } | null;
-  // v7 snapshot (no pulse / boot sector fields): upgraded below.
-  if (o === null || typeof o !== 'object' || (o.v !== SNAPSHOT_VERSION && o.v !== 7)) {
+  // v7 snapshot (no pulse / boot sector fields) and v8 (a Weld queue): upgraded below.
+  if (o === null || typeof o !== 'object' || (o.v !== SNAPSHOT_VERSION && !LEGACY_VERSIONS.includes(o.v as number))) {
     throw new Error(`snapshot: unsupported version ${String(o?.v)}`);
   }
   const w = o.world as Partial<World> | null | undefined;
@@ -73,10 +76,19 @@ export function restore(s: string, data?: GameData): World {
     w.bootOffer ??= [];
     w.boot ??= '';
   }
+  // v9: Weld was dropped (uniqueness plan item 11). A v7/v8 run's waiting fusion rises apply at once after the
+  // checks below (refreshCrystal, when `data` is given; otherwise at the next crystal change).
+  let weldWaiting = false;
+  if (w !== null && typeof w === 'object' && LEGACY_VERSIONS.includes(o.v as number)) {
+    const old = w as { v?: unknown; fusionPending?: unknown };
+    if (old.v === o.v) old.v = WORLD_VERSION;
+    weldWaiting = isRecord(old.fusionPending) && Object.keys(old.fusionPending).length > 0;
+    delete old.fusionPending;
+  }
   if (
     w === null ||
     typeof w !== 'object' ||
-    ((w.v as number) !== WORLD_VERSION && (w.v as number) !== 7) ||
+    (w.v as number) !== WORLD_VERSION ||
     typeof w.tick !== 'number' ||
     !Array.isArray(w.enemies) ||
     !Array.isArray(w.projectiles) ||
@@ -148,11 +160,10 @@ export function restore(s: string, data?: GameData): World {
   if (!Array.isArray(w.structs) || typeof w.wallR !== 'number' || !w.structs.every(validStruct)) {
     throw new Error('snapshot: malformed world');
   }
-  // Runs saved before crystal combos v2 (spec 2026-10-16 phase 1): no weld waiting, empty Lattice and gene
-  // accumulators (the gene mean falls back to the counts now), no frost, blueprint or Marks yet. Their tiers
-  // were built by the old rules (global links, old ladders): with `data`, they are rebuilt below.
-  const preV2 = w.fusionPending === undefined;
-  w.fusionPending ??= {};
+  // Runs saved before crystal combos v2 (spec 2026-10-16 phase 1): empty Lattice and gene accumulators (the gene
+  // mean falls back to the counts now), no frost, blueprint or Marks yet. Their tiers were built by the old rules
+  // (global links, old ladders): with `data`, they are rebuilt below.
+  const preV2 = w.latticeTicks === undefined;
   w.latticeSum ??= 0;
   w.latticeTicks ??= 0;
   w.geneAcc ??= tagRecord(0);
@@ -165,8 +176,6 @@ export function restore(s: string, data?: GameData): World {
   if (isRecord(w.marks)) w.marks.plan ??= [];
   if (w.fusionBest === undefined && isRecord(w.fusionTiers)) w.fusionBest = { ...w.fusionTiers };
   if (
-    !isRecord(w.fusionPending) ||
-    !Object.values(w.fusionPending).every((p) => isRecord(p) && Number.isInteger(p.tier) && Number.isInteger(p.links) && Number.isInteger(p.sinceTick)) ||
     typeof w.latticeSum !== 'number' ||
     !Number.isInteger(w.latticeTicks) ||
     !Number.isInteger(w.geneTicks) ||
@@ -208,5 +217,6 @@ export function restore(s: string, data?: GameData): World {
     throw new Error(`snapshot: ${(err as Error).message}`);
   }
   if (preV2 && data !== undefined) rebuildCrystal(w as World, data);
+  else if (weldWaiting && data !== undefined) refreshCrystal(w as World, data, null);
   return w as World;
 }

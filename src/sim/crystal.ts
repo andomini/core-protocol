@@ -76,17 +76,16 @@ const PROBE = '\u0000probe';
 /**
  * Deterministic best slot for a new `tag` module (spec §A), or null when the crystal is full. Pair-aware
  * (spec 2026-10-16 §6): a slot that lifts a pair's fusion to its next tier (cluster-scoped links) earns
- * `linkNear` × that tier's index (I = 1 … IV = 4) on top of the plain neighbour weights.
+ * `linkNear` × that tier's index (I = 1 … III = 3) on top of the plain neighbour weights.
  */
 export function autoSlot(w: World, data: GameData, tag: Tag): [number, number] | null {
   const a = data.crystal.auto;
   const sectors = sectorTags(w, data);
   const free = freeSlots(w, data);
-  // Pair-aware bonus inputs (skipped when the weight is 0): links and set counts now, a probe module per slot.
+  // Pair-aware bonus inputs (skipped when the weight is 0): links now, a probe module per slot.
   const near = a.linkNear > 0 && w.crystal.length > 0;
   const perks: Record<string, number> = near ? { ...w.perks, [PROBE]: 1 } : {};
   const l0 = near ? linkCountsOf(w.crystal, w.perks) : {};
-  const c0 = near ? withCards(w, clusterCountsOf(w.crystal, w.perks)) : null;
   const probe: Module[] = near ? [...w.crystal, { q: 0, r: 0, perk: PROBE, tag }] : [];
   const pm = probe[probe.length - 1];
   let best: [number, number] | null = null;
@@ -107,10 +106,9 @@ export function autoSlot(w: World, data: GameData, tag: Tag): [number, number] |
       pm!.q = q;
       pm!.r = r;
       const l1 = linkCountsOf(probe, perks);
-      const c1 = withCards(w, clusterCountsOf(probe, perks));
       for (const key of fusionKeys()) {
-        const t0 = fusionTierAt(data, key, l0[key] ?? 0, c0!);
-        const t1 = fusionTierAt(data, key, l1[key] ?? 0, c1);
+        const t0 = fusionTierAt(data, l0[key] ?? 0);
+        const t1 = fusionTierAt(data, l1[key] ?? 0);
         if (t1 > t0) score += a.linkNear * fusionTierIndex(data, key, t1);
         else if (t1 < t0) score -= a.linkNear * fusionTierIndex(data, key, t0);
       }
@@ -285,45 +283,25 @@ export function linkCountsFor(modules: readonly Module[], perks: Stacks): Record
   return linkCountsOf(modules, perks);
 }
 
-const STEPS = new WeakMap<GameData, Record<string, readonly number[]>>();
-
-/** A fusion's ladder of link counts: sets.fusionTiers, plus its apexLinks when it has an Apex. Cached per GameData. */
-export function fusionSteps(data: GameData, key: string): readonly number[] {
-  let all = STEPS.get(data);
-  if (all === undefined) STEPS.set(data, (all = {}));
-  let s = all[key];
-  if (s === undefined) {
-    const f = data.sets.fusions[key]!;
-    s = f.apex !== undefined && f.apexLinks !== undefined ? [...data.sets.fusionTiers, f.apexLinks] : data.sets.fusionTiers;
-    all[key] = s;
-  }
-  return s;
+/** A fusion's ladder of link counts: sets.fusionTiers (the same 1 / 3 / 5 for every pair). */
+export function fusionSteps(data: GameData, _key: string): readonly number[] {
+  return data.sets.fusionTiers;
 }
 
-/** The effects a fusion's step `t` adds (its Apex at apexLinks). */
+/** The effects a fusion's step `t` adds. */
 export function fusionEffects(data: GameData, key: string, t: number): readonly Effect[] {
-  const f = data.sets.fusions[key]!;
-  if (f.apex !== undefined && t === f.apexLinks) return f.apex;
-  return f.tiers[String(t)] ?? [];
+  return data.sets.fusions[key]!.tiers[String(t)] ?? [];
 }
 
-/**
- * The fusion tier `links` reach (0 if none): a step of sets.fusionTiers, or the Apex (stored as apexLinks) when
- * the fusion has one, links ≥ apexLinks and both tags' set counts (`counts`, card tags included) are ≥ sets.apexSet.
- */
-export function fusionTierAt(data: GameData, key: string, links: number, counts: Readonly<Record<Tag, number>>): number {
-  const f = data.sets.fusions[key]!;
-  if (f.apex !== undefined && f.apexLinks !== undefined && links >= f.apexLinks) {
-    const [a, b] = key.split('+') as [Tag, Tag];
-    if (counts[a] >= data.sets.apexSet && counts[b] >= data.sets.apexSet) return f.apexLinks;
-  }
+/** The fusion tier `links` reach (0 if none): the highest step of sets.fusionTiers. */
+export function fusionTierAt(data: GameData, links: number): number {
   return ladderTier(data.sets.fusionTiers, links);
 }
 
-/** A stored fusion tier's index: I = 1, II = 2, III = 3, Apex = 4 (0 = none). */
-export function fusionTierIndex(data: GameData, key: string, tier: number): number {
+/** A stored fusion tier's index: I = 1, II = 2, III = 3 (0 = none). */
+export function fusionTierIndex(data: GameData, _key: string, tier: number): number {
   if (tier <= 0) return 0;
-  const i = fusionSteps(data, key).indexOf(tier);
+  const i = data.sets.fusionTiers.indexOf(tier);
   return i < 0 ? 0 : i + 1;
 }
 
@@ -413,13 +391,11 @@ export function crystalDiff(w: World, data: GameData, modules: readonly Module[]
   }
   const l0 = linkCountsOf(w.crystal, w.perks);
   const l1 = linkCountsOf(modules, perks);
-  const k0 = withCards(w, { ...c0 });
-  const k1 = withCards(w, { ...c1 });
   for (const key of fusionKeys()) {
     const from = l0[key] ?? 0;
     const to = l1[key] ?? 0;
-    const tierFrom = fusionTierAt(data, key, from, k0);
-    const tierTo = fusionTierAt(data, key, to, k1);
+    const tierFrom = fusionTierAt(data, from);
+    const tierTo = fusionTierAt(data, to);
     if (from !== to || tierFrom !== tierTo) out.fusions.push({ key, from, to, tierFrom, tierTo });
   }
   const s0 = sectorTagsOf(w.crystal, w.perks, data);

@@ -42,13 +42,6 @@ export interface Enemy {
   gen?: number;
 }
 
-/** A fusion tier rise waiting for its weld (spec 2026-10-16 §3): the target tier, the link count it needs held, since when. */
-export interface WeldPending {
-  tier: number;
-  links: number;
-  sinceTick: number;
-}
-
 /** One painted blueprint hex (spec 2026-10-16 Planning UI, phase 6): the tag the auto-placer should put there. */
 export interface BlueprintHex {
   q: number;
@@ -102,12 +95,12 @@ export interface CoreState {
 }
 
 /** v3 (M3): protocols — perks, set tiers, pick phase, Keys, boost, periodic timers, slow/freeze, bounces. v6: crystal, territory, genome. */
-export const WORLD_VERSION = 8; // v8: pulse fields + boot sector (bootOffer, boot)
+export const WORLD_VERSION = 9; // v8: pulse fields + boot sector (bootOffer, boot); v9: fusionPending dropped (no Weld)
 
 export type Phase = 'wave' | 'pause' | 'pick';
 
 export interface World {
-  v: 8;
+  v: 9;
   seed: number;
   /** 1-based index into GameData.tiers. */
   tier: number;
@@ -139,8 +132,6 @@ export interface World {
   setTiers: Record<Tag, number>;
   /** Fusion tier per tag pair ("a+b" in TAGS order; absent = 0), from the links on the crystal now. */
   fusionTiers: Record<string, number>;
-  /** Weld: fusion rises waiting to apply, by pair key (spec 2026-10-16 §3). */
-  fusionPending: Record<string, WeldPending>;
   /** Lattice: Σ fusion tier indices summed every tick, and the ticks summed (§4). */
   latticeSum: number;
   latticeTicks: number;
@@ -301,7 +292,7 @@ export function createWorld(data: GameData, opts: RunOptions): World {
   for (const t of TAGS) setTiers[t] = 0;
   const cardTags = (opts.cardTags ?? []).filter((t): t is Tag => (TAGS as readonly string[]).includes(t));
   const w: World = {
-    v: 8,
+    v: 9,
     seed: opts.seed,
     tier: opts.tier,
     tick: 0,
@@ -322,7 +313,6 @@ export function createWorld(data: GameData, opts: RunOptions): World {
     cardTags,
     setTiers,
     fusionTiers: {},
-    fusionPending: {},
     latticeSum: 0,
     latticeTicks: 0,
     geneAcc: blankGenome(),

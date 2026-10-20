@@ -224,7 +224,7 @@ describe('pulse: replay and snapshot', () => {
     expect(JSON.stringify(restore(snapshot(w)))).toBe(JSON.stringify(w));
     const { pulseReadyTick: _a, pulseCount: _b, pulseLastTag: _c, pulseAuto: _d, ...old } = w;
     const v7 = restore(JSON.stringify({ v: 7, world: { ...old, v: 7 } }));
-    expect(v7.v).toBe(8);
+    expect(v7.v).toBe(9);
     expect([v7.pulseReadyTick, v7.pulseCount, v7.pulseLastTag, v7.pulseAuto]).toEqual([0, 0, 'none', false]);
     expect(() => restore(JSON.stringify({ v: 8, world: { ...w, pulseAuto: 'yes' } }))).toThrow(/snapshot: malformed/);
   });

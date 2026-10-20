@@ -1,18 +1,18 @@
-// Crystal combos v2, phase 1 (spec 2026-10-16 §1–§6): cluster-scoped links, Apex, Weld, Lattice, gene
-// averaging, pair-aware auto-placement, the new World keys and their snapshot defaults.
+// Crystal combos v2 (spec 2026-10-16 §1–§6), after the uniqueness-plan simplification (no Weld, no Apex):
+// cluster-scoped links, immediate tiers, Lattice, gene averaging, pair-aware auto-placement, snapshot defaults.
 import { describe, expect, it } from 'vitest';
 import { autoSlot, crystalSlots, fusionLinkCounts, fusionTierAt, pairLinkSlots, type Module } from '../src/sim/crystal';
 import { DEFAULT_DATA } from '../src/sim/data';
 import type { SimEvent } from '../src/sim/events';
 import { isNeighbour, ring } from '../src/sim/hex';
 import { fusionKeys, TAGS, type Tag, validateSets } from '../src/sim/perkData';
-import { accumulateCrystal, grantPerk, latticeMean, latticeMul, latticeNow, perkProfile, settleWeld } from '../src/sim/perks';
+import { accumulateCrystal, grantPerk, latticeMean, latticeMul, latticeNow, perkProfile } from '../src/sim/perks';
 import { geneMean, mutate, resetGeneAcc } from '../src/sim/mutations';
 import { restore, snapshot } from '../src/sim/snapshot';
 import { createWorld, type World } from '../src/sim/state';
 import { step } from '../src/sim/step';
 import { latticeLine } from '../src/ui/perkText';
-import { ofType, stepN, testData } from './helpers';
+import { ofType, testData } from './helpers';
 
 const D = DEFAULT_DATA;
 const quiet = (data = D) => createWorld(data, { seed: 7, tier: 1, protocols: false });
@@ -27,61 +27,23 @@ const counts = (v: Partial<Record<Tag, number>>): Record<Tag, number> => {
 };
 
 describe('crystal rules v2 (spec 2026-10-16)', () => {
-  it('Weld: a fusion rise applies after exactly weldTicks steps; a link change restarts it; a drop is immediate', () => {
-    const W = D.sets.weldTicks;
-    expect(W).toBe(5 * D.config.tickHz);
+  it('a fusion rise applies at once, as a drop does (no Weld)', () => {
     const w = quiet();
     const ev: SimEvent[] = [];
     // A zipper: ⚡ on ring 2, 🔗 on ring 3 outside it.
     grantPerk(w, D, 'overclockRounds', ev, at(0));
     grantPerk(w, D, 'bounce', ev, o(0));
-    expect(w.fusionTiers['overload+chain']).toBeUndefined();
-    expect(w.fusionPending['overload+chain']).toEqual({ tier: 1, links: 1, sinceTick: w.tick });
-    stepN(w, D, W - 1);
-    expect(w.fusionTiers['overload+chain']).toBeUndefined();
-    const last = stepN(w, D, 1);
     expect(w.fusionTiers['overload+chain']).toBe(1);
-    expect(w.fusionPending).toEqual({});
-    expect(ofType(last, 'fusion')).toEqual([{ type: 'fusion', key: 'overload+chain', tier: 1, prev: 0, a: at(0), b: o(0) }]);
-
+    expect(ofType(ev, 'fusion')).toEqual([{ type: 'fusion', key: 'overload+chain', tier: 1, prev: 0, a: at(0), b: o(0) }]);
     grantPerk(w, D, 'arc', ev, o(1));
-    expect(w.fusionPending).toEqual({});
     grantPerk(w, D, 'burstFire', ev, at(1));
-    const since = w.tick;
     expect(fusionLinkCounts(w, D)['overload+chain']).toBe(3);
-    expect(w.fusionPending['overload+chain']).toEqual({ tier: 3, links: 3, sinceTick: since });
-    // Ten ticks before it would settle, one more link (still tier II) restarts the weld.
-    w.tick = since + W - 10;
-    grantPerk(w, D, 'overchargeLink', ev, o(2));
-    expect(w.fusionPending['overload+chain']).toEqual({ tier: 3, links: 4, sinceTick: since + W - 10 });
-    w.tick = since + W;
-    settleWeld(w, D, null);
-    expect(w.fusionTiers['overload+chain']).toBe(1);
-    w.tick = since + 2 * W - 11;
-    settleWeld(w, D, null);
-    expect(w.fusionTiers['overload+chain']).toBe(1);
-    w.tick += 1;
-    settleWeld(w, D, null);
     expect(w.fusionTiers['overload+chain']).toBe(3);
-    // A drop: moving every 🔗 away ends the fusion at once, no pending entry.
-    const drop: SimEvent[] = [];
-    w.crystal = w.crystal.filter((m) => m.tag !== 'chain');
-    grantPerk(w, D, 'split', drop, at(9));
-    expect(w.fusionTiers['overload+chain']).toBeUndefined();
-    expect(w.fusionPending['overload+chain']).toBeUndefined();
-  });
-
-  it('Weld: a rise that falls back before it settles never applies', () => {
-    const w = quiet();
-    grantPerk(w, D, 'overclockRounds', null, at(0));
-    grantPerk(w, D, 'bounce', null, at(1));
-    expect(w.fusionPending['overload+chain']?.tier).toBe(1);
+    expect('fusionPending' in w).toBe(false);
+    // A drop: moving every 🔗 away ends the fusion at once.
     w.crystal = w.crystal.filter((m) => m.tag !== 'chain');
     grantPerk(w, D, 'split', null, at(9));
-    expect(w.fusionPending).toEqual({});
-    w.tick += D.sets.weldTicks * 2;
-    settleWeld(w, D, null);
-    expect(w.fusionTiers).toEqual({});
+    expect(w.fusionTiers['overload+chain']).toBeUndefined();
   });
 
   it('cluster scope: only the largest cluster of each tag links (ties → lowest module index)', () => {
@@ -100,15 +62,15 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     const w = quiet();
     expect(latticeMean(w)).toBe(0);
     expect(latticeMul(w, D)).toBe(1);
-    // 3 ticks at II + I (3 points), 1 tick at III + Apex (3 + 4 = 7 points): mean 4.
+    // The index runs I=1 … III=3. 2 ticks at II + I (3 points), 2 ticks at III + III (3 + 3 = 6 points): mean 4.5.
     w.fusionTiers = { 'overload+chain': 3, 'cryo+mining': 1 };
     expect(latticeNow(w, D)).toBe(3);
-    for (let i = 0; i < 3; i++) accumulateCrystal(w, D);
-    w.fusionTiers = { 'overload+chain': 5, 'cryo+mining': 7 };
-    expect(latticeNow(w, D)).toBe(7);
-    accumulateCrystal(w, D);
-    expect(latticeMean(w)).toBe(4);
-    expect(latticeMul(w, D)).toBeCloseTo(1 + 4 * D.sets.latticeCoef, 12);
+    for (let i = 0; i < 2; i++) accumulateCrystal(w, D);
+    w.fusionTiers = { 'overload+chain': 5, 'cryo+mining': 5 };
+    expect(latticeNow(w, D)).toBe(6);
+    for (let i = 0; i < 2; i++) accumulateCrystal(w, D);
+    expect(latticeMean(w)).toBe(4.5);
+    expect(latticeMul(w, D)).toBeCloseTo(1 + 4.5 * D.sets.latticeCoef, 12);
     // The death branch: Bits × runEndBits × the Lattice (one more tick accumulated first).
     w.fusionTiers = {};
     w.latticeSum = 990;
@@ -133,45 +95,27 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     expect(latticeLine(D, w)).toMatch(new RegExp(`\\+${Math.round(D.sets.latticeMax * 1000) / 10} % Bits$`));
   });
 
-  it('Apex: links ≥ apexLinks and both set counts ≥ apexSet; never for firewall pairs', () => {
+  it('the ladder is fusionTiers only: no Apex tier, and the shelved keys are rejected', () => {
     const k = 'overload+chain';
-    expect(D.sets.fusions[k]!.apexLinks).toBe(7);
-    const four = counts({ overload: 4, chain: 4, firewall: 9 });
-    expect(fusionTierAt(D, k, 7, four)).toBe(7);
-    expect(fusionTierAt(D, k, 12, four)).toBe(7);
-    expect(fusionTierAt(D, k, 6, four)).toBe(5);
-    expect(fusionTierAt(D, k, 7, counts({ overload: 4, chain: 3 }))).toBe(5);
-    for (const key of fusionKeys().filter((x) => x.endsWith('+firewall'))) {
-      expect(D.sets.fusions[key]!.apex).toBeUndefined();
-      const [a] = key.split('+') as [Tag, Tag];
-      expect(fusionTierAt(D, key, 7, counts({ [a]: 9, firewall: 9 }))).toBe(fusionTierAt(D, key, 5, counts({ [a]: 9, firewall: 9 })));
+    expect(D.sets.fusionTiers).toEqual([1, 3, 5]);
+    expect(fusionTierAt(D, 0)).toBe(0);
+    expect(fusionTierAt(D, 2)).toBe(1);
+    expect(fusionTierAt(D, 5)).toBe(5);
+    expect(fusionTierAt(D, 12)).toBe(5);
+    for (const key of fusionKeys()) {
+      expect(Object.keys(D.sets.fusions[key]!.tiers).sort()).toEqual(['1', '3', '5']);
+      expect('apex' in D.sets.fusions[key]!).toBe(false);
     }
-    for (const key of fusionKeys().filter((x) => !x.endsWith('+firewall'))) expect(D.sets.fusions[key]!.apex!.length).toBeGreaterThan(0);
-    const bad = structuredClone(D.sets);
-    bad.fusions['overload+firewall']!.apex = structuredClone(D.sets.fusions[k]!.apex);
-    bad.fusions['overload+firewall']!.apexLinks = 7;
-    expect(() => validateSets(bad)).toThrow(/firewall fusions have no apex/);
-    const low = structuredClone(D.sets);
-    low.fusions[k]!.apexLinks = 5;
-    expect(() => validateSets(low)).toThrow(/apexLinks must be above/);
-  });
-
-  it('Apex: reached in the sim it is tier 7 with its own rules, and drops to III at once when a set falls below apexSet', () => {
-    const w = quiet();
-    w.cardTags = ['overload'];
-    // ⚡ at(0..2), 🔗 at o(0..4): 7 links; ⚡ 3 modules + 1 card = 4, 🔗 5.
-    ['overclockRounds', 'burstFire', 'hotBarrel'].forEach((id, i) => grantPerk(w, D, id, null, at(i)));
-    ['bounce', 'arc', 'split', 'conductive', 'overchargeLink'].forEach((id, i) => grantPerk(w, D, id, null, o(i)));
-    expect(fusionLinkCounts(w, D)['overload+chain']).toBe(7);
-    w.tick += D.sets.weldTicks;
-    settleWeld(w, D, null);
-    expect(w.fusionTiers['overload+chain']).toBe(7);
-    const three = structuredClone(w);
-    three.fusionTiers['overload+chain'] = 5;
-    expect(perkProfile(w, D).rules).not.toEqual(perkProfile(three, D).rules);
-    w.cardTags = [];
-    grantPerk(w, D, 'frostShot', null, at(9));
-    expect(w.fusionTiers['overload+chain']).toBe(5);
+    expect(() => validateSets(structuredClone(D.sets))).not.toThrow();
+    const reject = (patch: (s: Record<string, unknown>) => void, msg: RegExp) => {
+      const bad = structuredClone(D.sets) as unknown as Record<string, unknown>;
+      patch(bad);
+      expect(() => validateSets(bad as unknown as typeof D.sets)).toThrow(msg);
+    };
+    reject((s) => (s.weldTicks = 150), /weldTicks/);
+    reject((s) => (s.apexSet = 4), /apexSet/);
+    reject((s) => ((s.fusions as Record<string, Record<string, unknown>>)[k]!.apex = []), /apex/);
+    reject((s) => ((s.fusions as Record<string, Record<string, unknown>>)[k]!.apexLinks = 7), /apexLinks/);
   });
 
   it('planarity: random crystals never link more than 9 of the 10 pairs', () => {
@@ -268,7 +212,6 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
 
   it('new World keys have defaults and old snapshots migrate to them', () => {
     const w = quiet();
-    expect(w.fusionPending).toEqual({});
     expect(w.latticeSum).toBe(0);
     expect(w.latticeTicks).toBe(0);
     expect(w.geneTicks).toBe(0);
@@ -277,9 +220,8 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
     expect(w.marks).toEqual({ killed: 0, jackpots: 0, plan: [] });
     grantPerk(w, D, 'overclockRounds', null, at(0));
     const old = JSON.parse(snapshot(w)) as { world: Record<string, unknown> };
-    for (const k of ['fusionPending', 'latticeSum', 'latticeTicks', 'geneAcc', 'geneTicks', 'tagCountsNow', 'frost', 'blueprint', 'marks']) delete old.world[k];
+    for (const k of ['latticeSum', 'latticeTicks', 'geneAcc', 'geneTicks', 'tagCountsNow', 'frost', 'blueprint', 'marks']) delete old.world[k];
     const back = restore(JSON.stringify(old));
-    expect(back.fusionPending).toEqual({});
     expect(back.latticeSum).toBe(0);
     expect(back.latticeTicks).toBe(0);
     expect(back.geneTicks).toBe(0);
@@ -299,20 +241,44 @@ describe('crystal rules v2 (spec 2026-10-16)', () => {
       ['bounce', o(1)],
     ] as const)
       grantPerk(w, D, id, null, s);
-    settleWeld(Object.assign(w, { tick: w.tick + D.sets.weldTicks }), D, null);
     const want = JSON.parse(snapshot(w)) as { world: World };
     // The old rules' leftovers: a fusion tier the crystal does not hold, its mod, and a stale set mod.
     w.fusionTiers['cryo+mining'] = 3;
     w.mods.push({ stat: 'damage', op: 'mul', value: 9, source: 'fusion:cryo+mining:3' }, { stat: 'damage', op: 'mul', value: 9, source: 'set:cryo:2' });
     const old = JSON.parse(snapshot(w)) as { world: Record<string, unknown> };
-    for (const k of ['fusionPending', 'latticeSum', 'latticeTicks', 'geneAcc', 'geneTicks', 'tagCountsNow', 'frost', 'blueprint', 'marks', 'fusionBest']) delete old.world[k];
+    for (const k of ['latticeSum', 'latticeTicks', 'geneAcc', 'geneTicks', 'tagCountsNow', 'frost', 'blueprint', 'marks', 'fusionBest']) delete old.world[k];
     const plain = restore(JSON.stringify(old));
     expect(plain.fusionTiers['cryo+mining']).toBe(3);
     const back = restore(JSON.stringify(old), D);
     expect(back.fusionTiers).toEqual(want.world.fusionTiers);
     expect(back.setTiers).toEqual(want.world.setTiers);
-    expect(back.fusionPending).toEqual({});
+    expect('fusionPending' in back).toBe(false);
     expect(back.mods.filter((m) => m.value === 9)).toEqual([]);
     expect([...back.mods].map((m) => m.source).sort()).toEqual([...want.world.mods].map((m) => m.source).sort());
+  });
+
+  it('a v8 snapshot migrates to v9: fusionPending is dropped and its waiting rise applies at once', () => {
+    const w = quiet();
+    grantPerk(w, D, 'overclockRounds', null, at(0));
+    grantPerk(w, D, 'bounce', null, o(0));
+    expect(w.fusionTiers['overload+chain']).toBe(1);
+    const want = JSON.parse(snapshot(w)) as { world: World };
+    // The same run saved by v8 while Overcharge I was still welding.
+    const old = JSON.parse(snapshot(w)) as { v: number; world: Record<string, unknown> & World };
+    old.v = 8;
+    old.world.v = 8 as World['v'];
+    old.world.fusionTiers = {};
+    old.world.mods = old.world.mods.filter((m) => !m.source.startsWith('fusion:'));
+    old.world.fusionPending = { 'overload+chain': { tier: 1, links: 1, sinceTick: w.tick } };
+    const back = restore(JSON.stringify(old), D);
+    expect(back.v).toBe(9);
+    expect('fusionPending' in back).toBe(false);
+    expect(back.fusionTiers).toEqual(want.world.fusionTiers);
+    expect([...back.mods].map((m) => m.source).sort()).toEqual([...want.world.mods].map((m) => m.source).sort());
+    // Without data the field is still dropped; the rise waits for the next crystal change.
+    const plain = restore(JSON.stringify(old));
+    expect('fusionPending' in plain).toBe(false);
+    expect(plain.fusionTiers).toEqual({});
+    expect(() => restore(JSON.stringify({ ...old, v: 6 }))).toThrow(/unsupported version/);
   });
 });

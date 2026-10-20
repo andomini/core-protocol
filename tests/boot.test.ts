@@ -135,7 +135,7 @@ describe('boot sectors', () => {
     delete w.boot;
     w.v = 7;
     const r = restore(JSON.stringify({ v: 7, world: w }));
-    expect(r.v).toBe(8);
+    expect(r.v).toBe(9);
     expect(r.bootOffer).toEqual([]);
     expect(r.boot).toBe('');
     // A v8 snapshot with a pick phase but neither offer is malformed.

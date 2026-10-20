@@ -145,7 +145,7 @@ describe('revive', () => {
   it('the World round-trips through a snapshot with the lab fields', () => {
     const d = testData();
     const w = createWorld(d, { seed: 3, tier: 1, pickEvery: 4, rareMul: 1.5, maxLevelBonus: { range: 10 }, startEnergy: 10 });
-    expect(w.v).toBe(8);
+    expect(w.v).toBe(9);
     expect(JSON.stringify(restore(snapshot(w)))).toBe(JSON.stringify(w));
   });
 });

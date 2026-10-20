@@ -947,7 +947,7 @@ const scenarios = {
         const t = await h.p.evaluate(() => {
           const b = window.__cp.game.scene.getScene('Battle');
           const e = b.crystal.edit;
-          // Not crimson (a fall): undoing a rise drops at once, undoing a fall would weld (the strip would differ).
+          // Not crimson (a fall): any non-neutral target, so the undo has a change to revert.
           return e ? e.targets.find((x) => x.color !== 0x22e5ff && x.color !== 0xffffff && x.color !== 0xff2d55) ?? null : null;
         });
         if (t) {

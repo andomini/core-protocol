@@ -19,16 +19,16 @@ import { DEPTH } from '../render/WorldView';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
 import { fusionLevel, fusionTags, latticeLine } from './perkText';
+import { diffLines, type ReadoutLine as Line } from './crystalReadout';
 import { drawTagIcon } from './tagIcon';
 
+export { diffLines, effectPhrase } from './crystalReadout';
+
 const D = DEPTH.overlay - 4;
-const GREEN = '#2bffb0';
-const RED = '#ff3b5c';
-const SECTOR_NAMES = ['east', 'north-east', 'north-west', 'west', 'south-west', 'south-east'];
 const FLASH_MS = 1500;
 const RULES = [
   'Touching same-tag modules form a set; only the largest cluster counts (dashed modules add nothing)',
-  'Links between the largest clusters: 1 / 3 / 5 → fusion I / II / III (rises weld in 5 s)',
+  'Links between the largest clusters: 1 / 3 / 5 → fusion I / II / III',
   'Tap a pair chip: glowing hexes add a link to it',
   'Wedges: most modules in a 60° sector colour its ground',
   'Tap a module, then a hex: move or swap',
@@ -55,44 +55,6 @@ interface StripEntry {
   plain: string;
   /** A pair chip's fusion key (tappable). */
   key?: string;
-}
-
-interface Line {
-  text: string;
-  color: string;
-}
-
-/** Readout lines for a diff: sets, fusions, wedges; green when a tier rises, red when it falls. */
-export function diffLines(data: GameData, d: CrystalDiff | null): Line[] {
-  if (!d) return [{ text: 'Not allowed here', color: RED }];
-  const out: Line[] = [];
-  const tone = (a: number, b: number): string => (b > a ? GREEN : b < a ? RED : TEXT_DIM);
-  for (const s of d.sets) {
-    const name = data.sets.tags[s.tag].name;
-    const tier = s.tierTo > s.tierFrom ? `: ${s.tierTo}-set online` : s.tierTo < s.tierFrom ? `: ${s.tierFrom}-set offline` : '';
-    out.push({ text: `${name} ${s.from} → ${s.to}${tier}`, color: tone(s.tierFrom, s.tierTo) });
-  }
-  for (const f of d.fusions) {
-    const name = data.sets.fusions[f.key]!.name;
-    const tier =
-      f.tierTo > f.tierFrom
-        ? `: ${fusionLevel(data, f.tierTo)} online`
-        : f.tierTo < f.tierFrom
-          ? f.tierTo > 0
-            ? `: ${fusionLevel(data, f.tierFrom)} → ${fusionLevel(data, f.tierTo)}`
-            : `: ${fusionLevel(data, f.tierFrom)} offline`
-          : '';
-    out.push({ text: `${name} links ${f.from} → ${f.to}${tier}`, color: tone(f.tierFrom, f.tierTo) });
-  }
-  for (const s of d.sectors) {
-    const n = (t: Tag | null): string => (t === null ? 'empty' : data.sets.tags[t].name);
-    out.push({ text: `${SECTOR_NAMES[s.sector]} wedge: ${n(s.from)} → ${n(s.to)}`, color: TEXT_DIM });
-  }
-  if (out.length === 0) return [{ text: 'No change', color: TEXT_DIM }];
-  // Tier changes first; at most three lines.
-  const ranked = [...out.filter((l) => l.color !== TEXT_DIM), ...out.filter((l) => l.color === TEXT_DIM)];
-  if (ranked.length <= 3) return ranked;
-  return [ranked[0]!, ranked[1]!, { text: `+${ranked.length - 2} more`, color: TEXT_DIM }];
 }
 
 /**
@@ -361,12 +323,11 @@ export class CrystalEditor {
     return out;
   }
 
-  /** Pair chip text: `II · 2 → III` (tier · links → next level), `MAX` at the top, `weld` while a rise settles. */
+  /** Pair chip text: `II · 2 → III` (tier · links → next level), `MAX` at the top. */
   pairLabel(w: World, key: string, links: number): string {
     const tier = w.fusionTiers[key] ?? 0;
     const next = nextFusionTier(this.data, links, key);
-    const pend = w.fusionPending[key];
-    const nxt = pend ? `${fusionLevel(this.data, pend.tier)} weld` : next > 0 ? fusionLevel(this.data, next) : 'MAX';
+    const nxt = next > 0 ? fusionLevel(this.data, next) : 'MAX';
     return `${tier > 0 ? fusionLevel(this.data, tier) : '–'} · ${links} → ${nxt}`;
   }
 
@@ -390,10 +351,13 @@ export class CrystalEditor {
 
   private drawReadout(): void {
     const lines = this.currentLines();
-    this.readoutLines = lines.map((l) => l.text);
+    this.readoutLines = [];
     this.readout.forEach((t, i) => {
       const l = lines[i];
       t.setText(l ? l.text : '').setColor(l ? l.color : TEXT_DIM);
+      // Too wide for the column: the sentence without its effect part.
+      if (l?.brief && t.width > this.area.w) t.setText(l.brief);
+      if (l) this.readoutLines.push(t.text);
     });
   }
 
@@ -431,8 +395,8 @@ export class CrystalEditor {
       pairs.push({
         tags: [ta, tb],
         label,
-        short: `${tier > 0 ? fusionLevel(this.data, tier) : '–'} · ${n}${w.fusionPending[key] ? '…' : ''}`,
-        bare: n <= 0 && w.fusionPending[key] === undefined && this.pair !== key,
+        short: `${tier > 0 ? fusionLevel(this.data, tier) : '–'} · ${n}`,
+        bare: n <= 0 && this.pair !== key,
         color: this.pair === key ? '#2bffb0' : tier > 0 ? '#ffffff' : TEXT_DIM,
         on: true,
         plain: `${this.data.sets.fusions[key]!.name} ${label}`,

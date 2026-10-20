@@ -98,7 +98,7 @@ describe('card effects', () => {
 
   it('cards and the shield survive a snapshot (World v7)', () => {
     const { w } = world([card('barrier', { type: 'shield', frac: 0.2 }), card('damage', { type: 'statMul', stat: 'damage', value: 1.2 })]);
-    expect(w.v).toBe(8);
+    expect(w.v).toBe(9);
     expect(JSON.stringify(restore(snapshot(w)))).toBe(JSON.stringify(w));
   });
 });

@@ -1,7 +1,7 @@
 // Crystal geometry (spec 2026-10-16 phase 0): how many of the 10 tag pairs can touch when every tag forms ONE
-// connected cluster on rings 2-4 (cluster-scoped links), and how many modules a 7-link pair (the Apex gate) needs.
+// connected cluster on rings 2-4 (cluster-scoped links). (The 7-link Apex section went with Apex, uniqueness plan item 11.)
 // Randomised annealing over layouts (seeded, so the report is reproducible); a lower bound on the true maximum.
-// Usage: npx tsx tools/sim/crystalGeometry.ts [--min 5] [--max 24] [--iters 12000] [--restarts 5] [--apex 7] [--out reports/crystal-geometry.md]
+// Usage: npx tsx tools/sim/crystalGeometry.ts [--min 5] [--max 24] [--iters 12000] [--restarts 5] [--out reports/crystal-geometry.md]
 // (the owner's package.json is untouched in phase 0, so there is no npm script yet: `"sim:geometry": "tsx tools/sim/crystalGeometry.ts"` is to be added with it)
 import { writeFileSync } from 'node:fs';
 import { DEFAULT_DATA } from '../../src/sim/data';
@@ -15,7 +15,6 @@ const minN = Number(arg('min', '5'));
 const maxN = Number(arg('max', '24'));
 const iters = Number(arg('iters', '12000'));
 const restarts = Number(arg('restarts', '5'));
-const apexLinks = Number(arg('apex', '7'));
 const out = arg('out', '');
 
 const inner = DEFAULT_DATA.crystal.coreRing + 1;
@@ -162,42 +161,6 @@ for (let n = Math.max(minN, T); n <= maxN; n++) {
   lines.push(`| ${n} | ${p} | ${sizes(r.cells, T).join('/')} | ${Math.max(...e)} |`);
 }
 lines.push('', `Tag order: ${TAGS.join(', ')}. Highest pair count found over all budgets: **${allPairs} of 10**.`, '');
-
-lines.push(`## Modules needed for a ${apexLinks}-link pair (Apex gate; two tags only, each one connected cluster)`, '', '| modules | max links between the two clusters | split A/B |', '|---|---|---|');
-let apexAt = 0;
-for (let n = 4; n <= maxN; n++) {
-  const r = anneal(n, 2, (e) => e[1]!, 2);
-  if (r === null) {
-    lines.push(`| ${n} | no layout found | |`);
-    continue;
-  }
-  const links = edges(r.cells, 2)[1]!;
-  if (links >= apexLinks && apexAt === 0) apexAt = n;
-  lines.push(`| ${n} | ${links} | ${sizes(r.cells, 2).join('/')} |`);
-  if (apexAt > 0 && n >= apexAt + 2) break;
-}
-lines.push(
-  '',
-  apexAt > 0
-    ? `First ${apexLinks}-link pair at **${apexAt} modules** (the two tags' modules together; the other three tags add at least 3 more for a full crystal, and set ≥ 4 needs stacks, not modules).`
-    : `No ${apexLinks}-link pair found up to ${maxN} modules.`,
-  '',
-);
-
-// The same with at least 3 modules in each cluster (set >= 4 from few stacks per module is the harder case).
-lines.push(`## The same, with at least 3 modules in each of the two clusters`, '', '| modules | max links | split A/B |', '|---|---|---|');
-let apex3 = 0;
-for (let n = 6; n <= maxN; n++) {
-  const r = anneal(n, 2, (e, cells) => e[1]! - (Math.min(...sizes(cells, 2)) >= 3 ? 0 : 100), 3);
-  if (r === null || r.score < 0) {
-    lines.push(`| ${n} | — | |`);
-    continue;
-  }
-  if (r.score >= apexLinks && apex3 === 0) apex3 = n;
-  lines.push(`| ${n} | ${r.score} | ${sizes(r.cells, 2).join('/')} |`);
-  if (apex3 > 0 && n >= apex3 + 1) break;
-}
-lines.push('', apex3 > 0 ? `First ${apexLinks}-link pair with both clusters >= 3 modules: **${apex3} modules**.` : `No such pair up to ${maxN} modules.`, '');
 
 const md = lines.join('\n');
 console.log(md);

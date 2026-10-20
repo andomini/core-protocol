@@ -6,7 +6,7 @@ import type { SimEvent } from '../src/sim/events';
 import { hashWorld } from '../src/sim/hash';
 import { isNeighbour, ring } from '../src/sim/hex';
 import { fusionKey, fusionKeys, validateSets } from '../src/sim/perkData';
-import { grantPerk, perkProfile, settleWeld } from '../src/sim/perks';
+import { grantPerk, perkProfile } from '../src/sim/perks';
 import { hitEnemy } from '../src/sim/projectiles';
 import { replay } from '../src/sim/replay';
 import { restore, snapshot } from '../src/sim/snapshot';
@@ -25,15 +25,8 @@ const at = (i: number): [number, number] => R2[i]!;
 const R3 = ring(3);
 const o = (i: number): [number, number] => R3[i]!;
 
-/** Lets every pending fusion rise weld (spec 2026-10-16 Â§3). */
-function settle(w: W, events: SimEvent[] | null = null): void {
-  w.tick += D.sets.weldTicks;
-  settleWeld(w, D, events);
-}
-
 function grant(w: W, id: string, slot: [number, number], times = 1, events: SimEvent[] | null = null): void {
   for (let i = 0; i < times; i++) grantPerk(w, D, id, events, i === 0 ? slot : undefined);
-  settle(w, events);
 }
 
 function move(w: W, from: [number, number], to: [number, number]): SimEvent[] {
@@ -118,10 +111,10 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
     expect(p.rules.lightningDamage).toBeCloseTo(base.lightningDamage * 1.3, 12);
     expect(p.rules.lightningTargets).toBeCloseTo(base.lightningTargets + 1, 12);
     expect(p.periodic.filter((x) => x.key === 'fusion:overload+chain:5:0').map((x) => x.e.action)).toEqual(['tesla']);
-    expect(w.timers['fusion:overload+chain:5:0']).toEqual({ next: w.tick - D.sets.weldTicks + Math.round(10 * D.config.tickHz) + D.sets.weldTicks, until: -1 });
+    expect(w.timers['fusion:overload+chain:5:0']).toEqual({ next: w.tick + Math.round(10 * D.config.tickHz), until: -1 });
   });
 
-  it('live: a move that takes links away lowers the tier at once (mods and timers go), moving back restores it once after the weld', () => {
+  it('live: a move that takes links away lowers the tier at once (mods and timers go), moving back restores it at once', () => {
     const w = quiet();
     // âš¡ at(0), at(1) and ðŸ’° at o(1), o(2) â†’ 3 links: Headhunter II adds +5 % Crit Chance as a stat mod.
     grant(w, 'overclockRounds', at(0));
@@ -139,9 +132,6 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
     expect(w.mods.filter((m) => m.source.startsWith('fusion:overload+mining:3'))).toEqual([]);
     expect(worldStats(w, D).critChance).toBeCloseTo(crit - 0.03, 12);
     ev = move(w, at(6), o(2));
-    expect(w.fusionTiers['overload+mining']).toBe(1);
-    expect(ofType(ev, 'fusion')).toEqual([]);
-    settle(w, ev);
     expect(w.fusionTiers['overload+mining']).toBe(3);
     expect(ofType(ev, 'fusion')).toHaveLength(1);
     expect(w.mods.filter((m) => m.source === 'fusion:overload+mining:3')).toHaveLength(1);
@@ -206,7 +196,6 @@ describe('fusions: links between touching modules of two tags (spec 2026-10-15 Â
     expect(w.timers[tesla]).toBeUndefined();
     expect(perkProfile(w, D).periodic.map((x) => x.key)).not.toContain(tesla);
     move(w, at(9), at(2));
-    settle(w);
     expect(w.timers[tesla]).toEqual({ next: w.tick + Math.round(10 * D.config.tickHz), until: -1 });
 
     const f = quiet();

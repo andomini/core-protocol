@@ -3,7 +3,7 @@
 
 import type { GameData, StatId } from '../sim/data';
 import type { Effect, Tag } from '../sim/perkData';
-import { fusionEffects, fusionSteps, fusionTierIndex, slotGains } from '../sim/crystal';
+import { fusionEffects, fusionSteps, slotGains } from '../sim/crystal';
 import { latticeBonus as bonusOf, latticeMean, latticeNow } from '../sim/perks';
 import type { World } from '../sim/state';
 import type { ModTarget } from '../sim/stats';
@@ -285,10 +285,9 @@ export function fusionLadder(data: GameData, key: string, reached: number): SetL
   return fusionSteps(data, key).map((t) => ({ tier: t, on: t <= reached, text: fusionLines(data, key, t).join(' · ') }));
 }
 
-/** A fusion tier's level as a roman numeral (link counts 1 / 3 / 5 → I / II / III; any tier above the top one is the Apex, IV); '' for none. */
+/** A fusion tier's level as a roman numeral (link counts 1 / 3 / 5 → I / II / III); '' for none. */
 export function fusionLevel(data: GameData, tier: number): string {
-  const ft = data.sets.fusionTiers;
-  const i = tier > ft[ft.length - 1]! ? ft.length : ft.indexOf(tier);
+  const i = data.sets.fusionTiers.indexOf(tier);
   return i < 0 ? '' : (['I', 'II', 'III', 'IV', 'V'][i] ?? String(i + 1));
 }
 
@@ -314,15 +313,13 @@ export function latticeLine(data: GameData, w: World, final = false): string {
   return `LATTICE ${shown} · +${pct} % Bits`;
 }
 
-/** Pick-card fusion badges for taking `id` (at its auto slot): "opens X", "+1 link → X II", "Apex ready: X". */
+/** Pick-card fusion badges for taking `id` (at its auto slot): "opens X I", "+1 link → X II". */
 export function pickBadges(data: GameData, w: World, id: string): string[] {
   const out: string[] = [];
   for (const f of slotGains(w, data, id)?.fusions ?? []) {
     if (f.tierTo <= f.tierFrom) continue;
     const name = data.sets.fusions[f.key]!.name.toUpperCase();
-    const steps = fusionSteps(data, f.key);
-    if (fusionTierIndex(data, f.key, f.tierTo) === steps.length && steps.length > data.sets.fusionTiers.length) out.push(`Apex ready: ${name}`);
-    else if (f.tierFrom === 0) out.push(`opens ${name} ${fusionLevel(data, f.tierTo)}`);
+    if (f.tierFrom === 0) out.push(`opens ${name} ${fusionLevel(data, f.tierTo)}`);
     else out.push(`+${f.to - f.from} link → ${name} ${fusionLevel(data, f.tierTo)}`);
   }
   return out;

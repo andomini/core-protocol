@@ -28,27 +28,3 @@ Annealed layouts (seeded; 10 restarts × 40000 steps per row; a lower bound). Sl
 | 24 | 8 | 6/2/3/10/3 | 8 |
 
 Tag order: overload, cryo, chain, mining, firewall. Highest pair count found over all budgets: **9 of 10**.
-
-## Modules needed for a 7-link pair (Apex gate; two tags only, each one connected cluster)
-
-| modules | max links between the two clusters | split A/B |
-|---|---|---|
-| 4 | 3 | 1/3 |
-| 5 | 4 | 4/1 |
-| 6 | 5 | 4/2 |
-| 7 | 7 | 2/5 |
-| 8 | 8 | 6/2 |
-| 9 | 9 | 7/2 |
-
-First 7-link pair at **7 modules** (the two tags' modules together; the other three tags add at least 3 more for a full crystal, and set ≥ 4 needs stacks, not modules).
-
-## The same, with at least 3 modules in each of the two clusters
-
-| modules | max links | split A/B |
-|---|---|---|
-| 6 | 5 | 3/3 |
-| 7 | 6 | 4/3 |
-| 8 | 8 | 3/5 |
-| 9 | 9 | 5/4 |
-
-First 7-link pair with both clusters >= 3 modules: **8 modules**.

@@ -13,7 +13,8 @@ import { fusionTags } from './perkText';
 import { drawTagIcon } from './tagIcon';
 
 const D = DEPTH.overlay + 2;
-const LEVEL = ['', 'I', 'II', 'III', 'APEX'];
+// Best tier index I = 1 … III = 3; a 4 in an older save (the shelved Apex) reads as III.
+const LEVEL = ['', 'I', 'II', 'III', 'III'];
 
 export class CodexPanel {
   visible = false;

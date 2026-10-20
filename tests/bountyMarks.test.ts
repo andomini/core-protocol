@@ -92,7 +92,7 @@ describe('Bounty Marks (spec 2026-10-16 phase 2)', () => {
     expect(bb2).toBeCloseTo(bb1 * 2, 6);
   });
 
-  it('III: a jackpot every 12 Marks, capped at 2 per run; Apex: every 8, capped at 3', () => {
+  it('III: a jackpot every 12 Marks, capped at 2 per run', () => {
     const w = quiet();
     w.fusionTiers[KEY] = 5;
     w.wave = 10;
@@ -103,13 +103,6 @@ describe('Bounty Marks (spec 2026-10-16 phase 2)', () => {
     expect(w.marks.jackpots).toBe(2);
     expect(jp[0]!.bits).toBeCloseTo(scaleForWave(100, D.tiers[0]!.bitsMul, D.config.bitsGrowth, 10), 6);
     expect(ofType(ev, 'markKill')).toHaveLength(48);
-
-    const a = quiet();
-    a.fusionTiers[KEY] = 7;
-    a.wave = 10;
-    const ea: SimEvent[] = [];
-    for (let i = 0; i < 8 * 5; i++) kill(a, 'basic', true, false, ea);
-    expect(ofType(ea, 'bountyJackpot')).toHaveLength(3);
   });
 
   it('old snapshots get an empty Mark plan and fusionBest from fusionTiers', () => {
@@ -135,9 +128,10 @@ describe('Fusion Codex', () => {
     expect(r2.codexBits).toBe(M.codex.bits);
     expect(r2.bits).toBe(M.codex.bits);
     expect(m.codex[KEY]).toBe(3);
-    const r3 = settleRun(m, D, M, { tier: 1, wave: 5, bits: 0, keys: 0, doubled: false, fusionsReached: { [KEY]: 7 } });
+    const r3 = settleRun(m, D, M, { tier: 1, wave: 5, bits: 0, keys: 0, doubled: false, fusionsReached: { [KEY]: 5 } });
     expect(r3.codexBits).toBe(0);
-    expect(m.codex[KEY]).toBe(4);
+    expect(r3.codexNew).toEqual([]);
+    expect(m.codex[KEY]).toBe(3);
     expect(m.keys).toBe(0);
   });
 

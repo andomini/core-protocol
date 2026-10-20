@@ -237,19 +237,11 @@ function refreshTiers(w: World, data: GameData, events: SimEvent[] | null): void
     w.setTiers[tag] = tier;
     events?.push({ type: 'setTier', tag, tier, prev });
   }
-  // Weld (spec 2026-10-16 §3): a rise waits in fusionPending until settleWeld (weldTicks with the link count
-  // unchanged; a new link count or target restarts the wait); a drop applies at once and cancels the wait.
+  // Fusion tiers follow the links at once, up or down (Weld was dropped, uniqueness plan item 11).
   const links = fusionLinkCounts(w, data);
   for (const key of fusionKeys()) {
-    const n = links[key] ?? 0;
     const prev = w.fusionTiers[key] ?? 0;
-    const tier = fusionTierAt(data, key, n, counts);
-    if (tier > prev) {
-      const p = w.fusionPending[key];
-      if (p === undefined || p.links !== n || p.tier !== tier) w.fusionPending[key] = { tier, links: n, sinceTick: w.tick };
-      continue;
-    }
-    delete w.fusionPending[key];
+    const tier = fusionTierAt(data, links[key] ?? 0);
     if (tier !== prev) setFusionTier(w, data, key, prev, tier, events);
   }
 }
@@ -267,25 +259,9 @@ function setFusionTier(w: World, data: GameData, key: string, prev: number, tier
 }
 
 /**
- * Weld (spec 2026-10-16 §3), once per tick before the profile: pending fusion rises whose link count held for
- * weldTicks apply now (HP share kept, like any crystal change).
- */
-export function settleWeld(w: World, data: GameData, events: SimEvent[] | null): void {
-  if (Object.keys(w.fusionPending).length === 0) return;
-  for (const key of fusionKeys()) {
-    const p = w.fusionPending[key];
-    if (p === undefined || w.tick - p.sinceTick < data.sets.weldTicks) continue;
-    delete w.fusionPending[key];
-    const prev = w.fusionTiers[key] ?? 0;
-    if (p.tier !== prev) keepHealthShare(w, data, () => setFusionTier(w, data, key, prev, p.tier, events));
-  }
-}
-
-/**
  * Rebuilds every set and fusion tier from the crystal under the current rules (snapshot migration of runs
  * saved before crystal combos v2, whose tiers and `set:` / `fusion:` mods came from older ladders and global
- * link counts). Tiers apply at once (no weld: they were held before the save); timers that still exist keep
- * their progress; the HP share is kept.
+ * link counts). Tiers apply at once; timers that still exist keep their progress; the HP share is kept.
  */
 export function rebuildCrystal(w: World, data: GameData): void {
   const stale = (k: string) => k.startsWith('set:') || k.startsWith('fusion:');
@@ -299,14 +275,7 @@ export function rebuildCrystal(w: World, data: GameData): void {
     }
     for (const t of TAGS) w.setTiers[t] = 0;
     w.fusionTiers = {};
-    w.fusionPending = {};
     refreshTiers(w, data, null);
-    for (const key of fusionKeys()) {
-      const p = w.fusionPending[key];
-      if (p === undefined) continue;
-      delete w.fusionPending[key];
-      setFusionTier(w, data, key, 0, p.tier, null);
-    }
     for (const k of Object.keys(w.timers)) if (oldTimers[k] !== undefined) w.timers[k] = oldTimers[k];
   });
 }
@@ -319,7 +288,7 @@ export function accumulateCrystal(w: World, data: GameData): void {
   w.geneTicks += 1;
 }
 
-/** The Lattice now: the sum of fusion tier indices (I = 1 … Apex = 4) on the crystal this tick. */
+/** The Lattice now: the sum of fusion tier indices (I = 1 … III = 3) on the crystal this tick. */
 export function latticeNow(w: World, data: GameData): number {
   let sum = 0;
   for (const key in w.fusionTiers) sum += fusionTierIndex(data, key, w.fusionTiers[key]!);
