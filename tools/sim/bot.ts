@@ -8,6 +8,8 @@
 //   atk-first    greedy, but ATK prices count 4× cheaper (tools/sim/bot.json)
 //   def-first    the same for DEF
 //   round-robin  cycles through the useful stats in panel order, saving up for the next one
+//   (c2) greedy, atk-first and def-first also plant a Territory Beacon from wave bot.json beacon.fromWave on (at most
+//                beacon.perRun per run): they save Energy for it, then plant it once there is an infection front
 import botJson from './bot.json';
 import { type Command, isUnlocked, quoteFor } from '../../src/sim/commands';
 import { type GameData, STAT_IDS, type StatId, type TabId } from '../../src/sim/data';
@@ -19,6 +21,8 @@ import { pulseWorth } from '../../src/sim/pulse';
 import { type CrystalDiff, crystalDiff, crystalSlots, freeSlots, fusionSteps, movePreview, needsPlacement, slotGains } from '../../src/sim/crystal';
 import { crystalRing } from '../../src/sim/territory';
 import { createStream, nextInt } from '../../src/sim/rng';
+import { beaconCost, beaconCount, beaconSite } from '../../src/sim/beacon'; // c2
+import { worldStats } from '../../src/sim/state'; // c2
 
 export type PolicyName = 'none' | 'greedy' | 'atk-first' | 'def-first' | 'round-robin';
 export const POLICIES: PolicyName[] = ['none', 'greedy', 'atk-first', 'def-first', 'round-robin'];
@@ -49,6 +53,16 @@ function buyable(w: World, data: GameData, id: StatId): boolean {
   return isUnlocked(w, data, id) && quoteFor(w, data, id, 1).levels > 0;
 }
 
+/** c2: does the bot save for a beacon? (from beacon.fromWave, none standing, under beacon.perRun this run) */
+function beaconWanted(w: World): boolean {
+  return w.wave >= botJson.beacon.fromWave && !w.dead && beaconCount(w) === 0 && (w.beacons ?? 0) < botJson.beacon.perRun; // c2
+}
+
+/** c2: plant it now? (affordable, not in a pick, an infection front in the arena) */
+function beaconNow(w: World, data: GameData): boolean {
+  return w.phase !== 'pick' && w.energy >= beaconCost(w, data) && beaconSite(w, data, worldStats(w, data).range) >= 0; // c2
+}
+
 function weighted(name: 'greedy' | 'atk-first' | 'def-first'): Bot {
   const weight = botJson.tabWeight[name] as Record<TabId, number>;
   return {
@@ -77,6 +91,8 @@ function weighted(name: 'greedy' | 'atk-first' | 'def-first'): Bot {
       }
       // Pulse (uniqueness plan item 4): fired whenever ready with the autoPulse rule's crowd in the ring.
       const out: Command[] = pulseWorth(w, data) ? [{ type: 'pulse' }] : [];
+      // c2: while a beacon is wanted the bot saves for it (no buys), then plants it at the next front.
+      if (beaconWanted(w)) return beaconNow(w, data) ? [...out, { type: 'beacon' }] : out; // c2
       // Save up for the best-value option rather than buying a worse one now.
       if (kindBest !== null) {
         if (w.energy >= structCost(w, data, kindBest)!) out.push({ type: 'upgradeStruct', kind: kindBest });

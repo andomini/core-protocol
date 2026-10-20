@@ -1,3 +1,4 @@
+import { updateBeacons } from './beacon'; // c2
 import { applyCommands, type Command } from './commands';
 import { nearestInRange, updateCore } from './core';
 import type { GameData } from './data';
@@ -94,6 +95,7 @@ export function step(w: World, data: GameData, commands: readonly Command[], eve
     events.push({ type: 'death', wave: w.wave, tick: w.tick, bonusBits });
     return;
   }
+  updateBeacons(w, data, events); // c2: cleanse rings, count held waves, pay the hold goal
   gridFor(data).build(w.enemies);
   autoPulse(w, data, st, prof, events); // pulse: the autoPulse lab node
   updateStructures(w, data, st, prof, events);

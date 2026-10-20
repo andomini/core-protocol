@@ -25,7 +25,7 @@ function validStruct(x: unknown): boolean {
   const s = x as Record<string, unknown>;
   const num = (k: string) => typeof s[k] === 'number';
   return (
-    (STRUCTURE_KINDS as readonly unknown[]).includes(s.kind) &&
+    ((STRUCTURE_KINDS as readonly unknown[]).includes(s.kind) || s.kind === 'beacon') && // c2: the Territory Beacon
     Number.isInteger(s.id) &&
     Number.isInteger(s.slot) &&
     (s.slot as number) >= 0 &&

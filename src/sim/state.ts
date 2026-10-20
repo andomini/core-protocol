@@ -225,6 +225,15 @@ export interface World {
   pulseLastTag: Tag | 'none';
   /** Lab node autoPulse: the sim fires the pulse by itself. */
   pulseAuto: boolean;
+  // c2: the Territory Beacon (src/sim/beacon.ts). Optional, absent = 0 / none (no version bump).
+  /** Beacons built this run (the cost grows with it). */
+  beacons?: number;
+  /** Territory cell ids claimed by held beacons (sorted): never infected again this run. */
+  claimed?: number[];
+  /** Beacons held to their goal this run. */
+  beaconClaims?: number;
+  /** Wave ends survived by standing beacons this run (the beacon mission). */
+  beaconWaves?: number;
   /** Separate streams so purchases (upgrades) never perturb combat or spawns. */
   rng: { spawn: RngState; combat: RngState; upgrades: RngState };
 }

@@ -30,6 +30,7 @@ console.log(
     bits: w.bits,
     spent: r.spent,
     commands: r.log.length,
+    beacons: { placed: w.beacons ?? 0, held: w.beaconWaves ?? 0, claims: w.beaconClaims ?? 0 }, // c2
     levels,
     hash: hashWorld(w),
   }),

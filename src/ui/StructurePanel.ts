@@ -8,7 +8,7 @@ import { ENERGY_CSS, TAG_CSS, TEXT, TEXT_DIM, TEXT_RED } from '../render/palette
 import { DEPTH } from '../render/WorldView';
 import type { Command } from '../sim/commands';
 import type { GameData, StructureUpgradeDef } from '../sim/data';
-import type { StructureKind } from '../sim/perkData';
+import type { FusionStructureKind, StructureKind, Tag } from '../sim/perkData';
 import { structureBuilt } from '../sim/perks';
 import type { World } from '../sim/state';
 import { structLevel, structUpgradeCost, structUpgradeDef, upgradableKinds } from '../sim/structLevels';
@@ -16,9 +16,10 @@ import { formatNum } from './format';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
 
-const NAME: Record<StructureKind, string> = { wall: 'ICE WALL', turret: 'TURRETS', mine: 'MINES', station: 'STATIONS' };
+// Only the fusion-built kinds have a ladder; the beacon (c2) is a one-off Struct without upgrades.
+const NAME: Record<FusionStructureKind, string> = { wall: 'ICE WALL', turret: 'TURRETS', mine: 'MINES', station: 'STATIONS' };
 /** The tag next to firewall in the fusion that builds the kind (its colour). */
-const TAG_OF = { wall: 'cryo', turret: 'overload', mine: 'chain', station: 'mining' } as const;
+const TAG_OF: Record<FusionStructureKind, Tag> = { wall: 'cryo', turret: 'overload', mine: 'chain', station: 'mining' };
 const FIELD: Record<string, string> = {
   dmgFrac: 'damage', hpFrac: 'HP', regrowSec: 'regrow time', blast: 'blast radius', energy: 'Energy', streakMax: 'streak cap',
   rateMul: 'fire rate', range: 'range', dmgMul: 'damage', streakStep: 'streak step',
@@ -152,8 +153,9 @@ export class StructurePanel {
     const key = `${k}|${lv}|${can ? 1 : 0}|${this.built.length}`;
     if (key === this.last) return;
     this.last = key;
-    this.title.setText(NAME[k]).setColor(TAG_CSS[TAG_OF[k]]);
-    this.title.setShadow(0, 0, TAG_CSS[TAG_OF[k]], 10, false, true);
+    const fk = k as FusionStructureKind; // upgradableKinds only lists kinds with a ladder
+    this.title.setText(NAME[fk]).setColor(TAG_CSS[TAG_OF[fk]]);
+    this.title.setShadow(0, 0, TAG_CSS[TAG_OF[fk]], 10, false, true);
     this.level.setText(`LV ${lv}/${def.max}`);
     const lines = nextEffectLines(def, lv);
     this.next.setText(lines.length > 0 ? `Next: ${lines.join(', ')}` : 'Fully upgraded').setWordWrapWidth(this.panelRect.w - 32);

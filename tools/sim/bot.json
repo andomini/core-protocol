@@ -15,6 +15,7 @@
     "atk-first": { "atk": 4, "def": 1, "util": 1 },
     "def-first": { "atk": 1, "def": 4, "util": 1 }
   },
+  "beacon": { "fromWave": 7, "perRun": 1 },
   "crystal": {
     "setTier": 6, "setCount": 1, "fusionTier": 8, "link": 2,
     "rarity": 4, "held": 0.5,

@@ -29,8 +29,9 @@ export function structUpgradeCost(data: GameData, kind: StructureKind, level: nu
 
 /** Upper bound of a whole-number field (targets ≤ 8, perWave ≤ 12, …), Infinity for a real one. */
 function fieldCap(kind: StructureKind, field: string): number {
-  const rule = STRUCTURE_FIELDS[kind][field]?.rule;
-  return rule !== undefined && 'max' in rule ? rule.max : Infinity;
+  // The beacon (c2) is not a fusion kind and has no field table: no cap.
+  const rule = (STRUCTURE_FIELDS as Partial<Record<StructureKind, Record<string, { rule: { max?: number } }>>>)[kind]?.[field]?.rule;
+  return rule !== undefined && typeof rule.max === 'number' ? rule.max : Infinity;
 }
 
 /** One kind's values at `level`: each `perLevel` field × (1 + frac·level), each `atMax` field + add at the top level. Only fields the ladders set are touched. */
