@@ -147,6 +147,19 @@ export function installDevHooks(game: Phaser.Game): void {
       const free = (s: [number, number]) => freeSlots(w, b.gd).some(([q, r]) => q === s[0] && r === s[1]);
       for (const [id, slot, n] of put) for (let i = 0; i < n; i++) grantPerk(w, b.gd, id, null, i === 0 && (w.perks[id] ?? 0) === 0 && free(slot) ? slot : undefined);
     },
+    /**
+     * C4: every structure kind at tier I (the four firewall fusions) plus `energy` Energy, for the structure-upgrade
+     * panel checks. Writes the world directly (breaks replay of this run), like `demoCrystal`.
+     */
+    demoStructures: (energy = 5000) => {
+      const b = battle();
+      if (!b) return;
+      const w = b.session.world;
+      for (const k of ['cryo+firewall', 'overload+firewall', 'chain+firewall', 'mining+firewall']) w.fusionTiers[k] = Math.max(1, w.fusionTiers[k] ?? 0);
+      w.energy += energy;
+    },
+    /** C4: the structure-upgrade levels (missing kinds are 0). */
+    structLevels: () => ({ ...(battle()?.session.world.structLevels ?? {}) }),
     /** Takes card `i` of the open protocol offer (as a card tap would: the boot sector while the boot pick is open). */
     pickPerk: (i = 0) => {
       const b = battle();
