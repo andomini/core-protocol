@@ -84,7 +84,7 @@
   },
   "fusionTiers": [1, 3, 5],
   "howCap": 4,
-  "latticeCoef": 0.015,
+  "latticeCoef": 0.014,
   "latticeMax": 0.22,
   "fusions": {
     "overload+cryo": {
