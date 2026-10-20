@@ -4,6 +4,7 @@
     {"id": "speed3", "branch": "speed", "name": "Overclock \u00d73", "cost": 15000, "requires": [], "effect": {"type": "speed", "value": 3}},
     {"id": "speed4", "branch": "speed", "name": "Overclock \u00d74", "cost": 400000, "requires": ["speed3"], "effect": {"type": "speed", "value": 4}},
     {"id": "speed5", "branch": "speed", "name": "Overclock \u00d75", "cost": 6000000, "requires": ["speed4"], "effect": {"type": "speed", "value": 5}},
+    {"id": "autoPulse", "branch": "speed", "name": "Auto Pulse", "cost": 120000, "requires": ["speed3"], "effect": {"type": "autoPulse"}},
     {"id": "multishot", "branch": "arsenal", "name": "Multishot", "cost": 40000, "requires": [], "effect": {"type": "unlock", "stat": "multishot"}},
     {"id": "lifesteal", "branch": "arsenal", "name": "Lifesteal", "cost": 30000, "requires": [], "effect": {"type": "unlock", "stat": "lifesteal"}},
     {"id": "interest", "branch": "arsenal", "name": "Interest", "cost": 25000, "requires": [], "effect": {"type": "unlock", "stat": "interest"}},

@@ -24,7 +24,7 @@ export interface StatTab {
 }
 
 const KIND_NAME: Record<EnemyKind, string> = { basic: 'Basic', fast: 'Fast', tank: 'Tank', ranged: 'Ranged', boss: 'Worm (boss)' };
-const SOURCE_NAME: Record<DamageSource, string> = { shot: 'Shots', bounce: 'Bounces', lightning: 'Lightning', tesla: 'Tesla Coil', thorns: 'Thorns', turret: 'Bastion', mine: 'Minefield' };
+const SOURCE_NAME: Record<DamageSource, string> = { shot: 'Shots', bounce: 'Bounces', lightning: 'Lightning', tesla: 'Tesla Coil', thorns: 'Thorns', turret: 'Bastion', mine: 'Minefield', pulse: 'Pulse' };
 
 export function clock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));

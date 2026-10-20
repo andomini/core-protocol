@@ -8,7 +8,7 @@ import { type World, WORLD_VERSION } from './state';
 import { canonicalLevels } from './stats';
 
 /** Bumped with the World shape: v1 (M1–M2a) derived core stats; v2 (M2b) had no protocols (M3). */
-export const SNAPSHOT_VERSION = 7;
+export const SNAPSHOT_VERSION = 8; // pulse: v8 adds the pulse fields (v7 migrates)
 
 /** Serializes the whole world. Throws if any value is non-finite (JSON would turn it into null). */
 export function snapshot(w: World): string {
@@ -62,14 +62,15 @@ export function restore(s: string, data?: GameData): World {
     throw new Error(`snapshot: invalid JSON (${(err as Error).message})`);
   }
   const o = parsed as { v?: unknown; world?: unknown } | null;
-  if (o === null || typeof o !== 'object' || o.v !== SNAPSHOT_VERSION) {
+  // pulse: a v7 snapshot is read too (the migration below adds the pulse fields).
+  if (o === null || typeof o !== 'object' || (o.v !== SNAPSHOT_VERSION && o.v !== 7)) {
     throw new Error(`snapshot: unsupported version ${String(o?.v)}`);
   }
   const w = o.world as Partial<World> | null | undefined;
   if (
     w === null ||
     typeof w !== 'object' ||
-    w.v !== WORLD_VERSION ||
+    ((w.v as number) !== WORLD_VERSION && (w.v as number) !== 7) ||
     typeof w.tick !== 'number' ||
     !Array.isArray(w.enemies) ||
     !Array.isArray(w.projectiles) ||
@@ -174,6 +175,20 @@ export function restore(s: string, data?: GameData): World {
   ) {
     throw new Error('snapshot: malformed world');
   }
+  // pulse: runs saved before v8 have no Pulse yet (ready now, none fired, no autoPulse).
+  w.pulseReadyTick ??= 0;
+  w.pulseCount ??= 0;
+  w.pulseLastTag ??= 'none';
+  w.pulseAuto ??= false;
+  if (
+    typeof w.pulseReadyTick !== 'number' ||
+    !Number.isInteger(w.pulseCount) ||
+    !(w.pulseLastTag === 'none' || (TAGS as readonly unknown[]).includes(w.pulseLastTag)) ||
+    typeof w.pulseAuto !== 'boolean'
+  ) {
+    throw new Error('snapshot: malformed world');
+  }
+  w.v = WORLD_VERSION;
   // Runs saved before the BUILD tab (spec 2026-10-15 Upgrades): its six stats start at level 0, in canonical key order.
   w.levels = canonicalLevels(w.levels);
   w.workshop = canonicalLevels(w.workshop);

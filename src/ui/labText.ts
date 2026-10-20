@@ -28,5 +28,7 @@ export function labEffectText(data: GameData, e: LabEffect): string {
       return `+${e.value} Energy at run start`;
     case 'offlineCap':
       return `Offline income up to ${e.hours}h`;
+    case 'autoPulse':
+      return `Pulse fires by itself when ${data.pulse.autoPulse.minTargets}+ viruses are in its ring`;
   }
 }

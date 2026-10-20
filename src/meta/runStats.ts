@@ -4,8 +4,8 @@ import { ENEMY_KINDS, type EnemyKind } from '../sim/data';
 import type { SimEvent } from '../sim/events';
 import { fusionKeys } from '../sim/perkData';
 
-export type DamageSource = 'shot' | 'bounce' | 'lightning' | 'tesla' | 'thorns' | 'turret' | 'mine';
-export const DAMAGE_SOURCES: readonly DamageSource[] = ['shot', 'bounce', 'lightning', 'tesla', 'thorns', 'turret', 'mine'];
+export type DamageSource = 'shot' | 'bounce' | 'lightning' | 'tesla' | 'thorns' | 'turret' | 'mine' | 'pulse';
+export const DAMAGE_SOURCES: readonly DamageSource[] = ['shot', 'bounce', 'lightning', 'tesla', 'thorns', 'turret', 'mine', 'pulse'];
 
 export interface RunStats {
   /** Sim ticks played (from the world) and real time with the game running (ms). */

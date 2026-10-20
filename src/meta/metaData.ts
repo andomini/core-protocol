@@ -33,7 +33,9 @@ export type LabEffect =
   | { type: 'presets' }
   | { type: 'bitsMul'; value: number }
   | { type: 'startEnergy'; value: number }
-  | { type: 'offlineCap'; hours: number };
+  | { type: 'offlineCap'; hours: number }
+  /** pulse: the sim fires the Pulse by itself (src/sim/pulse.ts autoPulse). */
+  | { type: 'autoPulse' };
 
 export interface LabNode {
   id: string;

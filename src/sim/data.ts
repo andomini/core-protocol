@@ -9,6 +9,7 @@ import perksJson from '../data/perks.json';
 import setsJson from '../data/sets.json';
 import statsJson from '../data/stats.json';
 import structuresJson from '../data/structures.json';
+import pulseJson from '../data/pulse.json'; // pulse
 import { type PerksData, type SetsData, STRUCTURE_KINDS, type StructureKind, TAGS, type Tag, validatePerks, validateSets } from './perkData';
 import tiersJson from '../data/tiers.json';
 
@@ -267,6 +268,27 @@ export interface StructuresDef {
   };
 }
 
+/** Pulse (uniqueness plan item 4): the core's active ring, its effect by the dominant tag (src/sim/pulse.ts). */
+export interface PulseDef {
+  cooldownSec: number;
+  /** Ring radius = this × Range. */
+  radiusRangeMul: number;
+  /** The dominant tag needs at least this set count; below it the plain pulse fires. */
+  minCount: number;
+  /** × (1 + tierPower × set tier steps of the dominant tag) on every effect. */
+  tierPower: number;
+  /** Cooldown × (1 − tierCooldown × set tier steps), at least 0.2. */
+  tierCooldown: number;
+  /** Lab node autoPulse: fires when ready and at least minTargets viruses are in the ring. */
+  autoPulse: { minTargets: number };
+  none: { damageMul: number; knockback: number };
+  overload: { damageMul: number };
+  cryo: { damageMul: number; freezeSec: number };
+  chain: { damageMul: number; maxTargets: number };
+  mining: { damageMul: number; energyMul: number; bitsMul: number };
+  firewall: { damageMul: number; shieldFrac: number; shieldCapFrac: number; knockback: number };
+}
+
 export interface GameData {
   config: SimConfig;
   core: CoreDef;
@@ -279,6 +301,7 @@ export interface GameData {
   territory: TerritoryDef;
   mutations: MutationsDef;
   structures: StructuresDef;
+  pulse: PulseDef; // pulse
   /** 64 unit vectors around the circle (see tools/gen-directions.ts). */
   directions: [number, number][];
 }
@@ -465,6 +488,24 @@ export function validateData(d: GameData): GameData {
     if (t.speedMul !== undefined) positive(t.speedMul, `tiers[${i}].speedMul`);
   });
 
+  // pulse
+  const pu = d.pulse;
+  positive(pu?.cooldownSec, 'pulse.cooldownSec');
+  positive(pu.radiusRangeMul, 'pulse.radiusRangeMul');
+  check(Number.isInteger(pu.minCount) && pu.minCount >= 1, 'pulse.minCount must be a whole number ≥ 1');
+  nonNeg(pu.tierPower, 'pulse.tierPower');
+  check(Number.isFinite(pu.tierCooldown) && pu.tierCooldown >= 0 && pu.tierCooldown < 1, 'pulse.tierCooldown must be in [0, 1)');
+  check(Number.isInteger(pu.autoPulse?.minTargets) && pu.autoPulse.minTargets >= 1, 'pulse.autoPulse.minTargets must be a whole number ≥ 1');
+  for (const k of ['none', 'overload', 'cryo', 'chain', 'mining', 'firewall'] as const) nonNeg(pu[k]?.damageMul, `pulse.${k}.damageMul`);
+  nonNeg(pu.none.knockback, 'pulse.none.knockback');
+  positive(pu.cryo.freezeSec, 'pulse.cryo.freezeSec');
+  check(Number.isInteger(pu.chain.maxTargets) && pu.chain.maxTargets >= 1, 'pulse.chain.maxTargets must be a whole number ≥ 1');
+  nonNeg(pu.mining.energyMul, 'pulse.mining.energyMul');
+  nonNeg(pu.mining.bitsMul, 'pulse.mining.bitsMul');
+  positive(pu.firewall.shieldFrac, 'pulse.firewall.shieldFrac');
+  check(Number.isFinite(pu.firewall.shieldCapFrac) && pu.firewall.shieldCapFrac >= pu.firewall.shieldFrac, 'pulse.firewall.shieldCapFrac must be ≥ shieldFrac');
+  nonNeg(pu.firewall.knockback, 'pulse.firewall.knockback');
+
   check(d.directions.length === 64, `directions must have 64 entries, got ${d.directions.length}`);
   d.directions.forEach(([x, y], i) => {
     check(Number.isFinite(x) && Number.isFinite(y) && Math.abs(x * x + y * y - 1) < 1e-9, `directions[${i}] must be a unit vector`);
@@ -484,5 +525,6 @@ export const DEFAULT_DATA: GameData = validateData({
   territory: territoryJson as TerritoryDef,
   mutations: mutationsJson as unknown as MutationsDef,
   structures: structuresJson as StructuresDef,
+  pulse: pulseJson as PulseDef, // pulse
   directions: directionsJson as [number, number][],
 });

@@ -35,6 +35,8 @@ export interface LabEffects {
   bitsMul: number;
   startEnergy: number;
   offlineCapHours: number;
+  /** pulse: lab node autoPulse. */
+  autoPulse: boolean;
 }
 
 export function labEffects(m: MetaState, md: MetaData): LabEffects {
@@ -51,6 +53,7 @@ export function labEffects(m: MetaState, md: MetaData): LabEffects {
     bitsMul: 1,
     startEnergy: 0,
     offlineCapHours: md.offline.capHours,
+    autoPulse: false,
   };
   for (const n of md.labs.nodes) {
     if (!m.labs.includes(n.id)) continue;
@@ -91,6 +94,9 @@ export function labEffects(m: MetaState, md: MetaData): LabEffects {
         break;
       case 'offlineCap':
         e.offlineCapHours = Math.max(e.offlineCapHours, f.hours);
+        break;
+      case 'autoPulse':
+        e.autoPulse = true;
         break;
     }
   }

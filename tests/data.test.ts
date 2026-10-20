@@ -52,4 +52,11 @@ describe('game data', () => {
     (kind.templates[0] as { kind: string }).kind = 'dance';
     expect(() => validateMissions(kind)).toThrow(/unknown kind/);
   });
+
+  // pulse
+  it('pulse data: defaults valid, a bad value names its field', () => {
+    expect(DEFAULT_DATA.pulse.cooldownSec).toBeGreaterThan(0);
+    expect(() => testData({ pulse: { cooldownSec: 0 } })).toThrow(/pulse\.cooldownSec/);
+    expect(() => testData({ pulse: { cryo: { freezeSec: -1 } } })).toThrow(/pulse\.cryo\.freezeSec/);
+  });
 });
