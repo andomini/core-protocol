@@ -1,5 +1,6 @@
 // "CORE BREACHED": wave reached, kills, Bits and Keys paid into the meta save (after lab multipliers and
-// milestones), a note (new best / milestones / tier unlocked), and REVIVE ▶AD · ×2 BITS ▶AD · HOME · RETRY.
+// milestones), a note (new best / milestones / tier unlocked), the daily missions' progress ("+N KEYS" for the
+// ones this run completed), and REVIVE ▶AD · ×2 BITS ▶AD · HOME · RETRY.
 
 import Phaser from 'phaser';
 import { BITS_CSS, CORE_HIT, CYAN, ENERGY, KEY_CSS, TEXT_DIM, TEXT_RED } from '../render/palette';
@@ -8,6 +9,7 @@ import { DEPTH } from '../render/WorldView';
 import { formatNum } from './format';
 import { Button, panel, text } from './kit';
 import type { Layout, Rect } from './layout';
+import { type MissionLine, progressText } from '../meta/missions';
 
 export interface DeathStats {
   wave: number;
@@ -18,6 +20,8 @@ export interface DeathStats {
   note: string;
   canRevive: boolean;
   canDouble: boolean;
+  /** Daily mission progress made by this run (empty: no block). */
+  missions?: MissionLine[];
 }
 
 export interface DeathHandlers {
@@ -35,6 +39,8 @@ export class DeathOverlay {
   private readonly ghostA: Phaser.GameObjects.Text;
   private readonly ghostB: Phaser.GameObjects.Text;
   private readonly note: Phaser.GameObjects.Text;
+  /** Daily missions: one line each, stacked under the note. */
+  private readonly missionTexts: Phaser.GameObjects.Text[] = [];
   /** Leaderboard status ("submitted · rank ~12", "offline · will submit later"), just above the buttons. */
   private readonly rankLine: Phaser.GameObjects.Text;
   private readonly reviveBtn: Button;
@@ -72,7 +78,7 @@ export class DeathOverlay {
     const D = DEPTH.overlay;
     const portrait = L.o === 'portrait';
     const cw = portrait ? 640 : 560;
-    const ch = portrait ? 860 : 620;
+    const ch = portrait ? 980 : 680;
     const cx = L.w / 2;
     const cy = L.h / 2;
     const x0 = cx - cw / 2;
@@ -98,7 +104,7 @@ export class DeathOverlay {
       ['ic_bits', 'BITS EARNED', BITS_CSS],
       ['ic_key', 'KEYS', KEY_CSS],
     ];
-    const rowH = portrait ? 66 : 50;
+    const rowH = portrait ? 66 : 42;
     const fs = portrait ? 32 : 22;
     const ry0 = ty + tSize * 0.9 + (portrait ? 64 : 48);
     const lx = x0 + (portrait ? 56 : 44);
@@ -116,6 +122,11 @@ export class DeathOverlay {
     const noteY = ry0 + rows.length * rowH + (portrait ? 10 : 6);
     this.note = text(scene, cx, noteY, '', L.minFont, { color: '#2bffb0', glow: '#2bffb0', blur: 8 }).setOrigin(0.5, 0).setDepth(D + 0.3).setAlign('center').setWordWrapWidth(cw - 60);
     this.objs.push(this.note);
+    for (let i = 0; i < 3; i++) {
+      const mt = text(scene, cx, noteY, '', L.minFont, { color: TEXT_DIM }).setOrigin(0.5, 0).setDepth(D + 0.3).setAlign('center').setWordWrapWidth(cw - 60);
+      this.missionTexts.push(mt);
+      this.objs.push(mt);
+    }
     const gap = portrait ? 20 : 16;
     const bw = (cw - (portrait ? 80 : 64) - gap) / 2;
     const bh = portrait ? 92 : 62;
@@ -185,6 +196,21 @@ export class DeathOverlay {
     const v = [s.wave, s.kills, s.bits, s.keys];
     this.values.forEach((t, i) => t.setText(i === 2 ? `+${formatNum(v[i]!)}` : formatNum(v[i]!)));
     this.note.setText(s.note);
+    // Mission lines stack under the note (its height depends on how many parts it has).
+    let y = this.note.y + (s.note ? this.note.height + 8 : 0);
+    const ms = s.missions ?? [];
+    this.missionTexts.forEach((t, i) => {
+      const m = ms[i];
+      if (!m) {
+        t.setText('');
+        return;
+      }
+      const delta = m.after > m.before && !m.done && !(m.claimed && m.before >= m.target) ? ` (+${formatNum(m.after - m.before)})` : '';
+      const line = m.done ? `✓ ${m.text} · +${m.keys} KEYS` : m.claimed ? `✓ ${m.text} · done` : `${m.text} · ${progressText(m.after, m.target)}${delta}`;
+      const color = m.done ? KEY_CSS : m.claimed ? '#2bffb0' : m.after > m.before ? '#e8fbff' : TEXT_DIM;
+      t.setText(line).setColor(color).setY(y);
+      y += t.height + 4;
+    });
   }
 
   hide(): void {

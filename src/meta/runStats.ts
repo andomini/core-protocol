@@ -47,6 +47,8 @@ export interface RunStats {
   stationBits: number;
   /** Highest fusion tier (its link count, sets.fusionTiers) reached this run, by pair key. */
   fusionMax: Record<string, number>;
+  /** Virus nests destroyed (daily missions). */
+  nests: number;
 }
 
 const kinds = (): Record<EnemyKind, number> => Object.fromEntries(ENEMY_KINDS.map((k) => [k, 0])) as Record<EnemyKind, number>;
@@ -88,6 +90,7 @@ export function emptyRunStats(): RunStats {
     stationEnergy: 0,
     stationBits: 0,
     fusionMax: {},
+    nests: 0,
   };
 }
 
@@ -161,6 +164,9 @@ export function recordEvent(s: RunStats, e: SimEvent): void {
       return;
     case 'mineBlast':
       s.minesBlown += 1;
+      return;
+    case 'nestDestroyed':
+      s.nests += 1;
       return;
     case 'stationPay':
       s.stationEnergy += e.energy;

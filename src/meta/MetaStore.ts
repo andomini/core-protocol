@@ -9,6 +9,7 @@ import type { MetaData } from './metaData';
 import { type RunStats, validateRunStats } from './runStats';
 import { defaultMeta, type MetaState, validateMeta } from './state';
 import { migrateEconomy } from './workshop';
+import { emptyMissions } from './missions';
 import type { LoggedCommand } from '../sim/commands';
 import type { LoadoutClaim } from './leaderboardRules';
 
@@ -64,6 +65,11 @@ export interface SavedRun extends RunReplayInfo {
   stats: RunStats;
 }
 
+/** Meta slot v1 → v2: daily missions (meta/missions.ts) start empty; the first Home visit picks the day's three. */
+export const META_MIGRATIONS = {
+  1: (d: unknown) => (d === null || typeof d !== 'object' ? d : { ...(d as object), missions: emptyMissions() }),
+};
+
 /** Run slot v1 → v2: saves from before leaderboards carry no log, so they resume unranked. */
 export const RUN_MIGRATIONS = {
   1: (d: unknown) => (d === null || typeof d !== 'object' ? d : { ...(d as object), log: null, claim: null, board: null, commit: null }),
@@ -96,7 +102,7 @@ export class MetaStore {
     md: MetaData,
     private readonly now: () => number = () => Date.now(),
   ) {
-    this.slot = new SaveSlot<MetaState>(kv, { key: META_KEY, version: 1, defaults: defaultMeta, validate: (x) => validateMeta(x, data, md) });
+    this.slot = new SaveSlot<MetaState>(kv, { key: META_KEY, version: 2, migrations: META_MIGRATIONS, defaults: defaultMeta, validate: (x) => validateMeta(x, data, md) });
     const r = this.slot.load();
     this.meta = r.data;
     this.status = r.status;
